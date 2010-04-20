@@ -34,13 +34,13 @@ class Event(ctypes.Structure):
         ]
 
 # Decorator for callback methods
-callbackmethod=ctypes.CFUNCTYPE(None, Event, ctypes.c_void_p)
+callbackmethod=ctypes.CFUNCTYPE(None, ctypes.POINTER(Event), ctypes.c_void_p)
 
 # Example callback method
 @callbackmethod
 def debug_callback(event, data):
     print "Debug callback method"
-    print "Event:", event.type
+    print "Event:", event.contents.type
     print "Data", data
 
 if __name__ == '__main__':
