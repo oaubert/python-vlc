@@ -219,7 +219,11 @@ class Parser(object):
                             if l:
                                 values.append( (l, str(i)) )
                 comment=comment.replace('@{', '').replace('@see', 'See').replace('\ingroup', '')
-                yield (typ, name.strip(), values, comment)
+                if name is None:
+                    name="libvlc_enum_t"
+                else:
+                    name=name.strip()
+                yield (typ, name, values, comment)
                 comment=''
                 continue
 
