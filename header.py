@@ -171,20 +171,19 @@ class MediaStats(ctypes.Structure):
     def __str__(self):
         return "MediaStats\n%s" % "\n".join( "%s:\t%s" % (n, getattr(self, n)) for n in self._fields_ )
 
-class MediaES(ctypes.Structure):
+class MediaTrackInfo(ctypes.Structure):
     _fields_= [
         ('codec'   , ctypes.c_uint32),
-        ('type'    , EsType),
+        ('id'      , ctypes.c_int),
+        ('type'    , TrackType),
         ('profile' , ctypes.c_int),
         ('level'   , ctypes.c_int),
-        ('channels',  ctypes.c_uint),
-        ('rate'    , ctypes.c_uint),
-        ('height'  , ctypes.c_uint),
-        ('width'   , ctypes.c_uint),
+        ('channels_or_height',  ctypes.c_uint),
+        ('rate_or_width'    , ctypes.c_uint),
         ]
 
     def __str__(self):
-        return "MediaES \n%s" % "\n".join( "%s:\t%s" % (n, getattr(self, n)) for n in self._fields_ )
+        return "MediaTrackInfo \n%s" % "\n".join( "%s:\t%s" % (n, getattr(self, n)) for n in self._fields_ )
 
 class PlaylistItem(ctypes.Structure):
     _fields_= [

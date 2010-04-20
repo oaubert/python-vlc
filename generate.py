@@ -333,7 +333,7 @@ class PythonGenerator(object):
         'libvlc_track_description_t*': 'TrackDescription',
         'libvlc_audio_output_t*': 'AudioOutput',
         'libvlc_media_stats_t*': 'ctypes.POINTER(MediaStats)',
-        'libvlc_media_es_t**': 'ctypes.POINTER(ctypes.POINTER(MediaES))',
+        'libvlc_media_track_info_t**': 'ctypes.POINTER(ctypes.POINTER(MediaTrackInfo))',
 
         'mediacontrol_Instance*': 'MediaControl',
         'mediacontrol_Exception*': 'MediaControlException',
@@ -351,7 +351,9 @@ class PythonGenerator(object):
         'uint32_t': 'ctypes.c_uint',
         'float': 'ctypes.c_float',
         'unsigned': 'ctypes.c_uint',
+        'unsigned*': 'ctypes.POINTER(ctypes.c_uint)',
         'int': 'ctypes.c_int',
+        'int*': 'ctypes.POINTER(ctypes.c_int)',
         '...': 'FIXMEva_list',
         'libvlc_callback_t': 'ctypes.c_void_p',
         'libvlc_time_t': 'ctypes.c_longlong',
