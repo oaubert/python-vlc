@@ -175,6 +175,9 @@ class Parser(object):
                 accumulator=l
                 continue
             elif accumulator:
+                # Strip possible trailing comments
+                if '/*' in l:
+                    l = l[:l.index('/*')]
                 accumulator=" ".join( (accumulator, l) )
                 if l.endswith(';'):
                     # End of definition
