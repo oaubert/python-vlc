@@ -145,6 +145,7 @@ class Parser(object):
 
         f=open(name, 'r')
         accumulator=''
+        comment=None
         for l in f:
             # Note: lstrip() should not be necessary, but there is 1 badly
             # formatted comment in vlc1.0.0 includes
@@ -156,7 +157,16 @@ class Parser(object):
                 continue
 
             l=l.strip()
-            if l.startswith('/*') or l.endswith('*/'):
+            if l.startswith('/*'):
+                # Simple comment start
+                comment=l[2:]
+                continue
+            elif l.endswith('*/'):
+                comment=None
+                continue
+            elif comment is not None:
+                # We are in a comment
+                comment += l
                 continue
 
             if (l.startswith('typedef enum') or l.startswith('enum')) and not l.endswith(';'):
@@ -184,9 +194,12 @@ class Parser(object):
                     else:
                         if l:
                             values.append( (l, str(i)) )
-                comment=comment.replace('@{', '').replace('@see', 'See').replace('\ingroup', '')
+                if comment is None:
+                    comment=""
+                else:
+                    comment=comment.replace('@{', '').replace('@see', 'See').replace('\ingroup', '')
                 yield (typ, name.strip(), values, comment)
-                comment=''
+                comment=None
                 continue
 
             # Special case, used only for libvlc_events.h
@@ -218,13 +231,16 @@ class Parser(object):
                         else:
                             if l:
                                 values.append( (l, str(i)) )
-                comment=comment.replace('@{', '').replace('@see', 'See').replace('\ingroup', '')
+                if comment is None:
+                    comment=""
+                else:
+                    comment=comment.replace('@{', '').replace('@see', 'See').replace('\ingroup', '')
                 if name is None:
                     name="libvlc_enum_t"
                 else:
                     name=name.strip()
                 yield (typ, name, values, comment)
-                comment=''
+                comment=None
                 continue
 
     def parse_include(self, name):
