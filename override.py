@@ -156,9 +156,13 @@ class MediaControl:
         @param end: the end position
         """
         if not isinstance(begin, MediaControlPosition):
-            begin=self.value2position(begin)
+            if begin == 0:
+                # Passing a 0 value. We will consider it as a relative position.
+                begin=MediaControlPosition(long(begin), PositionOrigin.RelativePosition)
+            else:
+                begin=MediaControlPosition(long(begin))
         if not isinstance(end, MediaControlPosition):
-            end=self.value2position(end)
+            end=MediaControlPosition(long(end))
         e=MediaControlException()
         mediacontrol_display_text(self, message, begin, end, e)
 
