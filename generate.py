@@ -87,9 +87,7 @@ paramlist_re=re.compile('\s*,\s*')
 comment_re=re.compile('\\param\s+(\S+)')
 python_param_re=re.compile('(@param\s+\S+)(.+)')
 forward_re=re.compile('.+\(\s*(.+?)\s*\)(\s*\S+)')
-enum_re=re.compile('typedef\s+(enum)\s*(\S+\s*)?\{\s*(.+)\s*\}\s*(\S+);')
-special_enum_re=re.compile('^(enum)\s*(\S+\s*)?\{\s*(.+)\s*\};')
-event_def_re=re.compile('^DEF\(\s*(\w+)\s*\)')
+enum_re=re.compile('(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\S+)?;')
 
 # Definition of parameter passing mode for types.  This should not be
 # hardcoded this way, but works alright ATM.
@@ -145,31 +143,34 @@ class Parser(object):
 
         f=open(name, 'r')
         accumulator=''
-        comment=None
+        comment=""
+        simple_comment=None
         for l in f:
             # Note: lstrip() should not be necessary, but there is 1 badly
             # formatted comment in vlc1.0.0 includes
             if l.lstrip().startswith('/**'):
-                comment=''
+                comment=l[2:]
                 continue
             elif l.startswith(' * '):
                 comment = comment + l[3:]
                 continue
 
             l=l.strip()
+
             if l.startswith('/*'):
                 # Simple comment start
-                comment=l[2:]
+                simple_comment=l[2:]
+                if l.endswith('*/'):
+                    simple_comment=None
                 continue
-            elif l.endswith('*/'):
-                comment=None
-                continue
-            elif comment is not None:
+            elif simple_comment is not None:
                 # We are in a comment
-                comment += l
+                simple_comment += l
+                if l.endswith('*/'):
+                    simple_comment=None
                 continue
 
-            if (l.startswith('typedef enum') or l.startswith('enum')) and not l.endswith(';'):
+            if re.match('^(?:typedef\s+)?enum', l) and not l.endswith(';'):
                 # Multiline definition. Accumulate until end of definition
                 accumulator=l
                 continue
@@ -179,68 +180,39 @@ class Parser(object):
                     # End of definition
                     l=accumulator
                     accumulator=''
+                else:
+                    continue
 
             m=enum_re.match(l)
             if m:
                 values=[]
-                (typ, dummy, data, name)=m.groups()
-                for i, l in enumerate(paramlist_re.split(data)):
+                (typ, name, data)=m.groups()
+                val=0
+                for l in paramlist_re.split(data):
                     l=l.strip()
                     if l.startswith('/*'):
                         continue
                     if '=' in l:
                         # A value was specified. Use it.
-                        values.append(re.split('\s*=\s*', l))
+                        n, v = re.split('\s*=\s*', l)
+                        values.append( (n, v) )
+                        if v.startswith("0x"):
+                            val=int(v, 16)
+                        else:
+                            val=int(v)
                     else:
                         if l:
-                            values.append( (l, str(i)) )
-                if comment is None:
-                    comment=""
-                else:
-                    comment=comment.replace('@{', '').replace('@see', 'See').replace('\ingroup', '')
-                yield (typ, name.strip(), values, comment)
-                comment=None
-                continue
-
-            # Special case, used only for libvlc_events.h
-            # (version after 96a96f60bb0d1f2506e68b356897ceca6f6b586d)
-            m=event_def_re.match(l)
-            if m:
-                # Event definition.
-                event_names.append('libvlc_'+m.group(1))
-                continue
-
-            # Special case, used only for libvlc_events.h
-            m=special_enum_re.match(l)
-            if m:
-                (typ, name, data)=m.groups()
-                if event_names:
-                    # event_names were defined through DEF macro
-                    # (see 96a96f60bb0d1f2506e68b356897ceca6f6b586d)
-                    values=list( (n, str(i)) for i, n in enumerate(event_names))
-                else:
-                    # Before 96a96f60bb0d1f2506e68b356897ceca6f6b586d
-                    values=[]
-                    for i, l in enumerate(paramlist_re.split(data)):
-                        l=l.strip()
-                        if l.startswith('/*') or l.startswith('#'):
-                            continue
-                        if '=' in l:
-                            # A value was specified. Use it.
-                            values.append(re.split('\s*=\s*', l))
-                        else:
-                            if l:
-                                values.append( (l, str(i)) )
-                if comment is None:
-                    comment=""
-                else:
-                    comment=comment.replace('@{', '').replace('@see', 'See').replace('\ingroup', '')
+                            values.append( (l, str(val)) )
+                    val = val + 1
+                comment=comment.replace('@{', '').replace('@see', 'See').replace('\ingroup', '')
                 if name is None:
+                    # Anonymous enum. Use a dummy name.
                     name="libvlc_enum_t"
                 else:
                     name=name.strip()
+
                 yield (typ, name, values, comment)
-                comment=None
+                comment=""
                 continue
 
     def parse_include(self, name):
@@ -473,7 +445,7 @@ class PythonGenerator(object):
         for (typ, name, values, comment) in enums:
             if typ != 'enum':
                 raise Exception('This method only handles enums')
-            pyname=re.findall('(libvlc|mediacontrol)_(.+?)(_t)?$', name)[0][1]
+            pyname=re.findall('(libvlc|mediacontrol)_(.+?)(_[te])?$', name)[0][1]
             if '_' in pyname:
                 pyname=pyname.title().replace('_', '')
             elif not pyname[0].isupper():
@@ -803,7 +775,7 @@ class JavaGenerator(object):
         for (typ, name, values, comment) in enums:
             if typ != 'enum':
                 raise Exception('This method only handles enums')
-            pyname=re.findall('(libvlc|mediacontrol)_(.+?)(_t)?$', name)[0][1]
+            pyname=re.findall('(libvlc|mediacontrol)_(.+?)(_[te])?$', name)[0][1]
             if '_' in pyname:
                 pyname=pyname.title().replace('_', '')
             elif not pyname[0].isupper():
