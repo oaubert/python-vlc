@@ -212,66 +212,6 @@ class LogMessage(ctypes.Structure):
     def __str__(self):
         return "vlc.LogMessage(%d:%s): %s" % (self.severity, self.type, self.message)
 
-class MediaControlPosition(ctypes.Structure):
-    _fields_= [
-                ('origin', PositionOrigin),
-                ('key', PositionKey),
-                ('value', ctypes.c_longlong),
-                ]
-
-    def __init__(self, value=0, origin=None, key=None):
-        # We override the __init__ method so that instanciating the
-        # class with an int as parameter will create the appropriate
-        # default position (absolute position, media time, with the
-        # int as value).
-        super(MediaControlPosition, self).__init__()
-        self.value=value
-        if origin is None:
-            origin=PositionOrigin.AbsolutePosition
-        if key is None:
-            key=PositionKey.MediaTime
-        self.origin=origin
-        self.key=key
-
-    def __str__(self):
-        return "MediaControlPosition %ld (%s, %s)" % (
-            self.value,
-            str(self.origin),
-            str(self.key)
-            )
-
-    @staticmethod
-    def from_param(arg):
-        if isinstance(arg, (int, long)):
-            return MediaControlPosition(arg)
-        else:
-            return arg
-
-class MediaControlException(ctypes.Structure):
-    _fields_= [
-                ('code', ctypes.c_int),
-                ('message', ctypes.c_char_p),
-                ]
-    def init(self):
-        mediacontrol_exception_init(self)
-
-    def clear(self):
-        mediacontrol_exception_free(self)
-
-class MediaControlStreamInformation(ctypes.Structure):
-    _fields_= [
-                ('status', PlayerStatus),
-                ('url', ctypes.c_char_p),
-                ('position', ctypes.c_longlong),
-                ('length', ctypes.c_longlong),
-                ]
-
-    def __str__(self):
-        return "%s (%s) : %ld / %ld" % (self.url or "<No defined URL>",
-                                        str(self.status),
-                                        self.position,
-                                        self.length)
-
 class RGBPicture(ctypes.Structure):
     _fields_= [
                 ('width', ctypes.c_int),
