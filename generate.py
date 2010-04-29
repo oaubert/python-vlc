@@ -709,6 +709,7 @@ class JavaGenerator(object):
         'libvlc_media_list_player_t*': 'LibVlcMediaListPlayer',
         'libvlc_media_list_view_t*': 'LibVlcMediaListView',
         'libvlc_media_stats_t*': 'LibVlcMediaStats',
+        'libvlc_media_track_info_t**': 'LibVlcMediaTrackInfo',
 
         'libvlc_track_description_t*': 'LibVlcTrackDescription',
         'libvlc_audio_output_t*': 'LibVlcAudioOutput',
@@ -721,7 +722,9 @@ class JavaGenerator(object):
         'uint32_t': 'uint32',
         'float': 'float',
         'unsigned': 'int',
+        'unsigned*': 'Pointer',
         'int': 'int',
+        'int*': 'Pointer',
         '...': 'FIXMEva_list',
         'libvlc_callback_t': 'LibVlcCallback',
         'libvlc_time_t': 'long',
