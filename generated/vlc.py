@@ -37,7 +37,7 @@ import logging
 import ctypes
 import sys
 
-build_date="Thu Apr 29 16:54:38 2010"
+build_date="Thu Apr 29 18:09:35 2010"
 
 # Used for win32 and MacOS X
 detected_plugin_path=None
@@ -80,11 +80,11 @@ elif sys.platform == 'darwin':
     d='/Applications/VLC.app'
     import os
     if os.path.exists(d):
-        dll=ctypes.CDLL(d+'/Contents/MacOS/lib/libvlc.2.dylib')
+        dll=ctypes.CDLL(d+'/Contents/MacOS/lib/libvlc.dylib')
         detected_plugin_path=d+'/Contents/MacOS/modules'
     else:
         # Hope some default path is set...
-        dll=ctypes.CDLL('libvlc.2.dylib')
+        dll=ctypes.CDLL('libvlc.dylib')
 
 #
 # Generated enum types.
