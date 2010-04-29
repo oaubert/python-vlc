@@ -28,16 +28,14 @@ class Instance:
                 # No parameters passed. Under win32 and MacOS, specify
                 # the detected_plugin_path if present.
                 p=[ 'vlc', '--plugin-path='+ detected_plugin_path ]
-            e=VLCException()
-            return libvlc_new(len(p), p, e)
+            return libvlc_new(len(p), p)
 
     def media_player_new(self, uri=None):
         """Create a new Media Player object.
 
         @param uri: an optional URI to play in the player.
         """
-        e=VLCException()
-        p=libvlc_media_player_new(self, e)
+        p=libvlc_media_player_new(self)
         if uri:
             p.set_media(self.media_new(uri))
         p._instance=self
@@ -46,8 +44,7 @@ class Instance:
     def media_list_player_new(self):
         """Create an empty Media Player object
         """
-        e=VLCException()
-        p=libvlc_media_list_player_new(self, e)
+        p=libvlc_media_list_player_new(self)
         p._instance=self
         return p
 
@@ -57,10 +54,9 @@ class Instance:
         Options can be specified as supplementary string parameters, e.g.
         m=i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')
         """
-        e=VLCException()
-        m=libvlc_media_new(self, mrl, e)
+        m=libvlc_media_new(self, mrl)
         for o in options:
-            libvlc_media_add_option(m, o, e)
+            libvlc_media_add_option(m, o)
         return m
 
 class MediaControl:
@@ -253,8 +249,7 @@ class LogIterator:
         if not self.has_next():
             raise StopIteration
         buf=LogMessage()
-        e=VLCException()
-        ret=libvlc_log_iterator_next(self, buf, e)
+        ret=libvlc_log_iterator_next(self, buf)
         return ret.contents
 
 class Log:
