@@ -5,7 +5,6 @@ class Instance:
       - a string
       - a list of strings as first parameters
       - the parameters given as the constructor parameters (must be strings)
-      - a MediaControl instance
     """
     def __new__(cls, *p):
         if p and p[0] == 0:
@@ -21,14 +20,11 @@ class Instance:
         elif len(p) == 1 and isinstance(p[0], (tuple, list)):
             p=p[0]
 
-        if p and isinstance(p[0], MediaControl):
-            return p[0].get_instance()
-        else:
-            if not p and detected_plugin_path is not None:
-                # No parameters passed. Under win32 and MacOS, specify
-                # the detected_plugin_path if present.
-                p=[ 'vlc', '--plugin-path='+ detected_plugin_path ]
-            return libvlc_new(len(p), p)
+        if not p and detected_plugin_path is not None:
+            # No parameters passed. Under win32 and MacOS, specify
+            # the detected_plugin_path if present.
+            p=[ 'vlc', '--plugin-path='+ detected_plugin_path ]
+        return libvlc_new(len(p), p)
 
     def media_player_new(self, uri=None):
         """Create a new Media Player object.
@@ -54,119 +50,10 @@ class Instance:
         Options can be specified as supplementary string parameters, e.g.
         m=i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')
         """
-        m=libvlc_media_new(self, mrl)
+        m=libvlc_media_new_location(self, mrl)
         for o in options:
             libvlc_media_add_option(m, o)
         return m
-
-class MediaControl:
-    """Create a new MediaControl instance
-
-    It may take as parameter either:
-      - a string
-      - a list of strings as first parameters
-      - the parameters given as the constructor parameters (must be strings)
-      - a vlc.Instance
-    """
-    def __new__(cls, *p):
-        if p and p[0] == 0:
-            return None
-        elif p and isinstance(p[0], (int, long)):
-            # instance creation from ctypes
-            o=object.__new__(cls)
-            o._as_parameter_=ctypes.c_void_p(p[0])
-            return o
-        elif len(p) == 1 and isinstance(p[0], basestring):
-            # Only 1 string parameter: should be a parameter line
-            p=p[0].split(' ')
-        elif len(p) == 1 and isinstance(p[0], (tuple, list)):
-            p=p[0]
-
-        if p and isinstance(p[0], Instance):
-            e=MediaControlException()
-            return mediacontrol_new_from_instance(p[0], e)
-        else:
-            if not p and detected_plugin_path is not None:
-                # No parameters passed. Under win32 and MacOS, specify
-                # the detected_plugin_path if present.
-                p=[ 'vlc', '--plugin-path='+ detected_plugin_path ]
-            e=MediaControlException()
-            return mediacontrol_new(len(p), p, e)
-
-    def get_media_position(self, origin=PositionOrigin.AbsolutePosition, key=PositionKey.MediaTime):
-        e=MediaControlException()
-        p=mediacontrol_get_media_position(self, origin, key, e)
-        if p:
-            return p.contents
-        else:
-            return None
-
-    def set_media_position(self, pos):
-        """Set the media position.
-
-        @param pos: a MediaControlPosition or an integer (in ms)
-        """
-        if not isinstance(pos, MediaControlPosition):
-            pos=MediaControlPosition(long(pos))
-        e=MediaControlException()
-        mediacontrol_set_media_position(self, pos, e)
-
-    def start(self, pos=0):
-        """Start the player at the given position.
-
-        @param pos: a MediaControlPosition or an integer (in ms)
-        """
-        if not isinstance(pos, MediaControlPosition):
-            pos=MediaControlPosition(long(pos))
-        e=MediaControlException()
-        mediacontrol_start(self, pos, e)
-
-    def snapshot(self, pos=0):
-        """Take a snapshot.
-
-        Note: the position parameter is not properly implemented. For
-        the moment, the only valid position is the 0-relative position
-        (i.e. the current position).
-
-        @param pos: a MediaControlPosition or an integer (in ms)
-        """
-        if not isinstance(pos, MediaControlPosition):
-            pos=MediaControlPosition(long(pos))
-        e=MediaControlException()
-        p=mediacontrol_snapshot(self, pos, e)
-        if p:
-            snap=p.contents
-            # FIXME: there is a bug in the current mediacontrol_snapshot
-            # implementation, which sets an incorrect date.
-            # Workaround here:
-            snap.date=self.get_media_position().value
-            return snap
-        else:
-            return None
-
-    def display_text(self, message='', begin=0, end=1000):
-        """Display a caption between begin and end positions.
-
-        @param message: the caption to display
-        @param begin: the begin position
-        @param end: the end position
-        """
-        if not isinstance(begin, MediaControlPosition):
-            if begin == 0:
-                # Passing a 0 value. We will consider it as a relative position.
-                begin=MediaControlPosition(long(begin), PositionOrigin.RelativePosition)
-            else:
-                begin=MediaControlPosition(long(begin))
-        if not isinstance(end, MediaControlPosition):
-            end=MediaControlPosition(long(end))
-        e=MediaControlException()
-        mediacontrol_display_text(self, message, begin, end, e)
-
-    def get_stream_information(self, key=PositionKey.MediaTime):
-        """Return information about the stream.
-        """
-        e=MediaControlException()
-        return mediacontrol_get_stream_information(self, key, e).contents
 
 class Media:
     def add_options(self, *list_of_options):

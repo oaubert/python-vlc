@@ -23,8 +23,7 @@
 #
 
 """This module provides bindings for the
-U{libvlc<http://wiki.videolan.org/ExternalAPI>} and
-U{MediaControl<http://wiki.videolan.org/MediaControlAPI>} APIs.
+U{libvlc<http://wiki.videolan.org/ExternalAPI>}.
 
 You can find documentation at U{http://www.advene.org/download/python-ctypes/}.
 
@@ -43,7 +42,7 @@ build_date="This will be replaced by the build date"
 detected_plugin_path=None
 
 if sys.platform == 'linux2':
-    dll=ctypes.CDLL('libvlc.so.2')
+    dll=ctypes.CDLL('libvlc.so')
 elif sys.platform == 'win32':
     import ctypes.util
     import os
@@ -113,42 +112,6 @@ class LibVLCException(Exception):
 
 # From libvlc_structures.h
 
-# This is version-dependent, depending on the presence of libvlc_errmsg
-
-if hasattr(dll, 'libvlc_errmsg'):
-    # New-style message passing
-    class VLCException(ctypes.Structure):
-        """libvlc exception.
-        """
-        _fields_= [
-                    ('raised', ctypes.c_int),
-                    ]
-
-        @property
-        def message(self):
-            return dll.libvlc_errmsg()
-
-        def init(self):
-            libvlc_exception_init(self)
-
-        def clear(self):
-            libvlc_exception_clear(self)
-else:
-    # Old-style exceptions
-    class VLCException(ctypes.Structure):
-        """libvlc exception.
-        """
-        _fields_= [
-                    ('raised', ctypes.c_int),
-                    ('code', ctypes.c_int),
-                    ('message', ctypes.c_char_p),
-                    ]
-        def init(self):
-            libvlc_exception_init(self)
-
-        def clear(self):
-            libvlc_exception_clear(self)
-
 class MediaStats(ctypes.Structure):
     _fields_= [
                 ('read_bytes',          ctypes.c_int  ),
@@ -211,38 +174,5 @@ class LogMessage(ctypes.Structure):
 
     def __str__(self):
         return "vlc.LogMessage(%d:%s): %s" % (self.severity, self.type, self.message)
-
-class RGBPicture(ctypes.Structure):
-    _fields_= [
-                ('width', ctypes.c_int),
-                ('height', ctypes.c_int),
-                ('type', ctypes.c_uint32),
-                ('date', ctypes.c_ulonglong),
-                ('size', ctypes.c_int),
-                ('data_pointer', ctypes.c_void_p),
-                ]
-
-    @property
-    def data(self):
-        return ctypes.string_at(self.data_pointer, self.size)
-
-    def __str__(self):
-        return "RGBPicture (%d, %d) - %ld ms - %d bytes" % (self.width, self.height, self.date, self.size)
-
-    def free(self):
-        mediacontrol_RGBPicture__free(self)
-
-def check_vlc_exception(result, func, args):
-    """Error checking method for functions using an exception in/out parameter.
-    """
-    ex=args[-1]
-    if not isinstance(ex, (VLCException, MediaControlException)):
-        logging.warn("python-vlc: error when processing function %s. Please report this as a bug to vlc-devel@videolan.org" % str(func))
-        return result
-    # Take into account both VLCException and MediacontrolException:
-    c=getattr(ex, 'raised', getattr(ex, 'code', 0))
-    if c:
-        raise LibVLCException(ex.message)
-    return result
 
 ### End of header.py ###

@@ -45,7 +45,7 @@ class DecoratedVLCWidget(gtk.VBox):
     VLC widget decorated with a player control toolbar.
 
     Its player can be controlled through the 'player' attribute, which
-    is a MediaControl instance.
+    is a Player instance.
     """
     def __init__(self, *p):
         gtk.VBox.__init__(self)

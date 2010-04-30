@@ -56,28 +56,6 @@ class DefaultDict(dict):
 
 # Methods not decorated/not referenced
 blacklist=[
-    "libvlc_exception_raise",
-    "libvlc_exception_raised",
-    "libvlc_exception_get_message",
-    "libvlc_get_vlc_instance",
-
-    "libvlc_media_list_view_index_of_item",
-    "libvlc_media_list_view_insert_at_index",
-    "libvlc_media_list_view_remove_at_index",
-    "libvlc_media_list_view_add_item",
-
-    # In svn but not in current 1.0.0.
-    #"libvlc_media_add_option_flag",
-    #'libvlc_video_set_deinterlace',
-    #'libvlc_video_get_marquee_int',
-    #'libvlc_video_get_marquee_string',
-    #'libvlc_video_set_marquee_int',
-    #'libvlc_video_set_marquee_string',
-    #'libvlc_vlm_get_event_manager',
-    #"libvlc_media_list_player_event_manager",
-    #'libvlc_media_player_next_frame',
-
-    'mediacontrol_PlaylistSeq__free',
     ]
 
 # Precompiled regexps
@@ -207,7 +185,6 @@ class Parser(object):
                         if l:
                             values.append( (l, str(val)) )
                     val = val + 1
-                comment=comment.replace('@{', '').replace('@see', 'See').replace('\ingroup', '')
                 if name is None:
                     # Anonymous enum. Use a dummy name.
                     name="libvlc_enum_t"
@@ -283,9 +260,6 @@ class Parser(object):
                         # but it prevented code generation for a minor detail (some bad descriptions).
                     params=[ (p[0], names[i]) for (i, p) in enumerate(params) ]
 
-                # Transform Doxygen syntax into epydoc syntax
-                comment=comment.replace('\\param', '@param').replace('\\return', '@return')
-
                 if debug:
                     print '********************'
                     print l
@@ -318,8 +292,6 @@ class PythonGenerator(object):
     # C-type to ctypes/python type conversion.
     # Note that enum types conversions are generated (cf convert_enum_names)
     type2class={
-        'libvlc_exception_t*': 'ctypes.POINTER(VLCException)',
-
         'libvlc_media_player_t*': 'MediaPlayer',
         'libvlc_instance_t*': 'Instance',
         'libvlc_media_t*': 'Media',
@@ -338,12 +310,6 @@ class PythonGenerator(object):
         'libvlc_media_stats_t*': 'ctypes.POINTER(MediaStats)',
         'libvlc_media_track_info_t**': 'ctypes.POINTER(ctypes.POINTER(MediaTrackInfo))',
 
-        'mediacontrol_Instance*': 'MediaControl',
-        'mediacontrol_Exception*': 'MediaControlException',
-        'mediacontrol_RGBPicture*': 'ctypes.POINTER(RGBPicture)',
-        'mediacontrol_PlaylistSeq*': 'MediaControlPlaylistSeq',
-        'mediacontrol_Position*': 'ctypes.POINTER(MediaControlPosition)',
-        'mediacontrol_StreamInformation*': 'ctypes.POINTER(MediaControlStreamInformation)',
         'WINDOWHANDLE': 'ctypes.c_ulong',
 
         'void': 'None',
@@ -378,7 +344,6 @@ class PythonGenerator(object):
         'MediaListView',
         'TrackDescription',
         'AudioOutput',
-        'MediaControl',
         )
 
     def __init__(self, parser=None):
@@ -393,7 +358,6 @@ class PythonGenerator(object):
         self.prefixes=dict( (v, k[:-2])
                             for (k, v) in self.type2class.iteritems()
                             if  v in self.defined_classes )
-        self.prefixes['MediaControl']='mediacontrol_'
 
     def save(self, filename=None):
         if filename is None or filename == '-':
@@ -450,8 +414,10 @@ class PythonGenerator(object):
         for (typ, name, values, comment) in enums:
             if typ != 'enum':
                 raise Exception('This method only handles enums')
-            pyname=re.findall('(libvlc|mediacontrol)_(.+?)(_[te])?$', name)[0][1]
-            if '_' in pyname:
+            pyname=re.findall('libvlc_(.+?)(_t)?$', name)[0][0]
+            if name == 'libvlc_event_e':
+                pyname='EventType'
+            elif '_' in pyname:
                 pyname=pyname.title().replace('_', '')
             elif not pyname[0].isupper():
                 pyname=pyname.capitalize()
@@ -526,9 +492,6 @@ class PythonGenerator(object):
             flags="    paramflags=%s" % ", ".join( '(%d,)' % parameter_passing[p[0]] for p in params )
         self.output(flags)
         self.output('    %s = prototype( ("%s", dll), paramflags )' % (method, method))
-        if '3' in flags:
-            # A VLCException is present. Process it.
-            self.output("    %s.errcheck = check_vlc_exception" % method)
         self.output('    %s.__doc__ = """%s"""' % (method, comment))
         self.output()
 
@@ -569,20 +532,26 @@ class PythonGenerator(object):
 
         return code, overridden_methods, docstring
 
-    def fix_python_comment(self, c):
-        """Fix comment by removing first and last parameters (self and exception)
+    def fix_python_comment(self, c, in_class=False):
+        """Transform comment into python syntax.
         """
-        data=c.replace('@{', '').replace('@see', 'See').splitlines()
-        body=itertools.takewhile(lambda l: not '@param' in l and not '@return' in l, data)
-        param=[ python_param_re.sub('\\1:\\2', l) for l in  itertools.ifilter(lambda l: '@param' in l, data) ]
-        ret=[ l.replace('@return', '@return:') for l in itertools.ifilter(lambda l: '@return' in l, data) ]
+        # Transform Doxygen syntax into epydoc syntax
+        c=c.replace('@{', '').replace('@see', 'See').replace('\\see', 'See').replace('\\ingroup', '').replace('\\param', '@param').replace('\\return', '@return')
+        if in_class:
+            # Class method, remove first parameter (self)
+            data=c.splitlines()
+            body=itertools.takewhile(lambda l: not '@param' in l and not '@return' in l, data)
+            param=[ python_param_re.sub('\\1:\\2', l) for l in  itertools.ifilter(lambda l: '@param' in l, data) ]
+            ret=[ l.replace('@return', '@return:') for l in itertools.ifilter(lambda l: '@return' in l, data) ]
 
-        if len(param) >= 2:
-            param=param[1:-1]
-        elif len(param) == 1:
-            param=[]
+            if len(param) >= 2:
+                param=param[1:]
+            elif len(param) == 1:
+                param=[]
 
-        return "\n".join(itertools.chain(body, param, ret))
+            return "\n".join(itertools.chain(body, param, ret))
+        else:
+            return c
 
     def generate_wrappers(self, methods):
         """Generate class wrappers for all appropriate methods.
@@ -644,47 +613,26 @@ class PythonGenerator(object):
 
                 if params:
                     params[0]=(params[0][0], 'self')
-                if params and params[-1][0] in ('libvlc_exception_t*', 'mediacontrol_Exception*'):
-                    args=", ".join( p[1] for p in params[:-1] )
-                else:
-                    args=", ".join( p[1] for p in params )
+                args=", ".join( p[1] for p in params )
 
                 self.output("    if hasattr(dll, '%s'):" % method)
                 self.output("        def %s(%s):" % (name, args))
-                self.output('            """%s\n        """' % self.fix_python_comment(comment))
-                if params and params[-1][0] == 'libvlc_exception_t*':
-                    # Exception handling
-                    self.output("            e=VLCException()")
-                    self.output("            return %s(%s, e)" % (method, args))
-                elif params and params[-1][0] == 'mediacontrol_Exception*':
-                    # Exception handling
-                    self.output("            e=MediaControlException()")
-                    self.output("            return %s(%s, e)" % (method, args))
-                else:
-                    self.output("            return %s(%s)" % (method, args))
+                self.output('            """%s\n        """' % self.fix_python_comment(comment, in_class=True))
+                self.output("            return %s(%s)" % (method, args))
                 self.output()
 
                 # Check for standard methods
                 if name == 'count':
                     # There is a count method. Generate a __len__ one.
-                    if params and params[-1][0] == 'libvlc_exception_t*':
-                        self.output("""    def __len__(self):
-        e=VLCException()
-        return %s(self, e)
-""" % method)
-                    else:
-                        # No exception
-                        self.output("""    def __len__(self):
+                    self.output("""    def __len__(self):
         return %s(self)
 """ % method)
                 elif name.endswith('item_at_index'):
                     # Indexable (and thus iterable)"
                     self.output("""    def __getitem__(self, i):
-        e=VLCException()
-        return %s(self, i, e)
+        return %s(self, i)
 
     def __iter__(self):
-        e=VLCException()
         for i in xrange(len(self)):
             yield self[i]
 """ % method)
@@ -694,7 +642,6 @@ class JavaGenerator(object):
     # C-type to java/jna type conversion.
     # Note that enum types conversions are generated (cf convert_enum_names)
     type2class={
-        'libvlc_exception_t*': 'libvlc_exception_t',
         'libvlc_media_player_t*': 'LibVlcMediaPlayer',
         'libvlc_instance_t*': 'LibVlcInstance',
         'libvlc_media_t*': 'LibVlcMedia',
@@ -729,18 +676,11 @@ class JavaGenerator(object):
         'libvlc_callback_t': 'LibVlcCallback',
         'libvlc_time_t': 'long',
 
-        'mediacontrol_RGBPicture*': 'Pointer',
-        'mediacontrol_PlaylistSeq*': 'Pointer',
-        'mediacontrol_StreamInformation*': 'Pointer',
         }
 
     def __init__(self, parser=None):
         self.parser=parser
 
-        # Blacklist all mediacontrol methods
-        for (rt, met, params, c) in self.parser.methods:
-            if met.startswith('mediacontrol'):
-                blacklist.append(met)
         # Generate Java names for enums
         self.type2class.update(self.convert_enum_names(parser.enums))
         self.check_types()
@@ -783,7 +723,7 @@ class JavaGenerator(object):
         for (typ, name, values, comment) in enums:
             if typ != 'enum':
                 raise Exception('This method only handles enums')
-            pyname=re.findall('(libvlc|mediacontrol)_(.+?)(_[te])?$', name)[0][1]
+            pyname=re.findall('libvlc_(.+?)(_[te])?$', name)[0][0]
             if '_' in pyname:
                 pyname=pyname.title().replace('_', '')
             elif not pyname[0].isupper():
@@ -864,7 +804,7 @@ public enum %s
             fd.close()
 
     def fix_python_comment(self, c):
-        """Fix comment by removing first and last parameters (self and exception)
+        """Fix comment by removing first parameter (self)
         """
         data=c.replace('@{', '').replace('@see', 'See').splitlines()
         body=itertools.takewhile(lambda l: not '@param' in l and not '@return' in l, data)
@@ -872,7 +812,7 @@ public enum %s
         ret=[ l.replace('@return', '@return:') for l in itertools.ifilter(lambda l: '@return' in l, data) ]
 
         if len(param) >= 2:
-            param=param[1:-1]
+            param=param[1:]
         elif len(param) == 1:
             param=[]
 

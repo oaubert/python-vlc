@@ -28,7 +28,7 @@ class EventUnion(ctypes.Union):
 
 class Event(ctypes.Structure):
     _fields_ = [
-        ('type', Event),
+        ('type', EventType),
         ('object', ctypes.c_void_p),
         ('u', EventUnion),
         ]
