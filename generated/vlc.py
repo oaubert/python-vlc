@@ -23,8 +23,7 @@
 #
 
 """This module provides bindings for the
-U{libvlc<http://wiki.videolan.org/ExternalAPI>} and
-U{MediaControl<http://wiki.videolan.org/MediaControlAPI>} APIs.
+U{libvlc<http://wiki.videolan.org/ExternalAPI>}.
 
 You can find documentation at U{http://www.advene.org/download/python-ctypes/}.
 
@@ -37,13 +36,13 @@ import logging
 import ctypes
 import sys
 
-build_date="Thu Apr 29 18:09:35 2010"
+build_date="Fri Apr 30 11:03:00 2010"
 
 # Used for win32 and MacOS X
 detected_plugin_path=None
 
 if sys.platform == 'linux2':
-    dll=ctypes.CDLL('libvlc.so.2')
+    dll=ctypes.CDLL('libvlc.so')
 elif sys.platform == 'win32':
     import ctypes.util
     import os
@@ -90,7 +89,7 @@ elif sys.platform == 'darwin':
 # Generated enum types.
 #
 
-class Event(ctypes.c_ulong):
+class EventType(ctypes.c_ulong):
     """*
 Event types
 
@@ -156,54 +155,54 @@ Event types
     def __ne__(self, other):
         return not self.__eq__(other)
     
-Event.MediaMetaChanged=Event(0)
-Event.MediaSubItemAdded=Event(1)
-Event.MediaDurationChanged=Event(2)
-Event.MediaParsedChanged=Event(3)
-Event.MediaFreed=Event(4)
-Event.MediaStateChanged=Event(5)
-Event.MediaPlayerMediaChanged=Event(0x100)
-Event.MediaPlayerNothingSpecial=Event(257)
-Event.MediaPlayerOpening=Event(258)
-Event.MediaPlayerBuffering=Event(259)
-Event.MediaPlayerPlaying=Event(260)
-Event.MediaPlayerPaused=Event(261)
-Event.MediaPlayerStopped=Event(262)
-Event.MediaPlayerForward=Event(263)
-Event.MediaPlayerBackward=Event(264)
-Event.MediaPlayerEndReached=Event(265)
-Event.MediaPlayerEncounteredError=Event(266)
-Event.MediaPlayerTimeChanged=Event(267)
-Event.MediaPlayerPositionChanged=Event(268)
-Event.MediaPlayerSeekableChanged=Event(269)
-Event.MediaPlayerPausableChanged=Event(270)
-Event.MediaPlayerTitleChanged=Event(271)
-Event.MediaPlayerSnapshotTaken=Event(272)
-Event.MediaPlayerLengthChanged=Event(273)
-Event.MediaListItemAdded=Event(0x200)
-Event.MediaListWillAddItem=Event(513)
-Event.MediaListItemDeleted=Event(514)
-Event.MediaListWillDeleteItem=Event(515)
-Event.MediaListViewItemAdded=Event(0x300)
-Event.MediaListViewWillAddItem=Event(769)
-Event.MediaListViewItemDeleted=Event(770)
-Event.MediaListViewWillDeleteItem=Event(771)
-Event.MediaListPlayerPlayed=Event(0x400)
-Event.MediaListPlayerNextItemSet=Event(1025)
-Event.MediaListPlayerStopped=Event(1026)
-Event.MediaDiscovererStarted=Event(0x500)
-Event.MediaDiscovererEnded=Event(1281)
-Event.VlmMediaAdded=Event(0x600)
-Event.VlmMediaRemoved=Event(1537)
-Event.VlmMediaChanged=Event(1538)
-Event.VlmMediaInstanceStarted=Event(1539)
-Event.VlmMediaInstanceStopped=Event(1540)
-Event.VlmMediaInstanceStatusInit=Event(1541)
-Event.VlmMediaInstanceStatusOpening=Event(1542)
-Event.VlmMediaInstanceStatusPlaying=Event(1543)
-Event.VlmMediaInstanceStatusPause=Event(1544)
-Event.VlmMediaInstanceStatusEnd=Event(1545)
-Event.VlmMediaInstanceStatusError=Event(1546)
+EventType.MediaMetaChanged=EventType(0)
+EventType.MediaSubItemAdded=EventType(1)
+EventType.MediaDurationChanged=EventType(2)
+EventType.MediaParsedChanged=EventType(3)
+EventType.MediaFreed=EventType(4)
+EventType.MediaStateChanged=EventType(5)
+EventType.MediaPlayerMediaChanged=EventType(0x100)
+EventType.MediaPlayerNothingSpecial=EventType(257)
+EventType.MediaPlayerOpening=EventType(258)
+EventType.MediaPlayerBuffering=EventType(259)
+EventType.MediaPlayerPlaying=EventType(260)
+EventType.MediaPlayerPaused=EventType(261)
+EventType.MediaPlayerStopped=EventType(262)
+EventType.MediaPlayerForward=EventType(263)
+EventType.MediaPlayerBackward=EventType(264)
+EventType.MediaPlayerEndReached=EventType(265)
+EventType.MediaPlayerEncounteredError=EventType(266)
+EventType.MediaPlayerTimeChanged=EventType(267)
+EventType.MediaPlayerPositionChanged=EventType(268)
+EventType.MediaPlayerSeekableChanged=EventType(269)
+EventType.MediaPlayerPausableChanged=EventType(270)
+EventType.MediaPlayerTitleChanged=EventType(271)
+EventType.MediaPlayerSnapshotTaken=EventType(272)
+EventType.MediaPlayerLengthChanged=EventType(273)
+EventType.MediaListItemAdded=EventType(0x200)
+EventType.MediaListWillAddItem=EventType(513)
+EventType.MediaListItemDeleted=EventType(514)
+EventType.MediaListWillDeleteItem=EventType(515)
+EventType.MediaListViewItemAdded=EventType(0x300)
+EventType.MediaListViewWillAddItem=EventType(769)
+EventType.MediaListViewItemDeleted=EventType(770)
+EventType.MediaListViewWillDeleteItem=EventType(771)
+EventType.MediaListPlayerPlayed=EventType(0x400)
+EventType.MediaListPlayerNextItemSet=EventType(1025)
+EventType.MediaListPlayerStopped=EventType(1026)
+EventType.MediaDiscovererStarted=EventType(0x500)
+EventType.MediaDiscovererEnded=EventType(1281)
+EventType.VlmMediaAdded=EventType(0x600)
+EventType.VlmMediaRemoved=EventType(1537)
+EventType.VlmMediaChanged=EventType(1538)
+EventType.VlmMediaInstanceStarted=EventType(1539)
+EventType.VlmMediaInstanceStopped=EventType(1540)
+EventType.VlmMediaInstanceStatusInit=EventType(1541)
+EventType.VlmMediaInstanceStatusOpening=EventType(1542)
+EventType.VlmMediaInstanceStatusPlaying=EventType(1543)
+EventType.VlmMediaInstanceStatusPause=EventType(1544)
+EventType.VlmMediaInstanceStatusEnd=EventType(1545)
+EventType.VlmMediaInstanceStatusError=EventType(1546)
 
 class Meta(ctypes.c_ulong):
     """* Meta data types */
@@ -260,7 +259,7 @@ Meta.TrackID=Meta(16)
 class State(ctypes.c_ulong):
     """*
 Note the order of libvlc_state_t enum must match exactly the order of
-See mediacontrol_PlayerStatus, See input_state_e enums,
+@see mediacontrol_PlayerStatus, @see input_state_e enums,
 and VideoLAN.LibVLC.State (at bindings/cil/src/media.cs).
 Expected states by web plugins are:
 IDLE/CLOSE=0, OPENING=1, BUFFERING=2, PLAYING=3, PAUSED=4,
@@ -510,42 +509,6 @@ class LibVLCException(Exception):
 
 # From libvlc_structures.h
 
-# This is version-dependent, depending on the presence of libvlc_errmsg
-
-if hasattr(dll, 'libvlc_errmsg'):
-    # New-style message passing
-    class VLCException(ctypes.Structure):
-        """libvlc exception.
-        """
-        _fields_= [
-                    ('raised', ctypes.c_int),
-                    ]
-
-        @property
-        def message(self):
-            return dll.libvlc_errmsg()
-
-        def init(self):
-            libvlc_exception_init(self)
-
-        def clear(self):
-            libvlc_exception_clear(self)
-else:
-    # Old-style exceptions
-    class VLCException(ctypes.Structure):
-        """libvlc exception.
-        """
-        _fields_= [
-                    ('raised', ctypes.c_int),
-                    ('code', ctypes.c_int),
-                    ('message', ctypes.c_char_p),
-                    ]
-        def init(self):
-            libvlc_exception_init(self)
-
-        def clear(self):
-            libvlc_exception_clear(self)
-
 class MediaStats(ctypes.Structure):
     _fields_= [
                 ('read_bytes',          ctypes.c_int  ),
@@ -609,39 +572,6 @@ class LogMessage(ctypes.Structure):
     def __str__(self):
         return "vlc.LogMessage(%d:%s): %s" % (self.severity, self.type, self.message)
 
-class RGBPicture(ctypes.Structure):
-    _fields_= [
-                ('width', ctypes.c_int),
-                ('height', ctypes.c_int),
-                ('type', ctypes.c_uint32),
-                ('date', ctypes.c_ulonglong),
-                ('size', ctypes.c_int),
-                ('data_pointer', ctypes.c_void_p),
-                ]
-
-    @property
-    def data(self):
-        return ctypes.string_at(self.data_pointer, self.size)
-
-    def __str__(self):
-        return "RGBPicture (%d, %d) - %ld ms - %d bytes" % (self.width, self.height, self.date, self.size)
-
-    def free(self):
-        mediacontrol_RGBPicture__free(self)
-
-def check_vlc_exception(result, func, args):
-    """Error checking method for functions using an exception in/out parameter.
-    """
-    ex=args[-1]
-    if not isinstance(ex, (VLCException, MediaControlException)):
-        logging.warn("python-vlc: error when processing function %s. Please report this as a bug to vlc-devel@videolan.org" % str(func))
-        return result
-    # Take into account both VLCException and MediacontrolException:
-    c=getattr(ex, 'raised', getattr(ex, 'code', 0))
-    if c:
-        raise LibVLCException(ex.message)
-    return result
-
 ### End of header.py ###
 class AudioOutput(object):
 
@@ -696,6 +626,7 @@ class EventManager(object):
             """Register for an event notification.
 @param i_event_type: the desired event to which we want to listen
 @param f_callback: the function to call when i_event_type occurs
+@param user_data: user provided data to carry with the event
 @return: 0 on success, ENOMEM on error
         """
             return libvlc_event_attach(self, i_event_type, f_callback, user_data)
@@ -705,6 +636,7 @@ class EventManager(object):
             """Unregister an event notification.
 @param i_event_type: the desired event to which we want to unregister
 @param f_callback: the function to call when i_event_type occurs
+@param p_user_data: user provided data to carry with the event
         """
             return libvlc_event_detach(self, i_event_type, f_callback, p_user_data)
 
@@ -715,7 +647,6 @@ class Instance(object):
       - a string
       - a list of strings as first parameters
       - the parameters given as the constructor parameters (must be strings)
-      - a MediaControl instance
     
     """
 
@@ -740,14 +671,11 @@ class Instance(object):
         elif len(p) == 1 and isinstance(p[0], (tuple, list)):
             p=p[0]
 
-        if p and isinstance(p[0], MediaControl):
-            return p[0].get_instance()
-        else:
-            if not p and detected_plugin_path is not None:
-                # No parameters passed. Under win32 and MacOS, specify
-                # the detected_plugin_path if present.
-                p=[ 'vlc', '--plugin-path='+ detected_plugin_path ]
-            return libvlc_new(len(p), p)
+        if not p and detected_plugin_path is not None:
+            # No parameters passed. Under win32 and MacOS, specify
+            # the detected_plugin_path if present.
+            p=[ 'vlc', '--plugin-path='+ detected_plugin_path ]
+        return libvlc_new(len(p), p)
 
     def media_player_new(self, uri=None):
         """Create a new Media Player object.
@@ -773,7 +701,7 @@ class Instance(object):
         Options can be specified as supplementary string parameters, e.g.
         m=i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')
         """
-        m=libvlc_media_new(self, mrl)
+        m=libvlc_media_new_location(self, mrl)
         for o in options:
             libvlc_media_add_option(m, o)
         return m
@@ -796,6 +724,7 @@ The initial reference count is 1 after libvlc_new() returns.
     if hasattr(dll, 'libvlc_add_intf'):
         def add_intf(self, name):
             """Try to start a user interface for the libvlc instance.
+@param name: interface name, or NULL for default
 @return: 0 on success, -1 on error.
         """
             return libvlc_add_intf(self, name)
@@ -817,6 +746,7 @@ You should start at least one interface first, using libvlc_add_intf().
     if hasattr(dll, 'libvlc_set_log_verbosity'):
         def set_log_verbosity(self, level):
             """Set the VLC messaging verbosity level.
+@param level: log level
         """
             return libvlc_set_log_verbosity(self, level)
 
@@ -827,17 +757,11 @@ You should start at least one interface first, using libvlc_add_intf().
         """
             return libvlc_log_open(self)
 
-    if hasattr(dll, 'libvlc_media_discoverer_new_from_name'):
-        def media_discoverer_new_from_name(self, psz_name):
-            """Discover media service by name.
-@return: media discover object or NULL in case of error
-        """
-            return libvlc_media_discoverer_new_from_name(self, psz_name)
-
     if hasattr(dll, 'libvlc_media_new_location'):
         def media_new_location(self, psz_mrl):
             """Create a media with a certain given media resource location.
-\see libvlc_media_release
+See libvlc_media_release
+@param psz_mrl: the MRL to read
 @return: the newly created media or NULL on error
         """
             return libvlc_media_new_location(self, psz_mrl)
@@ -845,7 +769,8 @@ You should start at least one interface first, using libvlc_add_intf().
     if hasattr(dll, 'libvlc_media_new_path'):
         def media_new_path(self, path):
             """Create a media with a certain file path.
-\see libvlc_media_release
+See libvlc_media_release
+@param path: local filesystem path
 @return: the newly created media or NULL on error
         """
             return libvlc_media_new_path(self, path)
@@ -853,10 +778,19 @@ You should start at least one interface first, using libvlc_add_intf().
     if hasattr(dll, 'libvlc_media_new_as_node'):
         def media_new_as_node(self, psz_name):
             """Create a media as an empty node with a given name.
-\see libvlc_media_release
+See libvlc_media_release
+@param psz_name: the name of the node
 @return: the new empty media or NULL on error
         """
             return libvlc_media_new_as_node(self, psz_name)
+
+    if hasattr(dll, 'libvlc_media_discoverer_new_from_name'):
+        def media_discoverer_new_from_name(self, psz_name):
+            """Discover media service by name.
+@param psz_name: service name
+@return: media discover object or NULL in case of error
+        """
+            return libvlc_media_discoverer_new_from_name(self, psz_name)
 
     if hasattr(dll, 'libvlc_media_library_new'):
         def media_library_new(self):
@@ -883,6 +817,7 @@ You should start at least one interface first, using libvlc_add_intf().
         def audio_output_device_count(self, psz_audio_output):
             """Get count of devices for audio output, these devices are hardware oriented
 like analor or digital output of sound card
+@param psz_audio_output: - name of audio output, See libvlc_audio_output_t
 @return: number of devices
         """
             return libvlc_audio_output_device_count(self, psz_audio_output)
@@ -890,7 +825,8 @@ like analor or digital output of sound card
     if hasattr(dll, 'libvlc_audio_output_device_longname'):
         def audio_output_device_longname(self, psz_audio_output, i_device):
             """Get long name of device, if not available short name given
-@param psz_audio_output: - name of audio output, \see libvlc_audio_output_t
+@param psz_audio_output: - name of audio output, See libvlc_audio_output_t
+@param i_device: device index
 @return: long name of device
         """
             return libvlc_audio_output_device_longname(self, psz_audio_output, i_device)
@@ -898,7 +834,8 @@ like analor or digital output of sound card
     if hasattr(dll, 'libvlc_audio_output_device_id'):
         def audio_output_device_id(self, psz_audio_output, i_device):
             """Get id name of device
-@param psz_audio_output: - name of audio output, \see libvlc_audio_output_t
+@param psz_audio_output: - name of audio output, See libvlc_audio_output_t
+@param i_device: device index
 @return: id name of device, use for setting device, need to be free after use
         """
             return libvlc_audio_output_device_id(self, psz_audio_output, i_device)
@@ -918,6 +855,7 @@ like analor or digital output of sound card
 @param i_options: number of additional options
 @param ppsz_options: additional options
 @param b_enabled: boolean for enabling the new broadcast
+@param b_loop: Should this broadcast be played in loop ?
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_add_broadcast(self, psz_name, psz_input, psz_output, i_options,  ppsz_options, b_enabled, b_loop)
@@ -930,6 +868,7 @@ like analor or digital output of sound card
 @param i_options: number of additional options
 @param ppsz_options: additional options
 @param b_enabled: boolean for enabling the new vod
+@param psz_mux: the muxer of the vod media
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_add_vod(self, psz_name, psz_input, i_options,  ppsz_options, b_enabled, psz_mux)
@@ -937,6 +876,7 @@ like analor or digital output of sound card
     if hasattr(dll, 'libvlc_vlm_del_media'):
         def vlm_del_media(self, psz_name):
             """Delete a media (VOD or broadcast).
+@param psz_name: the media to delete
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_del_media(self, psz_name)
@@ -945,6 +885,7 @@ like analor or digital output of sound card
         def vlm_set_enabled(self, psz_name, b_enabled):
             """Enable or disable a media (VOD or broadcast).
 @param psz_name: the media to work on
+@param b_enabled: the new status
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_set_enabled(self, psz_name, b_enabled)
@@ -953,6 +894,7 @@ like analor or digital output of sound card
         def vlm_set_output(self, psz_name, psz_output):
             """Set the output for a media.
 @param psz_name: the media to work on
+@param psz_output: the output MRL (the parameter to the "sout" variable)
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_set_output(self, psz_name, psz_output)
@@ -962,6 +904,7 @@ like analor or digital output of sound card
             """Set a media's input MRL. This will delete all existing inputs and
 add the specified one.
 @param psz_name: the media to work on
+@param psz_input: the input MRL
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_set_input(self, psz_name, psz_input)
@@ -970,6 +913,7 @@ add the specified one.
         def vlm_add_input(self, psz_name, psz_input):
             """Add a media's input MRL. This will add the specified one.
 @param psz_name: the media to work on
+@param psz_input: the input MRL
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_add_input(self, psz_name, psz_input)
@@ -978,6 +922,7 @@ add the specified one.
         def vlm_set_loop(self, psz_name, b_loop):
             """Set a media's loop status.
 @param psz_name: the media to work on
+@param b_loop: the new status
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_set_loop(self, psz_name, b_loop)
@@ -986,6 +931,7 @@ add the specified one.
         def vlm_set_mux(self, psz_name, psz_mux):
             """Set a media's vod muxer.
 @param psz_name: the media to work on
+@param psz_mux: the new muxer
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_set_mux(self, psz_name, psz_mux)
@@ -1000,6 +946,7 @@ add the specified one.
 @param i_options: number of additional options
 @param ppsz_options: additional options
 @param b_enabled: boolean for enabling the new broadcast
+@param b_loop: Should this broadcast be played in loop ?
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_change_media(self, psz_name, psz_input, psz_output, i_options, ppsz_options, b_enabled, b_loop)
@@ -1007,6 +954,7 @@ add the specified one.
     if hasattr(dll, 'libvlc_vlm_play_media'):
         def vlm_play_media(self, psz_name):
             """Play the named broadcast.
+@param psz_name: the name of the broadcast
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_play_media(self, psz_name)
@@ -1014,6 +962,7 @@ add the specified one.
     if hasattr(dll, 'libvlc_vlm_stop_media'):
         def vlm_stop_media(self, psz_name):
             """Stop the named broadcast.
+@param psz_name: the name of the broadcast
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_stop_media(self, psz_name)
@@ -1021,6 +970,7 @@ add the specified one.
     if hasattr(dll, 'libvlc_vlm_pause_media'):
         def vlm_pause_media(self, psz_name):
             """Pause the named broadcast.
+@param psz_name: the name of the broadcast
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_pause_media(self, psz_name)
@@ -1029,6 +979,7 @@ add the specified one.
         def vlm_seek_media(self, psz_name, f_percentage):
             """Seek in the named broadcast.
 @param psz_name: the name of the broadcast
+@param f_percentage: the percentage to seek to
 @return: 0 on success, -1 on error
         """
             return libvlc_vlm_seek_media(self, psz_name, f_percentage)
@@ -1043,6 +994,7 @@ a vlm_media_instance_t, please use the corresponding
 libvlc_vlm_get_media_instance_xxx -functions.
 Currently there are no such functions available for
 vlm_media_t though.
+@param psz_name: the name of the media,
 @return: string with information about named media, or NULL on error
         """
             return libvlc_vlm_show_media(self, psz_name)
@@ -1051,6 +1003,7 @@ vlm_media_t though.
         def vlm_get_media_instance_position(self, psz_name, i_instance):
             """Get vlm_media instance position by name or instance id
 @param psz_name: name of vlm media instance
+@param i_instance: instance id
 @return: position as float or -1. on error
         """
             return libvlc_vlm_get_media_instance_position(self, psz_name, i_instance)
@@ -1059,6 +1012,7 @@ vlm_media_t though.
         def vlm_get_media_instance_time(self, psz_name, i_instance):
             """Get vlm_media instance time by name or instance id
 @param psz_name: name of vlm media instance
+@param i_instance: instance id
 @return: time as integer or -1 on error
         """
             return libvlc_vlm_get_media_instance_time(self, psz_name, i_instance)
@@ -1067,6 +1021,7 @@ vlm_media_t though.
         def vlm_get_media_instance_length(self, psz_name, i_instance):
             """Get vlm_media instance length by name or instance id
 @param psz_name: name of vlm media instance
+@param i_instance: instance id
 @return: length of media item or -1 on error
         """
             return libvlc_vlm_get_media_instance_length(self, psz_name, i_instance)
@@ -1075,6 +1030,7 @@ vlm_media_t though.
         def vlm_get_media_instance_rate(self, psz_name, i_instance):
             """Get vlm_media instance playback rate by name or instance id
 @param psz_name: name of vlm media instance
+@param i_instance: instance id
 @return: playback rate or -1 on error
         """
             return libvlc_vlm_get_media_instance_rate(self, psz_name, i_instance)
@@ -1084,6 +1040,7 @@ vlm_media_t though.
             """Get vlm_media instance title number by name or instance id
 \bug will always return 0
 @param psz_name: name of vlm media instance
+@param i_instance: instance id
 @return: title as number or -1 on error
         """
             return libvlc_vlm_get_media_instance_title(self, psz_name, i_instance)
@@ -1093,6 +1050,7 @@ vlm_media_t though.
             """Get vlm_media instance chapter number by name or instance id
 \bug will always return 0
 @param psz_name: name of vlm media instance
+@param i_instance: instance id
 @return: chapter as number or -1 on error
         """
             return libvlc_vlm_get_media_instance_chapter(self, psz_name, i_instance)
@@ -1102,6 +1060,7 @@ vlm_media_t though.
             """Is libvlc instance seekable ?
 \bug will always return 0
 @param psz_name: name of vlm media instance
+@param i_instance: instance id
 @return: 1 if seekable, 0 if not, -1 if media does not exist
         """
             return libvlc_vlm_get_media_instance_seekable(self, psz_name, i_instance)
@@ -1258,6 +1217,7 @@ This option will be used to determine how the media_player will
 read the media. This allows to use VLC's advanced
 reading/streaming options on a per-media basis.
 The options are detailed in vlc --long-help, for instance "--sout-all"
+@param ppsz_options: the options (as a string)
         """
             return libvlc_media_add_option(self, ppsz_options)
 
@@ -1269,6 +1229,7 @@ read the media. This allows to use VLC's advanced
 reading/streaming options on a per-media basis.
 The options are detailed in vlc --long-help, for instance "--sout-all"
 @param ppsz_options: the options (as a string)
+@param i_flags: the flags for this option
         """
             return libvlc_media_add_option_flag(self, ppsz_options, i_flags)
 
@@ -1310,9 +1271,10 @@ If the media has not yet been parsed this will return NULL.
 This methods automatically calls libvlc_media_parse_async(), so after calling
 it you may receive a libvlc_MediaMetaChanged event. If you prefer a synchronous
 version ensure that you call libvlc_media_parse() before get_meta().
-\see libvlc_media_parse
-\see libvlc_media_parse_async
-\see libvlc_MediaMetaChanged
+See libvlc_media_parse
+See libvlc_media_parse_async
+See libvlc_MediaMetaChanged
+@param e_meta: the meta to read
 @return: the media's meta
         """
             return libvlc_media_get_meta(self, e_meta)
@@ -1322,6 +1284,7 @@ version ensure that you call libvlc_media_parse() before get_meta().
             """Set the meta of the media (this function will not save the meta, call
 libvlc_media_save_meta in order to save the meta)
 @param e_meta: the meta to write
+@param psz_value: the media's meta
         """
             return libvlc_media_set_meta(self, e_meta, psz_value)
 
@@ -1347,6 +1310,7 @@ See libvlc_state_t
     if hasattr(dll, 'libvlc_media_get_stats'):
         def get_stats(self, p_stats):
             """get the current statistics about the media
+@param p_stats:: structure that contain the statistics about the media
 @return: true if the statistics are available, false otherwise
         """
             return libvlc_media_get_stats(self, p_stats)
@@ -1380,9 +1344,9 @@ NOTE: this function doesn't increment reference counting.
             """Parse a media.
 This fetches (local) meta data and tracks information.
 The method is synchronous.
-\see libvlc_media_parse_async
-\see libvlc_media_get_meta
-\see libvlc_media_get_tracks_info
+See libvlc_media_parse_async
+See libvlc_media_get_meta
+See libvlc_media_get_tracks_info
         """
             return libvlc_media_parse(self)
 
@@ -1394,17 +1358,17 @@ The method is the asynchronous of libvlc_media_parse_async().
 To track when this is over you can listen to libvlc_MediaParsedChanged
 event. However if the media was already parsed you will not receive this
 event.
-\see libvlc_media_parse
-\see libvlc_MediaParsedChanged
-\see libvlc_media_get_meta
-\see libvlc_media_get_tracks_info
+See libvlc_media_parse
+See libvlc_MediaParsedChanged
+See libvlc_media_get_meta
+See libvlc_media_get_tracks_info
         """
             return libvlc_media_parse_async(self)
 
     if hasattr(dll, 'libvlc_media_is_parsed'):
         def is_parsed(self):
             """Get Parsed status for media descriptor object.
-\see libvlc_MediaParsedChanged
+See libvlc_MediaParsedChanged
 @return: true if media object has been parsed otherwise it returns false
         """
             return libvlc_media_is_parsed(self)
@@ -1414,6 +1378,7 @@ event.
             """Sets media descriptor's user_data. user_data is specialized data
 accessed by the host application, VLC.framework uses it as a pointer to
 an native object that references a libvlc_media_t pointer
+@param p_new_user_data: pointer to user data
         """
             return libvlc_media_set_user_data(self, p_new_user_data)
 
@@ -1440,6 +1405,7 @@ libvlc_media_player_release(player);
 @endcode
 This is very likely to change in next release, and be done at the parsing
 phase.
+@param tracks: address to store an allocated array of Elementary Streams
         """
             return libvlc_media_get_tracks_info(self, tracks)
 
@@ -1595,6 +1561,7 @@ class MediaList(object):
             """Associate media instance with this media list instance.
 If another media instance was present it will be released.
 The libvlc_media_list_lock should NOT be held upon entering this function.
+@param p_md: media instance to add
         """
             return libvlc_media_list_set_media(self, p_md)
 
@@ -1611,6 +1578,7 @@ The libvlc_media_list_lock should NOT be held upon entering this function.
         def add_media(self, p_md):
             """Add media instance to media list
 The libvlc_media_list_lock should be held upon entering this function.
+@param p_md: a media instance
 @return: 0 on success, -1 if the media list is read-only
         """
             return libvlc_media_list_add_media(self, p_md)
@@ -1620,6 +1588,7 @@ The libvlc_media_list_lock should be held upon entering this function.
             """Insert media instance in media list on a position
 The libvlc_media_list_lock should be held upon entering this function.
 @param p_md: a media instance
+@param i_pos: position in array where to insert
 @return: 0 on success, -1 if the media list si read-only
         """
             return libvlc_media_list_insert_media(self, p_md, i_pos)
@@ -1628,6 +1597,7 @@ The libvlc_media_list_lock should be held upon entering this function.
         def remove_index(self, i_pos):
             """Remove media instance from media list on a position
 The libvlc_media_list_lock should be held upon entering this function.
+@param i_pos: position in array where to insert
 @return: 0 on success, -1 if the list is read-only or the item was not found
         """
             return libvlc_media_list_remove_index(self, i_pos)
@@ -1647,16 +1617,15 @@ The libvlc_media_list_lock should be held upon entering this function.
         def item_at_index(self, i_pos):
             """List media instance in media list at a position
 The libvlc_media_list_lock should be held upon entering this function.
+@param i_pos: position in array where to insert
 @return: media instance at position i_pos, or NULL if not found.
         """
             return libvlc_media_list_item_at_index(self, i_pos)
 
     def __getitem__(self, i):
-        e=VLCException()
-        return libvlc_media_list_item_at_index(self, i, e)
+        return libvlc_media_list_item_at_index(self, i)
 
     def __iter__(self):
-        e=VLCException()
         for i in xrange(len(self)):
             yield self[i]
 
@@ -1665,6 +1634,7 @@ The libvlc_media_list_lock should be held upon entering this function.
             """Find index position of List media instance in media list.
 Warning: the function will return the first matched position.
 The libvlc_media_list_lock should be held upon entering this function.
+@param p_md: media list instance
 @return: position of media instance
         """
             return libvlc_media_list_index_of_item(self, p_md)
@@ -1753,12 +1723,14 @@ class MediaListPlayer(object):
     if hasattr(dll, 'libvlc_media_list_player_set_media_player'):
         def set_media_player(self, p_mi):
             """Replace media player in media_list_player with this instance.
+@param p_mi: media player instance
         """
             return libvlc_media_list_player_set_media_player(self, p_mi)
 
     if hasattr(dll, 'libvlc_media_list_player_set_media_list'):
         def set_media_list(self, p_mlist):
             """Set the media list associated with the player
+@param p_mlist: list of media
         """
             return libvlc_media_list_player_set_media_list(self, p_mlist)
 
@@ -1791,22 +1763,22 @@ class MediaListPlayer(object):
     if hasattr(dll, 'libvlc_media_list_player_play_item_at_index'):
         def play_item_at_index(self, i_index):
             """Play media list item at position index
+@param i_index: index in media list to play
 @return: 0 upon success -1 if the item wasn't found
         """
             return libvlc_media_list_player_play_item_at_index(self, i_index)
 
     def __getitem__(self, i):
-        e=VLCException()
-        return libvlc_media_list_player_play_item_at_index(self, i, e)
+        return libvlc_media_list_player_play_item_at_index(self, i)
 
     def __iter__(self):
-        e=VLCException()
         for i in xrange(len(self)):
             yield self[i]
 
     if hasattr(dll, 'libvlc_media_list_player_play_item'):
         def play_item(self, p_md):
             """Play the given media item
+@param p_md: the media instance
 @return: 0 upon success, -1 if the media is not part of the media list
         """
             return libvlc_media_list_player_play_item(self, p_md)
@@ -1834,6 +1806,7 @@ class MediaListPlayer(object):
     if hasattr(dll, 'libvlc_media_list_player_set_playback_mode'):
         def set_playback_mode(self, e_mode):
             """Sets the playback mode for the playlist
+@param e_mode: playback mode specification
         """
             return libvlc_media_list_player_set_playback_mode(self, e_mode)
 
@@ -1898,6 +1871,7 @@ libvlc_media_player_release() to decrement reference count.
         def set_media(self, p_md):
             """Set the media that will be used by the media_player. If any,
 previous md will be released.
+@param p_md: the Media. Afterwards the p_md can be safely
         """
             return libvlc_media_player_set_media(self, p_md)
 
@@ -1965,6 +1939,7 @@ the following code should work:
 }
 @endcode
 You can find a live example in VLCVideoView in VLCKit.framework.
+@param drawable: the drawable that is either an NSView or an object following
         """
             return libvlc_media_player_set_nsobject(self, drawable)
 
@@ -1978,6 +1953,7 @@ You can find a live example in VLCVideoView in VLCKit.framework.
     if hasattr(dll, 'libvlc_media_player_set_agl'):
         def set_agl(self, drawable):
             """Set the agl handler where the media player should render its video output.
+@param drawable: the agl handler
         """
             return libvlc_media_player_set_agl(self, drawable)
 
@@ -2000,6 +1976,7 @@ with.
 If XVideo is <b>not</b> used, it is assumed that the drawable has the
 following properties in common with the default X11 screen: depth, scan line
 pad, black pixel. This is a bug.
+@param drawable: the ID of the X window
         """
             return libvlc_media_player_set_xwindow(self, drawable)
 
@@ -2018,6 +1995,7 @@ audio-only input).
             """Set a Win32/Win64 API window handle (HWND) where the media player should
 render its video output. If LibVLC was built without Win32/Win64 API output
 support, then this has no effects.
+@param drawable: windows handle of the drawable
         """
             return libvlc_media_player_set_hwnd(self, drawable)
 
@@ -2048,6 +2026,7 @@ is not currently outputting any video to it.
         def set_time(self, i_time):
             """Set the movie time (in ms). This has no effect if no media is being played.
 Not all formats and protocols support this.
+@param i_time: the movie time (in ms).
         """
             return libvlc_media_player_set_time(self, i_time)
 
@@ -2062,12 +2041,14 @@ Not all formats and protocols support this.
         def set_position(self, f_pos):
             """Set movie position. This has no effect if playback is not enabled.
 This might not work depending on the underlying input format and protocol.
+@param f_pos: the position
         """
             return libvlc_media_player_set_position(self, f_pos)
 
     if hasattr(dll, 'libvlc_media_player_set_chapter'):
         def set_chapter(self, i_chapter):
             """Set movie chapter (if applicable).
+@param i_chapter: chapter number to play
         """
             return libvlc_media_player_set_chapter(self, i_chapter)
 
@@ -2095,6 +2076,7 @@ This might not work depending on the underlying input format and protocol.
     if hasattr(dll, 'libvlc_media_player_get_chapter_count_for_title'):
         def get_chapter_count_for_title(self, i_title):
             """Get title chapter count
+@param i_title: title
 @return: number of chapters in title, or -1
         """
             return libvlc_media_player_get_chapter_count_for_title(self, i_title)
@@ -2102,6 +2084,7 @@ This might not work depending on the underlying input format and protocol.
     if hasattr(dll, 'libvlc_media_player_set_title'):
         def set_title(self, i_title):
             """Set movie title
+@param i_title: title number to play
         """
             return libvlc_media_player_set_title(self, i_title)
 
@@ -2143,6 +2126,7 @@ different from the real playback rate.
     if hasattr(dll, 'libvlc_media_player_set_rate'):
         def set_rate(self, rate):
             """Set movie play rate
+@param rate: movie play rate to set
 @return: -1 if an error was detected, 0 otherwise (but even then, it might
         """
             return libvlc_media_player_set_rate(self, rate)
@@ -2150,7 +2134,7 @@ different from the real playback rate.
     if hasattr(dll, 'libvlc_media_player_get_state'):
         def get_state(self):
             """Get current movie state
-@return: the current state of the media player (playing, paused, ...) \see libvlc_state_t
+@return: the current state of the media player (playing, paused, ...) See libvlc_state_t
         """
             return libvlc_media_player_get_state(self)
 
@@ -2205,6 +2189,7 @@ libvlc_media_player_set_xid() was used to embed the video in a non-top-level
 window. In that case, the embedding window must be reparented to the root
 window <b>before</b> fullscreen mode is enabled. You will want to reparent
 it back to its normal parent when disabling fullscreen.
+@param b_fullscreen: boolean for fullscreen status
         """
             return libvlc_set_fullscreen(self, b_fullscreen)
 
@@ -2225,6 +2210,7 @@ click events per window. If your application has subscribed to those events
 for the X window ID of the video widget, then LibVLC will not be able to
 handle key presses and mouse clicks in any case.
 \warning This function is only implemented for X11 at the moment.
+@param on: true to handle key press events, false to ignore them.
         """
             return libvlc_video_set_key_input(self, on)
 
@@ -2235,6 +2221,7 @@ handled. This is needed for DVD menus to work, as well as a few video
 filters such as "puzzle".
 \note See also libvlc_video_set_key_input().
 \warning This function is only implemented for X11 at the moment.
+@param on: true to handle mouse click events, false to ignore them.
         """
             return libvlc_video_set_mouse_input(self, on)
 
@@ -2243,6 +2230,7 @@ filters such as "puzzle".
             """Get the pixel dimensions of a video.
 @param num: number of the video (starting from, and most commonly 0)
 @param px: pointer to get the pixel width [OUT]
+@param py: pointer to get the pixel height [OUT]
 @return: 0 on success, -1 if the specified video does not exist
         """
             return libvlc_video_get_size(self, num, px, py)
@@ -2262,6 +2250,7 @@ outside of the video widget.
 multiple input devices sharing the same pointer) at the moment.
 @param num: number of the video (starting from, and most commonly 0)
 @param px: pointer to get the abscissa [OUT]
+@param py: pointer to get the ordinate [OUT]
 @return: 0 on success, -1 if the specified video does not exist
         """
             return libvlc_video_get_cursor(self, num, px, py)
@@ -2281,6 +2270,7 @@ screen to the number of pixels in the original decoded video in each
 dimension. Zero is a special value; it will adjust the video to the output
 window/drawable (in windowed mode) or the entire screen.
 Note that not all video outputs support scaling.
+@param f_factor: the scaling factor, or zero
         """
             return libvlc_video_set_scale(self, f_factor)
 
@@ -2294,6 +2284,7 @@ Note that not all video outputs support scaling.
     if hasattr(dll, 'libvlc_video_set_aspect_ratio'):
         def video_set_aspect_ratio(self, psz_aspect):
             """Set new video aspect ratio.
+@param psz_aspect: new video aspect-ratio or NULL to reset to default
         """
             return libvlc_video_set_aspect_ratio(self, psz_aspect)
 
@@ -2321,6 +2312,7 @@ Note that not all video outputs support scaling.
     if hasattr(dll, 'libvlc_video_set_spu'):
         def video_set_spu(self, i_spu):
             """Set new video subtitle.
+@param i_spu: new video subtitle to select
 @return: 0 on success, -1 if out of range
         """
             return libvlc_video_set_spu(self, i_spu)
@@ -2328,6 +2320,7 @@ Note that not all video outputs support scaling.
     if hasattr(dll, 'libvlc_video_set_subtitle_file'):
         def video_set_subtitle_file(self, psz_subtitle):
             """Set new video subtitle file.
+@param psz_subtitle: new video subtitle file
 @return: the success status (boolean)
         """
             return libvlc_video_set_subtitle_file(self, psz_subtitle)
@@ -2342,6 +2335,7 @@ Note that not all video outputs support scaling.
     if hasattr(dll, 'libvlc_video_get_chapter_description'):
         def video_get_chapter_description(self, i_title):
             """Get the description of available chapters for specific title.
+@param i_title: selected title
 @return: list containing description of available chapter for title i_title
         """
             return libvlc_video_get_chapter_description(self, i_title)
@@ -2356,6 +2350,7 @@ Note that not all video outputs support scaling.
     if hasattr(dll, 'libvlc_video_set_crop_geometry'):
         def video_set_crop_geometry(self, psz_geometry):
             """Set new crop filter geometry.
+@param psz_geometry: new crop filter geometry (NULL to unset)
         """
             return libvlc_video_set_crop_geometry(self, psz_geometry)
 
@@ -2369,6 +2364,7 @@ Note that not all video outputs support scaling.
     if hasattr(dll, 'libvlc_video_set_teletext'):
         def video_set_teletext(self, i_page):
             """Set new teletext page to retrieve.
+@param i_page: teletex page number requested
         """
             return libvlc_video_set_teletext(self, i_page)
 
@@ -2402,6 +2398,7 @@ Note that not all video outputs support scaling.
     if hasattr(dll, 'libvlc_video_set_track'):
         def video_set_track(self, i_track):
             """Set video track.
+@param i_track: the track (int)
 @return: 0 on success, -1 if out of range
         """
             return libvlc_video_set_track(self, i_track)
@@ -2414,6 +2411,7 @@ If i_width XOR i_height is 0, original aspect-ratio is preserved.
 @param num: number of video output (typically 0 for the first/only one)
 @param psz_filepath: the path where to save the screenshot to
 @param i_width: the snapshot's width
+@param i_height: the snapshot's height
 @return: 0 on success, -1 if the video was not found
         """
             return libvlc_video_take_snapshot(self, num, psz_filepath, i_width, i_height)
@@ -2421,18 +2419,21 @@ If i_width XOR i_height is 0, original aspect-ratio is preserved.
     if hasattr(dll, 'libvlc_video_set_deinterlace'):
         def video_set_deinterlace(self, psz_mode):
             """Enable or disable deinterlace filter
+@param psz_mode: type of deinterlace filter, NULL to disable
         """
             return libvlc_video_set_deinterlace(self, psz_mode)
 
     if hasattr(dll, 'libvlc_video_get_marquee_int'):
         def video_get_marquee_int(self, option):
             """Get an integer marquee option value
+@param option: marq option to get See libvlc_video_marquee_int_option_t
         """
             return libvlc_video_get_marquee_int(self, option)
 
     if hasattr(dll, 'libvlc_video_get_marquee_string'):
         def video_get_marquee_string(self, option):
             """Get a string marquee option value
+@param option: marq option to get See libvlc_video_marquee_string_option_t
         """
             return libvlc_video_get_marquee_string(self, option)
 
@@ -2441,20 +2442,23 @@ If i_width XOR i_height is 0, original aspect-ratio is preserved.
             """Enable, disable or set an integer marquee option
 Setting libvlc_marquee_Enable has the side effect of enabling (arg !0)
 or disabling (arg 0) the marq filter.
-@param option: marq option to set \see libvlc_video_marquee_int_option_t
+@param option: marq option to set See libvlc_video_marquee_int_option_t
+@param i_val: marq option value
         """
             return libvlc_video_set_marquee_int(self, option, i_val)
 
     if hasattr(dll, 'libvlc_video_set_marquee_string'):
         def video_set_marquee_string(self, option, psz_text):
             """Set a marquee string option
-@param option: marq option to set \see libvlc_video_marquee_string_option_t
+@param option: marq option to set See libvlc_video_marquee_string_option_t
+@param psz_text: marq option value
         """
             return libvlc_video_set_marquee_string(self, option, psz_text)
 
     if hasattr(dll, 'libvlc_video_get_logo_int'):
         def video_get_logo_int(self, option):
             """Get integer logo option.
+@param option: logo option to get, values of libvlc_video_logo_option_t
         """
             return libvlc_video_get_logo_int(self, option)
 
@@ -2465,6 +2469,7 @@ are ignored.
 Passing libvlc_logo_enable as option value has the side effect of
 starting (arg !0) or stopping (arg 0) the logo filter.
 @param option: logo option to set, values of libvlc_video_logo_option_t
+@param value: logo option value
         """
             return libvlc_video_set_logo_int(self, option, value)
 
@@ -2473,6 +2478,7 @@ starting (arg !0) or stopping (arg 0) the logo filter.
             """Set logo option as string. Options that take a different type value
 are ignored.
 @param option: logo option to set, values of libvlc_video_logo_option_t
+@param psz_value: logo option value
         """
             return libvlc_video_set_logo_string(self, option, psz_value)
 
@@ -2480,6 +2486,7 @@ are ignored.
         def audio_output_set(self, psz_name):
             """Set the audio output.
 Change will be applied after stop and play.
+@param psz_name: name of audio output,
 @return: true if function succeded
         """
             return libvlc_audio_output_set(self, psz_name)
@@ -2487,7 +2494,8 @@ Change will be applied after stop and play.
     if hasattr(dll, 'libvlc_audio_output_device_set'):
         def audio_output_device_set(self, psz_audio_output, psz_device_id):
             """Set audio output device. Changes are only effective after stop and play.
-@param psz_audio_output: - name of audio output, \see libvlc_audio_output_t
+@param psz_audio_output: - name of audio output, See libvlc_audio_output_t
+@param psz_device_id: device
         """
             return libvlc_audio_output_device_set(self, psz_audio_output, psz_device_id)
 
@@ -2495,13 +2503,14 @@ Change will be applied after stop and play.
         def audio_output_get_device_type(self):
             """Get current audio device type. Device type describes something like
 character of output sound - stereo sound, 2.1, 5.1 etc
-@return: the audio devices type \see libvlc_audio_output_device_types_t
+@return: the audio devices type See libvlc_audio_output_device_types_t
         """
             return libvlc_audio_output_get_device_type(self)
 
     if hasattr(dll, 'libvlc_audio_output_set_device_type'):
         def audio_output_set_device_type(self, device_type):
             """Set current audio device type.
+@param device_type: the audio device type,
         """
             return libvlc_audio_output_set_device_type(self, device_type)
 
@@ -2521,6 +2530,7 @@ character of output sound - stereo sound, 2.1, 5.1 etc
     if hasattr(dll, 'libvlc_audio_set_mute'):
         def audio_set_mute(self, status):
             """Set mute status.
+@param status: If status is true then mute, otherwise unmute
         """
             return libvlc_audio_set_mute(self, status)
 
@@ -2534,6 +2544,7 @@ character of output sound - stereo sound, 2.1, 5.1 etc
     if hasattr(dll, 'libvlc_audio_set_volume'):
         def audio_set_volume(self, i_volume):
             """Set current audio level.
+@param i_volume: the volume (int)
 @return: 0 if the volume was set, -1 if it was out of range
         """
             return libvlc_audio_set_volume(self, i_volume)
@@ -2562,6 +2573,7 @@ character of output sound - stereo sound, 2.1, 5.1 etc
     if hasattr(dll, 'libvlc_audio_set_track'):
         def audio_set_track(self, i_track):
             """Set current audio track.
+@param i_track: the track (int)
 @return: 0 on success, -1 on error
         """
             return libvlc_audio_set_track(self, i_track)
@@ -2569,13 +2581,14 @@ character of output sound - stereo sound, 2.1, 5.1 etc
     if hasattr(dll, 'libvlc_audio_get_channel'):
         def audio_get_channel(self):
             """Get current audio channel.
-@return: the audio channel \see libvlc_audio_output_channel_t
+@return: the audio channel See libvlc_audio_output_channel_t
         """
             return libvlc_audio_get_channel(self)
 
     if hasattr(dll, 'libvlc_audio_set_channel'):
         def audio_set_channel(self, channel):
             """Set current audio channel.
+@param channel: the audio channel, See libvlc_audio_output_channel_t
 @return: 0 on success, -1 on error
         """
             return libvlc_audio_set_channel(self, channel)
@@ -2632,9 +2645,9 @@ if hasattr(dll, 'libvlc_new'):
     paramflags=(1,), (1,)
     libvlc_new = prototype( ("libvlc_new", dll), paramflags )
     libvlc_new.__doc__ = """Create and initialize a libvlc instance.
-@param argc the number of arguments
-@param argv command-line-type arguments
-@return the libvlc instance or NULL in case of error
+\param argc the number of arguments
+\param argv command-line-type arguments
+\return the libvlc instance or NULL in case of error
 """
 
 if hasattr(dll, 'libvlc_release'):
@@ -2643,7 +2656,7 @@ if hasattr(dll, 'libvlc_release'):
     libvlc_release = prototype( ("libvlc_release", dll), paramflags )
     libvlc_release.__doc__ = """Decrement the reference count of a libvlc instance, and destroy it
 if it reaches zero.
-@param p_instance the instance to destroy
+\param p_instance the instance to destroy
 """
 
 if hasattr(dll, 'libvlc_retain'):
@@ -2652,7 +2665,7 @@ if hasattr(dll, 'libvlc_retain'):
     libvlc_retain = prototype( ("libvlc_retain", dll), paramflags )
     libvlc_retain.__doc__ = """Increments the reference count of a libvlc instance.
 The initial reference count is 1 after libvlc_new() returns.
-@param p_instance the instance to reference
+\param p_instance the instance to reference
 """
 
 if hasattr(dll, 'libvlc_add_intf'):
@@ -2660,9 +2673,9 @@ if hasattr(dll, 'libvlc_add_intf'):
     paramflags=(1,), (1,)
     libvlc_add_intf = prototype( ("libvlc_add_intf", dll), paramflags )
     libvlc_add_intf.__doc__ = """Try to start a user interface for the libvlc instance.
-@param p_instance the instance
-@param name interface name, or NULL for default
-@return 0 on success, -1 on error.
+\param p_instance the instance
+\param name interface name, or NULL for default
+\return 0 on success, -1 on error.
 """
 
 if hasattr(dll, 'libvlc_wait'):
@@ -2671,7 +2684,7 @@ if hasattr(dll, 'libvlc_wait'):
     libvlc_wait = prototype( ("libvlc_wait", dll), paramflags )
     libvlc_wait.__doc__ = """Waits until an interface causes the instance to exit.
 You should start at least one interface first, using libvlc_add_intf().
-@param p_instance the instance
+\param p_instance the instance
 """
 
 if hasattr(dll, 'libvlc_get_version'):
@@ -2680,7 +2693,7 @@ if hasattr(dll, 'libvlc_get_version'):
     libvlc_get_version = prototype( ("libvlc_get_version", dll), paramflags )
     libvlc_get_version.__doc__ = """Retrieve libvlc version.
 Example: "1.1.0-git The Luggage"
-@return a string containing the libvlc version
+\return a string containing the libvlc version
 """
 
 if hasattr(dll, 'libvlc_get_compiler'):
@@ -2689,7 +2702,7 @@ if hasattr(dll, 'libvlc_get_compiler'):
     libvlc_get_compiler = prototype( ("libvlc_get_compiler", dll), paramflags )
     libvlc_get_compiler.__doc__ = """Retrieve libvlc compiler version.
 Example: "gcc version 4.2.3 (Ubuntu 4.2.3-2ubuntu6)"
-@return a string containing the libvlc compiler version
+\return a string containing the libvlc compiler version
 """
 
 if hasattr(dll, 'libvlc_get_changeset'):
@@ -2698,7 +2711,7 @@ if hasattr(dll, 'libvlc_get_changeset'):
     libvlc_get_changeset = prototype( ("libvlc_get_changeset", dll), paramflags )
     libvlc_get_changeset.__doc__ = """Retrieve libvlc changeset.
 Example: "aa9bce0bc4"
-@return a string containing the libvlc changeset
+\return a string containing the libvlc changeset
 """
 
 if hasattr(dll, 'libvlc_event_attach'):
@@ -2706,13 +2719,13 @@ if hasattr(dll, 'libvlc_event_attach'):
     paramflags=(1,), (1,), (1,), (1,)
     libvlc_event_attach = prototype( ("libvlc_event_attach", dll), paramflags )
     libvlc_event_attach.__doc__ = """Register for an event notification.
-@param p_event_manager the event manager to which you want to attach to.
+\param p_event_manager the event manager to which you want to attach to.
        Generally it is obtained by vlc_my_object_event_manager() where
        my_object is the object you want to listen to.
-@param i_event_type the desired event to which we want to listen
-@param f_callback the function to call when i_event_type occurs
-@param user_data user provided data to carry with the event
-@return 0 on success, ENOMEM on error
+\param i_event_type the desired event to which we want to listen
+\param f_callback the function to call when i_event_type occurs
+\param user_data user provided data to carry with the event
+\return 0 on success, ENOMEM on error
 """
 
 if hasattr(dll, 'libvlc_event_detach'):
@@ -2720,10 +2733,10 @@ if hasattr(dll, 'libvlc_event_detach'):
     paramflags=(1,), (1,), (1,), (1,)
     libvlc_event_detach = prototype( ("libvlc_event_detach", dll), paramflags )
     libvlc_event_detach.__doc__ = """Unregister an event notification.
-@param p_event_manager the event manager
-@param i_event_type the desired event to which we want to unregister
-@param f_callback the function to call when i_event_type occurs
-@param p_user_data user provided data to carry with the event
+\param p_event_manager the event manager
+\param i_event_type the desired event to which we want to unregister
+\param f_callback the function to call when i_event_type occurs
+\param p_user_data user provided data to carry with the event
 """
 
 if hasattr(dll, 'libvlc_event_type_name'):
@@ -2731,7 +2744,7 @@ if hasattr(dll, 'libvlc_event_type_name'):
     paramflags=( (1, ), )
     libvlc_event_type_name = prototype( ("libvlc_event_type_name", dll), paramflags )
     libvlc_event_type_name.__doc__ = """Get an event's type name.
-@param event_type the desired event
+\param event_type the desired event
 """
 
 if hasattr(dll, 'libvlc_get_log_verbosity'):
@@ -2739,8 +2752,8 @@ if hasattr(dll, 'libvlc_get_log_verbosity'):
     paramflags=( (1, ), )
     libvlc_get_log_verbosity = prototype( ("libvlc_get_log_verbosity", dll), paramflags )
     libvlc_get_log_verbosity.__doc__ = """Return the VLC messaging verbosity level.
-@param p_instance libvlc instance
-@return verbosity level for messages
+\param p_instance libvlc instance
+\return verbosity level for messages
 """
 
 if hasattr(dll, 'libvlc_set_log_verbosity'):
@@ -2748,8 +2761,8 @@ if hasattr(dll, 'libvlc_set_log_verbosity'):
     paramflags=(1,), (1,)
     libvlc_set_log_verbosity = prototype( ("libvlc_set_log_verbosity", dll), paramflags )
     libvlc_set_log_verbosity.__doc__ = """Set the VLC messaging verbosity level.
-@param p_instance libvlc log instance
-@param level log level
+\param p_instance libvlc log instance
+\param level log level
 """
 
 if hasattr(dll, 'libvlc_log_open'):
@@ -2757,8 +2770,8 @@ if hasattr(dll, 'libvlc_log_open'):
     paramflags=( (1, ), )
     libvlc_log_open = prototype( ("libvlc_log_open", dll), paramflags )
     libvlc_log_open.__doc__ = """Open a VLC message log instance.
-@param p_instance libvlc instance
-@return log message instance or NULL on error
+\param p_instance libvlc instance
+\return log message instance or NULL on error
 """
 
 if hasattr(dll, 'libvlc_log_close'):
@@ -2766,7 +2779,7 @@ if hasattr(dll, 'libvlc_log_close'):
     paramflags=( (1, ), )
     libvlc_log_close = prototype( ("libvlc_log_close", dll), paramflags )
     libvlc_log_close.__doc__ = """Close a VLC message log instance.
-@param p_log libvlc log instance or NULL
+\param p_log libvlc log instance or NULL
 """
 
 if hasattr(dll, 'libvlc_log_count'):
@@ -2774,8 +2787,8 @@ if hasattr(dll, 'libvlc_log_count'):
     paramflags=( (1, ), )
     libvlc_log_count = prototype( ("libvlc_log_count", dll), paramflags )
     libvlc_log_count.__doc__ = """Returns the number of messages in a log instance.
-@param p_log libvlc log instance or NULL
-@return number of log messages, 0 if p_log is NULL
+\param p_log libvlc log instance or NULL
+\return number of log messages, 0 if p_log is NULL
 """
 
 if hasattr(dll, 'libvlc_log_clear'):
@@ -2785,7 +2798,7 @@ if hasattr(dll, 'libvlc_log_clear'):
     libvlc_log_clear.__doc__ = """Clear a log instance.
 All messages in the log are removed. The log should be cleared on a
 regular basis to avoid clogging.
-@param p_log libvlc log instance or NULL
+\param p_log libvlc log instance or NULL
 """
 
 if hasattr(dll, 'libvlc_log_get_iterator'):
@@ -2793,8 +2806,8 @@ if hasattr(dll, 'libvlc_log_get_iterator'):
     paramflags=( (1, ), )
     libvlc_log_get_iterator = prototype( ("libvlc_log_get_iterator", dll), paramflags )
     libvlc_log_get_iterator.__doc__ = """Allocate and returns a new iterator to messages in log.
-@param p_log libvlc log instance
-@return log iterator object or NULL on error
+\param p_log libvlc log instance
+\return log iterator object or NULL on error
 """
 
 if hasattr(dll, 'libvlc_log_iterator_free'):
@@ -2802,7 +2815,7 @@ if hasattr(dll, 'libvlc_log_iterator_free'):
     paramflags=( (1, ), )
     libvlc_log_iterator_free = prototype( ("libvlc_log_iterator_free", dll), paramflags )
     libvlc_log_iterator_free.__doc__ = """Release a previoulsy allocated iterator.
-@param p_iter libvlc log iterator or NULL
+\param p_iter libvlc log iterator or NULL
 """
 
 if hasattr(dll, 'libvlc_log_iterator_has_next'):
@@ -2810,8 +2823,8 @@ if hasattr(dll, 'libvlc_log_iterator_has_next'):
     paramflags=( (1, ), )
     libvlc_log_iterator_has_next = prototype( ("libvlc_log_iterator_has_next", dll), paramflags )
     libvlc_log_iterator_has_next.__doc__ = """Return whether log iterator has more messages.
-@param p_iter libvlc log iterator or NULL
-@return true if iterator has more message objects, else false
+\param p_iter libvlc log iterator or NULL
+\return true if iterator has more message objects, else false
 """
 
 if hasattr(dll, 'libvlc_log_iterator_next'):
@@ -2820,64 +2833,9 @@ if hasattr(dll, 'libvlc_log_iterator_next'):
     libvlc_log_iterator_next = prototype( ("libvlc_log_iterator_next", dll), paramflags )
     libvlc_log_iterator_next.__doc__ = """Return the next log message.
 The message contents must not be freed
-@param p_iter libvlc log iterator or NULL
-@param p_buffer log buffer
-@return log message object or NULL if none left
-"""
-
-if hasattr(dll, 'libvlc_media_discoverer_new_from_name'):
-    prototype=ctypes.CFUNCTYPE(MediaDiscoverer, Instance, ctypes.c_char_p)
-    paramflags=(1,), (1,)
-    libvlc_media_discoverer_new_from_name = prototype( ("libvlc_media_discoverer_new_from_name", dll), paramflags )
-    libvlc_media_discoverer_new_from_name.__doc__ = """Discover media service by name.
-@param p_inst libvlc instance
-@param psz_name service name
-@return media discover object or NULL in case of error
-"""
-
-if hasattr(dll, 'libvlc_media_discoverer_release'):
-    prototype=ctypes.CFUNCTYPE(None, MediaDiscoverer)
-    paramflags=( (1, ), )
-    libvlc_media_discoverer_release = prototype( ("libvlc_media_discoverer_release", dll), paramflags )
-    libvlc_media_discoverer_release.__doc__ = """Release media discover object. If the reference count reaches 0, then
-the object will be released.
-@param p_mdis media service discover object
-"""
-
-if hasattr(dll, 'libvlc_media_discoverer_localized_name'):
-    prototype=ctypes.CFUNCTYPE(ctypes.c_char_p, MediaDiscoverer)
-    paramflags=( (1, ), )
-    libvlc_media_discoverer_localized_name = prototype( ("libvlc_media_discoverer_localized_name", dll), paramflags )
-    libvlc_media_discoverer_localized_name.__doc__ = """Get media service discover object its localized name.
-@param p_mdis media discover object
-@return localized name
-"""
-
-if hasattr(dll, 'libvlc_media_discoverer_media_list'):
-    prototype=ctypes.CFUNCTYPE(MediaList, MediaDiscoverer)
-    paramflags=( (1, ), )
-    libvlc_media_discoverer_media_list = prototype( ("libvlc_media_discoverer_media_list", dll), paramflags )
-    libvlc_media_discoverer_media_list.__doc__ = """Get media service discover media list.
-@param p_mdis media service discover object
-@return list of media items
-"""
-
-if hasattr(dll, 'libvlc_media_discoverer_event_manager'):
-    prototype=ctypes.CFUNCTYPE(EventManager, MediaDiscoverer)
-    paramflags=( (1, ), )
-    libvlc_media_discoverer_event_manager = prototype( ("libvlc_media_discoverer_event_manager", dll), paramflags )
-    libvlc_media_discoverer_event_manager.__doc__ = """Get event manager from media service discover object.
-@param p_mdis media service discover object
-@return event manager object.
-"""
-
-if hasattr(dll, 'libvlc_media_discoverer_is_running'):
-    prototype=ctypes.CFUNCTYPE(ctypes.c_int, MediaDiscoverer)
-    paramflags=( (1, ), )
-    libvlc_media_discoverer_is_running = prototype( ("libvlc_media_discoverer_is_running", dll), paramflags )
-    libvlc_media_discoverer_is_running.__doc__ = """Query if media service discover object is running.
-@param p_mdis media service discover object
-@return true if running, false if not
+\param p_iter libvlc log iterator or NULL
+\param p_buffer log buffer
+\return log message object or NULL if none left
 """
 
 if hasattr(dll, 'libvlc_media_new_location'):
@@ -2886,9 +2844,9 @@ if hasattr(dll, 'libvlc_media_new_location'):
     libvlc_media_new_location = prototype( ("libvlc_media_new_location", dll), paramflags )
     libvlc_media_new_location.__doc__ = """Create a media with a certain given media resource location.
 \see libvlc_media_release
-@param p_instance the instance
-@param psz_mrl the MRL to read
-@return the newly created media or NULL on error
+\param p_instance the instance
+\param psz_mrl the MRL to read
+\return the newly created media or NULL on error
 """
 
 if hasattr(dll, 'libvlc_media_new_path'):
@@ -2897,9 +2855,9 @@ if hasattr(dll, 'libvlc_media_new_path'):
     libvlc_media_new_path = prototype( ("libvlc_media_new_path", dll), paramflags )
     libvlc_media_new_path.__doc__ = """Create a media with a certain file path.
 \see libvlc_media_release
-@param p_instance the instance
-@param path local filesystem path
-@return the newly created media or NULL on error
+\param p_instance the instance
+\param path local filesystem path
+\return the newly created media or NULL on error
 """
 
 if hasattr(dll, 'libvlc_media_new_as_node'):
@@ -2908,9 +2866,9 @@ if hasattr(dll, 'libvlc_media_new_as_node'):
     libvlc_media_new_as_node = prototype( ("libvlc_media_new_as_node", dll), paramflags )
     libvlc_media_new_as_node.__doc__ = """Create a media as an empty node with a given name.
 \see libvlc_media_release
-@param p_instance the instance
-@param psz_name the name of the node
-@return the new empty media or NULL on error
+\param p_instance the instance
+\param psz_name the name of the node
+\return the new empty media or NULL on error
 """
 
 if hasattr(dll, 'libvlc_media_add_option'):
@@ -2922,8 +2880,8 @@ This option will be used to determine how the media_player will
 read the media. This allows to use VLC's advanced
 reading/streaming options on a per-media basis.
 The options are detailed in vlc --long-help, for instance "--sout-all"
-@param p_md the media descriptor
-@param ppsz_options the options (as a string)
+\param p_md the media descriptor
+\param ppsz_options the options (as a string)
 """
 
 if hasattr(dll, 'libvlc_media_add_option_flag'):
@@ -2935,9 +2893,9 @@ This option will be used to determine how the media_player will
 read the media. This allows to use VLC's advanced
 reading/streaming options on a per-media basis.
 The options are detailed in vlc --long-help, for instance "--sout-all"
-@param p_md the media descriptor
-@param ppsz_options the options (as a string)
-@param i_flags the flags for this option
+\param p_md the media descriptor
+\param ppsz_options the options (as a string)
+\param i_flags the flags for this option
 """
 
 if hasattr(dll, 'libvlc_media_retain'):
@@ -2947,7 +2905,7 @@ if hasattr(dll, 'libvlc_media_retain'):
     libvlc_media_retain.__doc__ = """Retain a reference to a media descriptor object (libvlc_media_t). Use
 libvlc_media_release() to decrement the reference count of a
 media descriptor object.
-@param p_md the media descriptor
+\param p_md the media descriptor
 """
 
 if hasattr(dll, 'libvlc_media_release'):
@@ -2959,7 +2917,7 @@ reference count is 0, then libvlc_media_release() will release the
 media descriptor object. It will send out an libvlc_MediaFreed event
 to all listeners. If the media descriptor object has been released it
 should not be used again.
-@param p_md the media descriptor
+\param p_md the media descriptor
 """
 
 if hasattr(dll, 'libvlc_media_get_mrl'):
@@ -2967,8 +2925,8 @@ if hasattr(dll, 'libvlc_media_get_mrl'):
     paramflags=( (1, ), )
     libvlc_media_get_mrl = prototype( ("libvlc_media_get_mrl", dll), paramflags )
     libvlc_media_get_mrl.__doc__ = """Get the media resource locator (mrl) from a media descriptor object
-@param p_md a media descriptor object
-@return string with mrl of media descriptor object
+\param p_md a media descriptor object
+\return string with mrl of media descriptor object
 """
 
 if hasattr(dll, 'libvlc_media_duplicate'):
@@ -2976,7 +2934,7 @@ if hasattr(dll, 'libvlc_media_duplicate'):
     paramflags=( (1, ), )
     libvlc_media_duplicate = prototype( ("libvlc_media_duplicate", dll), paramflags )
     libvlc_media_duplicate.__doc__ = """Duplicate a media descriptor object.
-@param p_md a media descriptor object.
+\param p_md a media descriptor object.
 """
 
 if hasattr(dll, 'libvlc_media_get_meta'):
@@ -2991,9 +2949,9 @@ version ensure that you call libvlc_media_parse() before get_meta().
 \see libvlc_media_parse
 \see libvlc_media_parse_async
 \see libvlc_MediaMetaChanged
-@param p_md the media descriptor
-@param e_meta the meta to read
-@return the media's meta
+\param p_md the media descriptor
+\param e_meta the meta to read
+\return the media's meta
 """
 
 if hasattr(dll, 'libvlc_media_set_meta'):
@@ -3002,9 +2960,9 @@ if hasattr(dll, 'libvlc_media_set_meta'):
     libvlc_media_set_meta = prototype( ("libvlc_media_set_meta", dll), paramflags )
     libvlc_media_set_meta.__doc__ = """Set the meta of the media (this function will not save the meta, call
 libvlc_media_save_meta in order to save the meta)
-@param p_md the media descriptor
-@param e_meta the meta to write
-@param psz_value the media's meta
+\param p_md the media descriptor
+\param e_meta the meta to write
+\param psz_value the media's meta
 """
 
 if hasattr(dll, 'libvlc_media_save_meta'):
@@ -3012,8 +2970,8 @@ if hasattr(dll, 'libvlc_media_save_meta'):
     paramflags=( (1, ), )
     libvlc_media_save_meta = prototype( ("libvlc_media_save_meta", dll), paramflags )
     libvlc_media_save_meta.__doc__ = """Save the meta previously set
-@param p_md the media desriptor
-@return true if the write operation was successfull
+\param p_md the media desriptor
+\return true if the write operation was successfull
 """
 
 if hasattr(dll, 'libvlc_media_get_state'):
@@ -3026,8 +2984,8 @@ libvlc_Opening, libvlc_Buffering, libvlc_Playing, libvlc_Paused,
 libvlc_Stopped, libvlc_Ended,
 libvlc_Error).
 @see libvlc_state_t
-@param p_meta_desc a media descriptor object
-@return state of media descriptor object
+\param p_meta_desc a media descriptor object
+\return state of media descriptor object
 """
 
 if hasattr(dll, 'libvlc_media_get_stats'):
@@ -3048,8 +3006,8 @@ if hasattr(dll, 'libvlc_media_subitems'):
     libvlc_media_subitems.__doc__ = """Get subitems of media descriptor object. This will increment
 the reference count of supplied media descriptor object. Use
 libvlc_media_list_release() to decrement the reference counting.
-@param p_md media descriptor object
-@return list of media descriptor subitems or NULL
+\param p_md media descriptor object
+\return list of media descriptor subitems or NULL
 and this is here for convenience */
 """
 
@@ -3059,8 +3017,8 @@ if hasattr(dll, 'libvlc_media_event_manager'):
     libvlc_media_event_manager = prototype( ("libvlc_media_event_manager", dll), paramflags )
     libvlc_media_event_manager.__doc__ = """Get event manager from media descriptor object.
 NOTE: this function doesn't increment reference counting.
-@param p_md a media descriptor object
-@return event manager object
+\param p_md a media descriptor object
+\return event manager object
 """
 
 if hasattr(dll, 'libvlc_media_get_duration'):
@@ -3068,8 +3026,8 @@ if hasattr(dll, 'libvlc_media_get_duration'):
     paramflags=( (1, ), )
     libvlc_media_get_duration = prototype( ("libvlc_media_get_duration", dll), paramflags )
     libvlc_media_get_duration.__doc__ = """Get duration (in ms) of media descriptor object item.
-@param p_md media descriptor object
-@return duration of media item or -1 on error
+\param p_md media descriptor object
+\return duration of media item or -1 on error
 """
 
 if hasattr(dll, 'libvlc_media_parse'):
@@ -3082,7 +3040,7 @@ The method is synchronous.
 \see libvlc_media_parse_async
 \see libvlc_media_get_meta
 \see libvlc_media_get_tracks_info
-@param media media descriptor object
+\param media media descriptor object
 """
 
 if hasattr(dll, 'libvlc_media_parse_async'):
@@ -3099,7 +3057,7 @@ event.
 \see libvlc_MediaParsedChanged
 \see libvlc_media_get_meta
 \see libvlc_media_get_tracks_info
-@param media media descriptor object
+\param media media descriptor object
 """
 
 if hasattr(dll, 'libvlc_media_is_parsed'):
@@ -3108,8 +3066,8 @@ if hasattr(dll, 'libvlc_media_is_parsed'):
     libvlc_media_is_parsed = prototype( ("libvlc_media_is_parsed", dll), paramflags )
     libvlc_media_is_parsed.__doc__ = """Get Parsed status for media descriptor object.
 \see libvlc_MediaParsedChanged
-@param p_md media descriptor object
-@return true if media object has been parsed otherwise it returns false
+\param p_md media descriptor object
+\return true if media object has been parsed otherwise it returns false
 """
 
 if hasattr(dll, 'libvlc_media_set_user_data'):
@@ -3119,8 +3077,8 @@ if hasattr(dll, 'libvlc_media_set_user_data'):
     libvlc_media_set_user_data.__doc__ = """Sets media descriptor's user_data. user_data is specialized data
 accessed by the host application, VLC.framework uses it as a pointer to
 an native object that references a libvlc_media_t pointer
-@param p_md media descriptor object
-@param p_new_user_data pointer to user data
+\param p_md media descriptor object
+\param p_new_user_data pointer to user data
 """
 
 if hasattr(dll, 'libvlc_media_get_user_data'):
@@ -3130,7 +3088,7 @@ if hasattr(dll, 'libvlc_media_get_user_data'):
     libvlc_media_get_user_data.__doc__ = """Get media descriptor's user_data. user_data is specialized data
 accessed by the host application, VLC.framework uses it as a pointer to
 an native object that references a libvlc_media_t pointer
-@param p_md media descriptor object
+\param p_md media descriptor object
 """
 
 if hasattr(dll, 'libvlc_media_get_tracks_info'):
@@ -3150,10 +3108,65 @@ libvlc_media_player_release(player);
 @endcode
 This is very likely to change in next release, and be done at the parsing
 phase.
-@param media media descriptor object
-@param tracks address to store an allocated array of Elementary Streams
+\param media media descriptor object
+\param tracks address to store an allocated array of Elementary Streams
 descriptions (must be freed by the caller)
 return the number of Elementary Streams
+"""
+
+if hasattr(dll, 'libvlc_media_discoverer_new_from_name'):
+    prototype=ctypes.CFUNCTYPE(MediaDiscoverer, Instance, ctypes.c_char_p)
+    paramflags=(1,), (1,)
+    libvlc_media_discoverer_new_from_name = prototype( ("libvlc_media_discoverer_new_from_name", dll), paramflags )
+    libvlc_media_discoverer_new_from_name.__doc__ = """Discover media service by name.
+\param p_inst libvlc instance
+\param psz_name service name
+\return media discover object or NULL in case of error
+"""
+
+if hasattr(dll, 'libvlc_media_discoverer_release'):
+    prototype=ctypes.CFUNCTYPE(None, MediaDiscoverer)
+    paramflags=( (1, ), )
+    libvlc_media_discoverer_release = prototype( ("libvlc_media_discoverer_release", dll), paramflags )
+    libvlc_media_discoverer_release.__doc__ = """Release media discover object. If the reference count reaches 0, then
+the object will be released.
+\param p_mdis media service discover object
+"""
+
+if hasattr(dll, 'libvlc_media_discoverer_localized_name'):
+    prototype=ctypes.CFUNCTYPE(ctypes.c_char_p, MediaDiscoverer)
+    paramflags=( (1, ), )
+    libvlc_media_discoverer_localized_name = prototype( ("libvlc_media_discoverer_localized_name", dll), paramflags )
+    libvlc_media_discoverer_localized_name.__doc__ = """Get media service discover object its localized name.
+\param p_mdis media discover object
+\return localized name
+"""
+
+if hasattr(dll, 'libvlc_media_discoverer_media_list'):
+    prototype=ctypes.CFUNCTYPE(MediaList, MediaDiscoverer)
+    paramflags=( (1, ), )
+    libvlc_media_discoverer_media_list = prototype( ("libvlc_media_discoverer_media_list", dll), paramflags )
+    libvlc_media_discoverer_media_list.__doc__ = """Get media service discover media list.
+\param p_mdis media service discover object
+\return list of media items
+"""
+
+if hasattr(dll, 'libvlc_media_discoverer_event_manager'):
+    prototype=ctypes.CFUNCTYPE(EventManager, MediaDiscoverer)
+    paramflags=( (1, ), )
+    libvlc_media_discoverer_event_manager = prototype( ("libvlc_media_discoverer_event_manager", dll), paramflags )
+    libvlc_media_discoverer_event_manager.__doc__ = """Get event manager from media service discover object.
+\param p_mdis media service discover object
+\return event manager object.
+"""
+
+if hasattr(dll, 'libvlc_media_discoverer_is_running'):
+    prototype=ctypes.CFUNCTYPE(ctypes.c_int, MediaDiscoverer)
+    paramflags=( (1, ), )
+    libvlc_media_discoverer_is_running = prototype( ("libvlc_media_discoverer_is_running", dll), paramflags )
+    libvlc_media_discoverer_is_running.__doc__ = """Query if media service discover object is running.
+\param p_mdis media service discover object
+\return true if running, false if not
 """
 
 if hasattr(dll, 'libvlc_media_library_new'):
@@ -3161,8 +3174,8 @@ if hasattr(dll, 'libvlc_media_library_new'):
     paramflags=( (1, ), )
     libvlc_media_library_new = prototype( ("libvlc_media_library_new", dll), paramflags )
     libvlc_media_library_new.__doc__ = """Create an new Media Library object
-@param p_instance the libvlc instance
-@return a new object or NULL on error
+\param p_instance the libvlc instance
+\return a new object or NULL on error
 """
 
 if hasattr(dll, 'libvlc_media_library_release'):
@@ -3172,7 +3185,7 @@ if hasattr(dll, 'libvlc_media_library_release'):
     libvlc_media_library_release.__doc__ = """Release media library object. This functions decrements the
 reference count of the media library object. If it reaches 0,
 then the object will be released.
-@param p_mlib media library object
+\param p_mlib media library object
 """
 
 if hasattr(dll, 'libvlc_media_library_retain'):
@@ -3182,7 +3195,7 @@ if hasattr(dll, 'libvlc_media_library_retain'):
     libvlc_media_library_retain.__doc__ = """Retain a reference to a media library object. This function will
 increment the reference counting for this object. Use
 libvlc_media_library_release() to decrement the reference count.
-@param p_mlib media library object
+\param p_mlib media library object
 """
 
 if hasattr(dll, 'libvlc_media_library_load'):
@@ -3190,8 +3203,8 @@ if hasattr(dll, 'libvlc_media_library_load'):
     paramflags=( (1, ), )
     libvlc_media_library_load = prototype( ("libvlc_media_library_load", dll), paramflags )
     libvlc_media_library_load.__doc__ = """Load media library.
-@param p_mlib media library object
-@return 0 on success, -1 on error
+\param p_mlib media library object
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_media_library_media_list'):
@@ -3199,8 +3212,8 @@ if hasattr(dll, 'libvlc_media_library_media_list'):
     paramflags=( (1, ), )
     libvlc_media_library_media_list = prototype( ("libvlc_media_library_media_list", dll), paramflags )
     libvlc_media_library_media_list.__doc__ = """Get media library subitems.
-@param p_mlib media library object
-@return media list subitems
+\param p_mlib media library object
+\return media list subitems
 """
 
 if hasattr(dll, 'libvlc_media_list_new'):
@@ -3208,8 +3221,8 @@ if hasattr(dll, 'libvlc_media_list_new'):
     paramflags=( (1, ), )
     libvlc_media_list_new = prototype( ("libvlc_media_list_new", dll), paramflags )
     libvlc_media_list_new.__doc__ = """Create an empty media list.
-@param p_instance libvlc instance
-@return empty media list, or NULL on error
+\param p_instance libvlc instance
+\return empty media list, or NULL on error
 """
 
 if hasattr(dll, 'libvlc_media_list_release'):
@@ -3217,7 +3230,7 @@ if hasattr(dll, 'libvlc_media_list_release'):
     paramflags=( (1, ), )
     libvlc_media_list_release = prototype( ("libvlc_media_list_release", dll), paramflags )
     libvlc_media_list_release.__doc__ = """Release media list created with libvlc_media_list_new().
-@param p_ml a media list created with libvlc_media_list_new()
+\param p_ml a media list created with libvlc_media_list_new()
 """
 
 if hasattr(dll, 'libvlc_media_list_retain'):
@@ -3225,7 +3238,7 @@ if hasattr(dll, 'libvlc_media_list_retain'):
     paramflags=( (1, ), )
     libvlc_media_list_retain = prototype( ("libvlc_media_list_retain", dll), paramflags )
     libvlc_media_list_retain.__doc__ = """Retain reference to a media list
-@param p_ml a media list created with libvlc_media_list_new()
+\param p_ml a media list created with libvlc_media_list_new()
 """
 
 if hasattr(dll, 'libvlc_media_list_set_media'):
@@ -3235,8 +3248,8 @@ if hasattr(dll, 'libvlc_media_list_set_media'):
     libvlc_media_list_set_media.__doc__ = """Associate media instance with this media list instance.
 If another media instance was present it will be released.
 The libvlc_media_list_lock should NOT be held upon entering this function.
-@param p_ml a media list instance
-@param p_md media instance to add
+\param p_ml a media list instance
+\param p_md media instance to add
 """
 
 if hasattr(dll, 'libvlc_media_list_media'):
@@ -3246,8 +3259,8 @@ if hasattr(dll, 'libvlc_media_list_media'):
     libvlc_media_list_media.__doc__ = """Get media instance from this media list instance. This action will increase
 the refcount on the media instance.
 The libvlc_media_list_lock should NOT be held upon entering this function.
-@param p_ml a media list instance
-@return media instance
+\param p_ml a media list instance
+\return media instance
 """
 
 if hasattr(dll, 'libvlc_media_list_add_media'):
@@ -3256,9 +3269,9 @@ if hasattr(dll, 'libvlc_media_list_add_media'):
     libvlc_media_list_add_media = prototype( ("libvlc_media_list_add_media", dll), paramflags )
     libvlc_media_list_add_media.__doc__ = """Add media instance to media list
 The libvlc_media_list_lock should be held upon entering this function.
-@param p_ml a media list instance
-@param p_md a media instance
-@return 0 on success, -1 if the media list is read-only
+\param p_ml a media list instance
+\param p_md a media instance
+\return 0 on success, -1 if the media list is read-only
 """
 
 if hasattr(dll, 'libvlc_media_list_insert_media'):
@@ -3267,10 +3280,10 @@ if hasattr(dll, 'libvlc_media_list_insert_media'):
     libvlc_media_list_insert_media = prototype( ("libvlc_media_list_insert_media", dll), paramflags )
     libvlc_media_list_insert_media.__doc__ = """Insert media instance in media list on a position
 The libvlc_media_list_lock should be held upon entering this function.
-@param p_ml a media list instance
-@param p_md a media instance
-@param i_pos position in array where to insert
-@return 0 on success, -1 if the media list si read-only
+\param p_ml a media list instance
+\param p_md a media instance
+\param i_pos position in array where to insert
+\return 0 on success, -1 if the media list si read-only
 """
 
 if hasattr(dll, 'libvlc_media_list_remove_index'):
@@ -3279,9 +3292,9 @@ if hasattr(dll, 'libvlc_media_list_remove_index'):
     libvlc_media_list_remove_index = prototype( ("libvlc_media_list_remove_index", dll), paramflags )
     libvlc_media_list_remove_index.__doc__ = """Remove media instance from media list on a position
 The libvlc_media_list_lock should be held upon entering this function.
-@param p_ml a media list instance
-@param i_pos position in array where to insert
-@return 0 on success, -1 if the list is read-only or the item was not found
+\param p_ml a media list instance
+\param i_pos position in array where to insert
+\return 0 on success, -1 if the list is read-only or the item was not found
 """
 
 if hasattr(dll, 'libvlc_media_list_count'):
@@ -3290,8 +3303,8 @@ if hasattr(dll, 'libvlc_media_list_count'):
     libvlc_media_list_count = prototype( ("libvlc_media_list_count", dll), paramflags )
     libvlc_media_list_count.__doc__ = """Get count on media list items
 The libvlc_media_list_lock should be held upon entering this function.
-@param p_ml a media list instance
-@return number of items in media list
+\param p_ml a media list instance
+\return number of items in media list
 """
 
 if hasattr(dll, 'libvlc_media_list_item_at_index'):
@@ -3300,9 +3313,9 @@ if hasattr(dll, 'libvlc_media_list_item_at_index'):
     libvlc_media_list_item_at_index = prototype( ("libvlc_media_list_item_at_index", dll), paramflags )
     libvlc_media_list_item_at_index.__doc__ = """List media instance in media list at a position
 The libvlc_media_list_lock should be held upon entering this function.
-@param p_ml a media list instance
-@param i_pos position in array where to insert
-@return media instance at position i_pos, or NULL if not found.
+\param p_ml a media list instance
+\param i_pos position in array where to insert
+\return media instance at position i_pos, or NULL if not found.
 In case of success, libvlc_media_retain() is called to increase the refcount
 on the media.
 """
@@ -3314,9 +3327,9 @@ if hasattr(dll, 'libvlc_media_list_index_of_item'):
     libvlc_media_list_index_of_item.__doc__ = """Find index position of List media instance in media list.
 Warning: the function will return the first matched position.
 The libvlc_media_list_lock should be held upon entering this function.
-@param p_ml a media list instance
-@param p_md media list instance
-@return position of media instance
+\param p_ml a media list instance
+\param p_md media list instance
+\return position of media instance
 """
 
 if hasattr(dll, 'libvlc_media_list_is_readonly'):
@@ -3324,8 +3337,8 @@ if hasattr(dll, 'libvlc_media_list_is_readonly'):
     paramflags=( (1, ), )
     libvlc_media_list_is_readonly = prototype( ("libvlc_media_list_is_readonly", dll), paramflags )
     libvlc_media_list_is_readonly.__doc__ = """This indicates if this media list is read-only from a user point of view
-@param p_ml media list instance
-@return 0 on readonly, 1 on readwrite
+\param p_ml media list instance
+\return 0 on readonly, 1 on readwrite
 """
 
 if hasattr(dll, 'libvlc_media_list_lock'):
@@ -3333,7 +3346,7 @@ if hasattr(dll, 'libvlc_media_list_lock'):
     paramflags=( (1, ), )
     libvlc_media_list_lock = prototype( ("libvlc_media_list_lock", dll), paramflags )
     libvlc_media_list_lock.__doc__ = """Get lock on media list items
-@param p_ml a media list instance
+\param p_ml a media list instance
 """
 
 if hasattr(dll, 'libvlc_media_list_unlock'):
@@ -3342,7 +3355,7 @@ if hasattr(dll, 'libvlc_media_list_unlock'):
     libvlc_media_list_unlock = prototype( ("libvlc_media_list_unlock", dll), paramflags )
     libvlc_media_list_unlock.__doc__ = """Release lock on media list items
 The libvlc_media_list_lock should be held upon entering this function.
-@param p_ml a media list instance
+\param p_ml a media list instance
 """
 
 if hasattr(dll, 'libvlc_media_list_event_manager'):
@@ -3351,8 +3364,8 @@ if hasattr(dll, 'libvlc_media_list_event_manager'):
     libvlc_media_list_event_manager = prototype( ("libvlc_media_list_event_manager", dll), paramflags )
     libvlc_media_list_event_manager.__doc__ = """Get libvlc_event_manager from this media list instance.
 The p_event_manager is immutable, so you don't have to hold the lock
-@param p_ml a media list instance
-@return libvlc_event_manager
+\param p_ml a media list instance
+\return libvlc_event_manager
 """
 
 if hasattr(dll, 'libvlc_media_list_player_new'):
@@ -3360,8 +3373,8 @@ if hasattr(dll, 'libvlc_media_list_player_new'):
     paramflags=( (1, ), )
     libvlc_media_list_player_new = prototype( ("libvlc_media_list_player_new", dll), paramflags )
     libvlc_media_list_player_new.__doc__ = """Create new media_list_player.
-@param p_instance libvlc instance
-@return media list player instance or NULL on error
+\param p_instance libvlc instance
+\return media list player instance or NULL on error
 """
 
 if hasattr(dll, 'libvlc_media_list_player_release'):
@@ -3369,7 +3382,7 @@ if hasattr(dll, 'libvlc_media_list_player_release'):
     paramflags=( (1, ), )
     libvlc_media_list_player_release = prototype( ("libvlc_media_list_player_release", dll), paramflags )
     libvlc_media_list_player_release.__doc__ = """Release media_list_player.
-@param p_mlp media list player instance
+\param p_mlp media list player instance
 """
 
 if hasattr(dll, 'libvlc_media_list_player_event_manager'):
@@ -3377,8 +3390,8 @@ if hasattr(dll, 'libvlc_media_list_player_event_manager'):
     paramflags=( (1, ), )
     libvlc_media_list_player_event_manager = prototype( ("libvlc_media_list_player_event_manager", dll), paramflags )
     libvlc_media_list_player_event_manager.__doc__ = """Return the event manager of this media_list_player.
-@param p_mlp media list player instance
-@return the event manager
+\param p_mlp media list player instance
+\return the event manager
 """
 
 if hasattr(dll, 'libvlc_media_list_player_set_media_player'):
@@ -3386,8 +3399,8 @@ if hasattr(dll, 'libvlc_media_list_player_set_media_player'):
     paramflags=(1,), (1,)
     libvlc_media_list_player_set_media_player = prototype( ("libvlc_media_list_player_set_media_player", dll), paramflags )
     libvlc_media_list_player_set_media_player.__doc__ = """Replace media player in media_list_player with this instance.
-@param p_mlp media list player instance
-@param p_mi media player instance
+\param p_mlp media list player instance
+\param p_mi media player instance
 """
 
 if hasattr(dll, 'libvlc_media_list_player_set_media_list'):
@@ -3395,8 +3408,8 @@ if hasattr(dll, 'libvlc_media_list_player_set_media_list'):
     paramflags=(1,), (1,)
     libvlc_media_list_player_set_media_list = prototype( ("libvlc_media_list_player_set_media_list", dll), paramflags )
     libvlc_media_list_player_set_media_list.__doc__ = """Set the media list associated with the player
-@param p_mlp media list player instance
-@param p_mlist list of media
+\param p_mlp media list player instance
+\param p_mlist list of media
 """
 
 if hasattr(dll, 'libvlc_media_list_player_play'):
@@ -3404,7 +3417,7 @@ if hasattr(dll, 'libvlc_media_list_player_play'):
     paramflags=( (1, ), )
     libvlc_media_list_player_play = prototype( ("libvlc_media_list_player_play", dll), paramflags )
     libvlc_media_list_player_play.__doc__ = """Play media list
-@param p_mlp media list player instance
+\param p_mlp media list player instance
 """
 
 if hasattr(dll, 'libvlc_media_list_player_pause'):
@@ -3412,7 +3425,7 @@ if hasattr(dll, 'libvlc_media_list_player_pause'):
     paramflags=( (1, ), )
     libvlc_media_list_player_pause = prototype( ("libvlc_media_list_player_pause", dll), paramflags )
     libvlc_media_list_player_pause.__doc__ = """Pause media list
-@param p_mlp media list player instance
+\param p_mlp media list player instance
 """
 
 if hasattr(dll, 'libvlc_media_list_player_is_playing'):
@@ -3420,8 +3433,8 @@ if hasattr(dll, 'libvlc_media_list_player_is_playing'):
     paramflags=( (1, ), )
     libvlc_media_list_player_is_playing = prototype( ("libvlc_media_list_player_is_playing", dll), paramflags )
     libvlc_media_list_player_is_playing.__doc__ = """Is media list playing?
-@param p_mlp media list player instance
-@return true for playing and false for not playing
+\param p_mlp media list player instance
+\return true for playing and false for not playing
 """
 
 if hasattr(dll, 'libvlc_media_list_player_get_state'):
@@ -3429,8 +3442,8 @@ if hasattr(dll, 'libvlc_media_list_player_get_state'):
     paramflags=( (1, ), )
     libvlc_media_list_player_get_state = prototype( ("libvlc_media_list_player_get_state", dll), paramflags )
     libvlc_media_list_player_get_state.__doc__ = """Get current libvlc_state of media list player
-@param p_mlp media list player instance
-@return libvlc_state_t for media list player
+\param p_mlp media list player instance
+\return libvlc_state_t for media list player
 """
 
 if hasattr(dll, 'libvlc_media_list_player_play_item_at_index'):
@@ -3438,9 +3451,9 @@ if hasattr(dll, 'libvlc_media_list_player_play_item_at_index'):
     paramflags=(1,), (1,)
     libvlc_media_list_player_play_item_at_index = prototype( ("libvlc_media_list_player_play_item_at_index", dll), paramflags )
     libvlc_media_list_player_play_item_at_index.__doc__ = """Play media list item at position index
-@param p_mlp media list player instance
-@param i_index index in media list to play
-@return 0 upon success -1 if the item wasn't found
+\param p_mlp media list player instance
+\param i_index index in media list to play
+\return 0 upon success -1 if the item wasn't found
 """
 
 if hasattr(dll, 'libvlc_media_list_player_play_item'):
@@ -3448,9 +3461,9 @@ if hasattr(dll, 'libvlc_media_list_player_play_item'):
     paramflags=(1,), (1,)
     libvlc_media_list_player_play_item = prototype( ("libvlc_media_list_player_play_item", dll), paramflags )
     libvlc_media_list_player_play_item.__doc__ = """Play the given media item
-@param p_mlp media list player instance
-@param p_md the media instance
-@return 0 upon success, -1 if the media is not part of the media list
+\param p_mlp media list player instance
+\param p_md the media instance
+\return 0 upon success, -1 if the media is not part of the media list
 """
 
 if hasattr(dll, 'libvlc_media_list_player_stop'):
@@ -3458,7 +3471,7 @@ if hasattr(dll, 'libvlc_media_list_player_stop'):
     paramflags=( (1, ), )
     libvlc_media_list_player_stop = prototype( ("libvlc_media_list_player_stop", dll), paramflags )
     libvlc_media_list_player_stop.__doc__ = """Stop playing media list
-@param p_mlp media list player instance
+\param p_mlp media list player instance
 """
 
 if hasattr(dll, 'libvlc_media_list_player_next'):
@@ -3466,8 +3479,8 @@ if hasattr(dll, 'libvlc_media_list_player_next'):
     paramflags=( (1, ), )
     libvlc_media_list_player_next = prototype( ("libvlc_media_list_player_next", dll), paramflags )
     libvlc_media_list_player_next.__doc__ = """Play next item from media list
-@param p_mlp media list player instance
-@return 0 upon success -1 if there is no next item
+\param p_mlp media list player instance
+\return 0 upon success -1 if there is no next item
 """
 
 if hasattr(dll, 'libvlc_media_list_player_previous'):
@@ -3475,8 +3488,8 @@ if hasattr(dll, 'libvlc_media_list_player_previous'):
     paramflags=( (1, ), )
     libvlc_media_list_player_previous = prototype( ("libvlc_media_list_player_previous", dll), paramflags )
     libvlc_media_list_player_previous.__doc__ = """Play previous item from media list
-@param p_mlp media list player instance
-@return 0 upon success -1 if there is no previous item
+\param p_mlp media list player instance
+\return 0 upon success -1 if there is no previous item
 """
 
 if hasattr(dll, 'libvlc_media_list_player_set_playback_mode'):
@@ -3484,8 +3497,8 @@ if hasattr(dll, 'libvlc_media_list_player_set_playback_mode'):
     paramflags=(1,), (1,)
     libvlc_media_list_player_set_playback_mode = prototype( ("libvlc_media_list_player_set_playback_mode", dll), paramflags )
     libvlc_media_list_player_set_playback_mode.__doc__ = """Sets the playback mode for the playlist
-@param p_mlp media list player instance
-@param e_mode playback mode specification
+\param p_mlp media list player instance
+\param e_mode playback mode specification
 """
 
 if hasattr(dll, 'libvlc_media_player_new'):
@@ -3493,9 +3506,9 @@ if hasattr(dll, 'libvlc_media_player_new'):
     paramflags=( (1, ), )
     libvlc_media_player_new = prototype( ("libvlc_media_player_new", dll), paramflags )
     libvlc_media_player_new.__doc__ = """Create an empty Media Player object
-@param p_libvlc_instance the libvlc instance in which the Media Player
+\param p_libvlc_instance the libvlc instance in which the Media Player
        should be created.
-@return a new media player object, or NULL on error.
+\return a new media player object, or NULL on error.
 """
 
 if hasattr(dll, 'libvlc_media_player_new_from_media'):
@@ -3503,9 +3516,9 @@ if hasattr(dll, 'libvlc_media_player_new_from_media'):
     paramflags=( (1, ), )
     libvlc_media_player_new_from_media = prototype( ("libvlc_media_player_new_from_media", dll), paramflags )
     libvlc_media_player_new_from_media.__doc__ = """Create a Media Player object from a Media
-@param p_md the media. Afterwards the p_md can be safely
+\param p_md the media. Afterwards the p_md can be safely
        destroyed.
-@return a new media player object, or NULL on error.
+\return a new media player object, or NULL on error.
 """
 
 if hasattr(dll, 'libvlc_media_player_release'):
@@ -3517,7 +3530,7 @@ Decrement the reference count of a media player object. If the
 reference count is 0, then libvlc_media_player_release() will
 release the media player object. If the media player object
 has been released, then it should not be used again.
-@param p_mi the Media Player to free
+\param p_mi the Media Player to free
 """
 
 if hasattr(dll, 'libvlc_media_player_retain'):
@@ -3526,7 +3539,7 @@ if hasattr(dll, 'libvlc_media_player_retain'):
     libvlc_media_player_retain = prototype( ("libvlc_media_player_retain", dll), paramflags )
     libvlc_media_player_retain.__doc__ = """Retain a reference to a media player object. Use
 libvlc_media_player_release() to decrement reference count.
-@param p_mi media player object
+\param p_mi media player object
 """
 
 if hasattr(dll, 'libvlc_media_player_set_media'):
@@ -3535,8 +3548,8 @@ if hasattr(dll, 'libvlc_media_player_set_media'):
     libvlc_media_player_set_media = prototype( ("libvlc_media_player_set_media", dll), paramflags )
     libvlc_media_player_set_media.__doc__ = """Set the media that will be used by the media_player. If any,
 previous md will be released.
-@param p_mi the Media Player
-@param p_md the Media. Afterwards the p_md can be safely
+\param p_mi the Media Player
+\param p_md the Media. Afterwards the p_md can be safely
        destroyed.
 """
 
@@ -3545,8 +3558,8 @@ if hasattr(dll, 'libvlc_media_player_get_media'):
     paramflags=( (1, ), )
     libvlc_media_player_get_media = prototype( ("libvlc_media_player_get_media", dll), paramflags )
     libvlc_media_player_get_media.__doc__ = """Get the media used by the media_player.
-@param p_mi the Media Player
-@return the media associated with p_mi, or NULL if no
+\param p_mi the Media Player
+\return the media associated with p_mi, or NULL if no
         media is associated
 """
 
@@ -3555,8 +3568,8 @@ if hasattr(dll, 'libvlc_media_player_event_manager'):
     paramflags=( (1, ), )
     libvlc_media_player_event_manager = prototype( ("libvlc_media_player_event_manager", dll), paramflags )
     libvlc_media_player_event_manager.__doc__ = """Get the Event Manager from which the media player send event.
-@param p_mi the Media Player
-@return the event manager associated with p_mi
+\param p_mi the Media Player
+\return the event manager associated with p_mi
 """
 
 if hasattr(dll, 'libvlc_media_player_is_playing'):
@@ -3564,8 +3577,8 @@ if hasattr(dll, 'libvlc_media_player_is_playing'):
     paramflags=( (1, ), )
     libvlc_media_player_is_playing = prototype( ("libvlc_media_player_is_playing", dll), paramflags )
     libvlc_media_player_is_playing.__doc__ = """is_playing
-@param p_mi the Media Player
-@return 1 if the media player is playing, 0 otherwise
+\param p_mi the Media Player
+\return 1 if the media player is playing, 0 otherwise
 """
 
 if hasattr(dll, 'libvlc_media_player_play'):
@@ -3573,8 +3586,8 @@ if hasattr(dll, 'libvlc_media_player_play'):
     paramflags=( (1, ), )
     libvlc_media_player_play = prototype( ("libvlc_media_player_play", dll), paramflags )
     libvlc_media_player_play.__doc__ = """Play
-@param p_mi the Media Player
-@return 0 if playback started (and was already started), or -1 on error.
+\param p_mi the Media Player
+\return 0 if playback started (and was already started), or -1 on error.
 """
 
 if hasattr(dll, 'libvlc_media_player_pause'):
@@ -3582,7 +3595,7 @@ if hasattr(dll, 'libvlc_media_player_pause'):
     paramflags=( (1, ), )
     libvlc_media_player_pause = prototype( ("libvlc_media_player_pause", dll), paramflags )
     libvlc_media_player_pause.__doc__ = """Toggle pause (no effect if there is no media)
-@param p_mi the Media Player
+\param p_mi the Media Player
 """
 
 if hasattr(dll, 'libvlc_media_player_stop'):
@@ -3590,7 +3603,7 @@ if hasattr(dll, 'libvlc_media_player_stop'):
     paramflags=( (1, ), )
     libvlc_media_player_stop = prototype( ("libvlc_media_player_stop", dll), paramflags )
     libvlc_media_player_stop.__doc__ = """Stop (no effect if there is no media)
-@param p_mi the Media Player
+\param p_mi the Media Player
 """
 
 if hasattr(dll, 'libvlc_media_player_set_nsobject'):
@@ -3619,8 +3632,8 @@ the following code should work:
 }
 @endcode
 You can find a live example in VLCVideoView in VLCKit.framework.
-@param p_mi the Media Player
-@param drawable the drawable that is either an NSView or an object following
+\param p_mi the Media Player
+\param drawable the drawable that is either an NSView or an object following
 the VLCOpenGLVideoViewEmbedding protocol.
 """
 
@@ -3629,8 +3642,8 @@ if hasattr(dll, 'libvlc_media_player_get_nsobject'):
     paramflags=( (1, ), )
     libvlc_media_player_get_nsobject = prototype( ("libvlc_media_player_get_nsobject", dll), paramflags )
     libvlc_media_player_get_nsobject.__doc__ = """Get the NSView handler previously set with libvlc_media_player_set_nsobject().
-@param p_mi the Media Player
-@return the NSView handler or 0 if none where set
+\param p_mi the Media Player
+\return the NSView handler or 0 if none where set
 """
 
 if hasattr(dll, 'libvlc_media_player_set_agl'):
@@ -3638,8 +3651,8 @@ if hasattr(dll, 'libvlc_media_player_set_agl'):
     paramflags=(1,), (1,)
     libvlc_media_player_set_agl = prototype( ("libvlc_media_player_set_agl", dll), paramflags )
     libvlc_media_player_set_agl.__doc__ = """Set the agl handler where the media player should render its video output.
-@param p_mi the Media Player
-@param drawable the agl handler
+\param p_mi the Media Player
+\param drawable the agl handler
 """
 
 if hasattr(dll, 'libvlc_media_player_get_agl'):
@@ -3647,8 +3660,8 @@ if hasattr(dll, 'libvlc_media_player_get_agl'):
     paramflags=( (1, ), )
     libvlc_media_player_get_agl = prototype( ("libvlc_media_player_get_agl", dll), paramflags )
     libvlc_media_player_get_agl.__doc__ = """Get the agl handler previously set with libvlc_media_player_set_agl().
-@param p_mi the Media Player
-@return the agl handler or 0 if none where set
+\param p_mi the Media Player
+\return the agl handler or 0 if none where set
 """
 
 if hasattr(dll, 'libvlc_media_player_set_xwindow'):
@@ -3665,8 +3678,8 @@ with.
 If XVideo is <b>not</b> used, it is assumed that the drawable has the
 following properties in common with the default X11 screen: depth, scan line
 pad, black pixel. This is a bug.
-@param p_mi the Media Player
-@param drawable the ID of the X window
+\param p_mi the Media Player
+\param drawable the ID of the X window
 """
 
 if hasattr(dll, 'libvlc_media_player_get_xwindow'):
@@ -3677,8 +3690,8 @@ if hasattr(dll, 'libvlc_media_player_get_xwindow'):
 libvlc_media_player_set_xwindow(). Note that this will return the identifier
 even if VLC is not currently using it (for instance if it is playing an
 audio-only input).
-@param p_mi the Media Player
-@return an X window ID, or 0 if none where set.
+\param p_mi the Media Player
+\return an X window ID, or 0 if none where set.
 """
 
 if hasattr(dll, 'libvlc_media_player_set_hwnd'):
@@ -3688,8 +3701,8 @@ if hasattr(dll, 'libvlc_media_player_set_hwnd'):
     libvlc_media_player_set_hwnd.__doc__ = """Set a Win32/Win64 API window handle (HWND) where the media player should
 render its video output. If LibVLC was built without Win32/Win64 API output
 support, then this has no effects.
-@param p_mi the Media Player
-@param drawable windows handle of the drawable
+\param p_mi the Media Player
+\param drawable windows handle of the drawable
 """
 
 if hasattr(dll, 'libvlc_media_player_get_hwnd'):
@@ -3699,8 +3712,8 @@ if hasattr(dll, 'libvlc_media_player_get_hwnd'):
     libvlc_media_player_get_hwnd.__doc__ = """Get the Windows API window handle (HWND) previously set with
 libvlc_media_player_set_hwnd(). The handle will be returned even if LibVLC
 is not currently outputting any video to it.
-@param p_mi the Media Player
-@return a window handle or NULL if there are none.
+\param p_mi the Media Player
+\return a window handle or NULL if there are none.
 """
 
 if hasattr(dll, 'libvlc_media_player_get_length'):
@@ -3708,8 +3721,8 @@ if hasattr(dll, 'libvlc_media_player_get_length'):
     paramflags=( (1, ), )
     libvlc_media_player_get_length = prototype( ("libvlc_media_player_get_length", dll), paramflags )
     libvlc_media_player_get_length.__doc__ = """Get the current movie length (in ms).
-@param p_mi the Media Player
-@return the movie length (in ms), or -1 if there is no media.
+\param p_mi the Media Player
+\return the movie length (in ms), or -1 if there is no media.
 """
 
 if hasattr(dll, 'libvlc_media_player_get_time'):
@@ -3717,8 +3730,8 @@ if hasattr(dll, 'libvlc_media_player_get_time'):
     paramflags=( (1, ), )
     libvlc_media_player_get_time = prototype( ("libvlc_media_player_get_time", dll), paramflags )
     libvlc_media_player_get_time.__doc__ = """Get the current movie time (in ms).
-@param p_mi the Media Player
-@return the movie time (in ms), or -1 if there is no media.
+\param p_mi the Media Player
+\return the movie time (in ms), or -1 if there is no media.
 """
 
 if hasattr(dll, 'libvlc_media_player_set_time'):
@@ -3727,8 +3740,8 @@ if hasattr(dll, 'libvlc_media_player_set_time'):
     libvlc_media_player_set_time = prototype( ("libvlc_media_player_set_time", dll), paramflags )
     libvlc_media_player_set_time.__doc__ = """Set the movie time (in ms). This has no effect if no media is being played.
 Not all formats and protocols support this.
-@param p_mi the Media Player
-@param i_time the movie time (in ms).
+\param p_mi the Media Player
+\param i_time the movie time (in ms).
 """
 
 if hasattr(dll, 'libvlc_media_player_get_position'):
@@ -3736,8 +3749,8 @@ if hasattr(dll, 'libvlc_media_player_get_position'):
     paramflags=( (1, ), )
     libvlc_media_player_get_position = prototype( ("libvlc_media_player_get_position", dll), paramflags )
     libvlc_media_player_get_position.__doc__ = """Get movie position.
-@param p_mi the Media Player
-@return movie position, or -1. in case of error
+\param p_mi the Media Player
+\return movie position, or -1. in case of error
 """
 
 if hasattr(dll, 'libvlc_media_player_set_position'):
@@ -3746,8 +3759,8 @@ if hasattr(dll, 'libvlc_media_player_set_position'):
     libvlc_media_player_set_position = prototype( ("libvlc_media_player_set_position", dll), paramflags )
     libvlc_media_player_set_position.__doc__ = """Set movie position. This has no effect if playback is not enabled.
 This might not work depending on the underlying input format and protocol.
-@param p_mi the Media Player
-@param f_pos the position
+\param p_mi the Media Player
+\param f_pos the position
 """
 
 if hasattr(dll, 'libvlc_media_player_set_chapter'):
@@ -3755,8 +3768,8 @@ if hasattr(dll, 'libvlc_media_player_set_chapter'):
     paramflags=(1,), (1,)
     libvlc_media_player_set_chapter = prototype( ("libvlc_media_player_set_chapter", dll), paramflags )
     libvlc_media_player_set_chapter.__doc__ = """Set movie chapter (if applicable).
-@param p_mi the Media Player
-@param i_chapter chapter number to play
+\param p_mi the Media Player
+\param i_chapter chapter number to play
 """
 
 if hasattr(dll, 'libvlc_media_player_get_chapter'):
@@ -3764,8 +3777,8 @@ if hasattr(dll, 'libvlc_media_player_get_chapter'):
     paramflags=( (1, ), )
     libvlc_media_player_get_chapter = prototype( ("libvlc_media_player_get_chapter", dll), paramflags )
     libvlc_media_player_get_chapter.__doc__ = """Get movie chapter.
-@param p_mi the Media Player
-@return chapter number currently playing, or -1 if there is no media.
+\param p_mi the Media Player
+\return chapter number currently playing, or -1 if there is no media.
 """
 
 if hasattr(dll, 'libvlc_media_player_get_chapter_count'):
@@ -3773,8 +3786,8 @@ if hasattr(dll, 'libvlc_media_player_get_chapter_count'):
     paramflags=( (1, ), )
     libvlc_media_player_get_chapter_count = prototype( ("libvlc_media_player_get_chapter_count", dll), paramflags )
     libvlc_media_player_get_chapter_count.__doc__ = """Get movie chapter count
-@param p_mi the Media Player
-@return number of chapters in movie, or -1.
+\param p_mi the Media Player
+\return number of chapters in movie, or -1.
 """
 
 if hasattr(dll, 'libvlc_media_player_will_play'):
@@ -3782,8 +3795,8 @@ if hasattr(dll, 'libvlc_media_player_will_play'):
     paramflags=( (1, ), )
     libvlc_media_player_will_play = prototype( ("libvlc_media_player_will_play", dll), paramflags )
     libvlc_media_player_will_play.__doc__ = """Is the player able to play
-@param p_mi the Media Player
-@return boolean
+\param p_mi the Media Player
+\return boolean
 """
 
 if hasattr(dll, 'libvlc_media_player_get_chapter_count_for_title'):
@@ -3791,9 +3804,9 @@ if hasattr(dll, 'libvlc_media_player_get_chapter_count_for_title'):
     paramflags=(1,), (1,)
     libvlc_media_player_get_chapter_count_for_title = prototype( ("libvlc_media_player_get_chapter_count_for_title", dll), paramflags )
     libvlc_media_player_get_chapter_count_for_title.__doc__ = """Get title chapter count
-@param p_mi the Media Player
-@param i_title title
-@return number of chapters in title, or -1
+\param p_mi the Media Player
+\param i_title title
+\return number of chapters in title, or -1
 """
 
 if hasattr(dll, 'libvlc_media_player_set_title'):
@@ -3801,8 +3814,8 @@ if hasattr(dll, 'libvlc_media_player_set_title'):
     paramflags=(1,), (1,)
     libvlc_media_player_set_title = prototype( ("libvlc_media_player_set_title", dll), paramflags )
     libvlc_media_player_set_title.__doc__ = """Set movie title
-@param p_mi the Media Player
-@param i_title title number to play
+\param p_mi the Media Player
+\param i_title title number to play
 """
 
 if hasattr(dll, 'libvlc_media_player_get_title'):
@@ -3810,8 +3823,8 @@ if hasattr(dll, 'libvlc_media_player_get_title'):
     paramflags=( (1, ), )
     libvlc_media_player_get_title = prototype( ("libvlc_media_player_get_title", dll), paramflags )
     libvlc_media_player_get_title.__doc__ = """Get movie title
-@param p_mi the Media Player
-@return title number currently playing, or -1
+\param p_mi the Media Player
+\return title number currently playing, or -1
 """
 
 if hasattr(dll, 'libvlc_media_player_get_title_count'):
@@ -3819,8 +3832,8 @@ if hasattr(dll, 'libvlc_media_player_get_title_count'):
     paramflags=( (1, ), )
     libvlc_media_player_get_title_count = prototype( ("libvlc_media_player_get_title_count", dll), paramflags )
     libvlc_media_player_get_title_count.__doc__ = """Get movie title count
-@param p_mi the Media Player
-@return title number count, or -1
+\param p_mi the Media Player
+\return title number count, or -1
 """
 
 if hasattr(dll, 'libvlc_media_player_previous_chapter'):
@@ -3828,7 +3841,7 @@ if hasattr(dll, 'libvlc_media_player_previous_chapter'):
     paramflags=( (1, ), )
     libvlc_media_player_previous_chapter = prototype( ("libvlc_media_player_previous_chapter", dll), paramflags )
     libvlc_media_player_previous_chapter.__doc__ = """Set previous chapter (if applicable)
-@param p_mi the Media Player
+\param p_mi the Media Player
 """
 
 if hasattr(dll, 'libvlc_media_player_next_chapter'):
@@ -3836,7 +3849,7 @@ if hasattr(dll, 'libvlc_media_player_next_chapter'):
     paramflags=( (1, ), )
     libvlc_media_player_next_chapter = prototype( ("libvlc_media_player_next_chapter", dll), paramflags )
     libvlc_media_player_next_chapter.__doc__ = """Set next chapter (if applicable)
-@param p_mi the Media Player
+\param p_mi the Media Player
 """
 
 if hasattr(dll, 'libvlc_media_player_get_rate'):
@@ -3846,8 +3859,8 @@ if hasattr(dll, 'libvlc_media_player_get_rate'):
     libvlc_media_player_get_rate.__doc__ = """Get the requested movie play rate.
 @warning Depending on the underlying media, the requested rate may be
 different from the real playback rate.
-@param p_mi the Media Player
-@return movie play rate
+\param p_mi the Media Player
+\return movie play rate
 """
 
 if hasattr(dll, 'libvlc_media_player_set_rate'):
@@ -3855,9 +3868,9 @@ if hasattr(dll, 'libvlc_media_player_set_rate'):
     paramflags=(1,), (1,)
     libvlc_media_player_set_rate = prototype( ("libvlc_media_player_set_rate", dll), paramflags )
     libvlc_media_player_set_rate.__doc__ = """Set movie play rate
-@param p_mi the Media Player
-@param rate movie play rate to set
-@return -1 if an error was detected, 0 otherwise (but even then, it might
+\param p_mi the Media Player
+\param rate movie play rate to set
+\return -1 if an error was detected, 0 otherwise (but even then, it might
 not actually work depending on the underlying media protocol)
 """
 
@@ -3866,8 +3879,8 @@ if hasattr(dll, 'libvlc_media_player_get_state'):
     paramflags=( (1, ), )
     libvlc_media_player_get_state = prototype( ("libvlc_media_player_get_state", dll), paramflags )
     libvlc_media_player_get_state.__doc__ = """Get current movie state
-@param p_mi the Media Player
-@return the current state of the media player (playing, paused, ...) \see libvlc_state_t
+\param p_mi the Media Player
+\return the current state of the media player (playing, paused, ...) \see libvlc_state_t
 """
 
 if hasattr(dll, 'libvlc_media_player_get_fps'):
@@ -3875,8 +3888,8 @@ if hasattr(dll, 'libvlc_media_player_get_fps'):
     paramflags=( (1, ), )
     libvlc_media_player_get_fps = prototype( ("libvlc_media_player_get_fps", dll), paramflags )
     libvlc_media_player_get_fps.__doc__ = """Get movie fps rate
-@param p_mi the Media Player
-@return frames per second (fps) for this playing movie, or 0 if unspecified
+\param p_mi the Media Player
+\return frames per second (fps) for this playing movie, or 0 if unspecified
 """
 
 if hasattr(dll, 'libvlc_media_player_has_vout'):
@@ -3884,8 +3897,8 @@ if hasattr(dll, 'libvlc_media_player_has_vout'):
     paramflags=( (1, ), )
     libvlc_media_player_has_vout = prototype( ("libvlc_media_player_has_vout", dll), paramflags )
     libvlc_media_player_has_vout.__doc__ = """How many video outputs does this media player have?
-@param p_mi the media player
-@return the number of video outputs
+\param p_mi the media player
+\return the number of video outputs
 """
 
 if hasattr(dll, 'libvlc_media_player_is_seekable'):
@@ -3893,8 +3906,8 @@ if hasattr(dll, 'libvlc_media_player_is_seekable'):
     paramflags=( (1, ), )
     libvlc_media_player_is_seekable = prototype( ("libvlc_media_player_is_seekable", dll), paramflags )
     libvlc_media_player_is_seekable.__doc__ = """Is this media player seekable?
-@param p_mi the media player
-@return true if the media player can seek
+\param p_mi the media player
+\return true if the media player can seek
 """
 
 if hasattr(dll, 'libvlc_media_player_can_pause'):
@@ -3902,8 +3915,8 @@ if hasattr(dll, 'libvlc_media_player_can_pause'):
     paramflags=( (1, ), )
     libvlc_media_player_can_pause = prototype( ("libvlc_media_player_can_pause", dll), paramflags )
     libvlc_media_player_can_pause.__doc__ = """Can this media player be paused?
-@param p_mi the media player
-@return true if the media player can pause
+\param p_mi the media player
+\return true if the media player can pause
 """
 
 if hasattr(dll, 'libvlc_media_player_next_frame'):
@@ -3911,7 +3924,7 @@ if hasattr(dll, 'libvlc_media_player_next_frame'):
     paramflags=( (1, ), )
     libvlc_media_player_next_frame = prototype( ("libvlc_media_player_next_frame", dll), paramflags )
     libvlc_media_player_next_frame.__doc__ = """Display the next frame (if supported)
-@param p_mi the media player
+\param p_mi the media player
 """
 
 if hasattr(dll, 'libvlc_track_description_release'):
@@ -3919,7 +3932,7 @@ if hasattr(dll, 'libvlc_track_description_release'):
     paramflags=( (1, ), )
     libvlc_track_description_release = prototype( ("libvlc_track_description_release", dll), paramflags )
     libvlc_track_description_release.__doc__ = """Release (free) libvlc_track_description_t
-@param p_track_description the structure to release
+\param p_track_description the structure to release
 """
 
 if hasattr(dll, 'libvlc_toggle_fullscreen'):
@@ -3929,7 +3942,7 @@ if hasattr(dll, 'libvlc_toggle_fullscreen'):
     libvlc_toggle_fullscreen.__doc__ = """Toggle fullscreen status on non-embedded video outputs.
 @warning The same limitations applies to this function
 as to libvlc_set_fullscreen().
-@param p_mi the media player
+\param p_mi the media player
 """
 
 if hasattr(dll, 'libvlc_set_fullscreen'):
@@ -3943,8 +3956,8 @@ libvlc_media_player_set_xid() was used to embed the video in a non-top-level
 window. In that case, the embedding window must be reparented to the root
 window <b>before</b> fullscreen mode is enabled. You will want to reparent
 it back to its normal parent when disabling fullscreen.
-@param p_mi the media player
-@param b_fullscreen boolean for fullscreen status
+\param p_mi the media player
+\param b_fullscreen boolean for fullscreen status
 """
 
 if hasattr(dll, 'libvlc_get_fullscreen'):
@@ -3952,8 +3965,8 @@ if hasattr(dll, 'libvlc_get_fullscreen'):
     paramflags=( (1, ), )
     libvlc_get_fullscreen = prototype( ("libvlc_get_fullscreen", dll), paramflags )
     libvlc_get_fullscreen.__doc__ = """Get current fullscreen status.
-@param p_mi the media player
-@return the fullscreen status (boolean)
+\param p_mi the media player
+\return the fullscreen status (boolean)
 """
 
 if hasattr(dll, 'libvlc_video_set_key_input'):
@@ -3968,8 +3981,8 @@ click events per window. If your application has subscribed to those events
 for the X window ID of the video widget, then LibVLC will not be able to
 handle key presses and mouse clicks in any case.
 \warning This function is only implemented for X11 at the moment.
-@param p_mi the media player
-@param on true to handle key press events, false to ignore them.
+\param p_mi the media player
+\param on true to handle key press events, false to ignore them.
 """
 
 if hasattr(dll, 'libvlc_video_set_mouse_input'):
@@ -3981,8 +3994,8 @@ handled. This is needed for DVD menus to work, as well as a few video
 filters such as "puzzle".
 \note See also libvlc_video_set_key_input().
 \warning This function is only implemented for X11 at the moment.
-@param p_mi the media player
-@param on true to handle mouse click events, false to ignore them.
+\param p_mi the media player
+\param on true to handle mouse click events, false to ignore them.
 """
 
 if hasattr(dll, 'libvlc_video_get_size'):
@@ -3990,11 +4003,11 @@ if hasattr(dll, 'libvlc_video_get_size'):
     paramflags=(1,), (1,), (1,), (1,)
     libvlc_video_get_size = prototype( ("libvlc_video_get_size", dll), paramflags )
     libvlc_video_get_size.__doc__ = """Get the pixel dimensions of a video.
-@param p_mi media player
-@param num number of the video (starting from, and most commonly 0)
-@param px pointer to get the pixel width [OUT]
-@param py pointer to get the pixel height [OUT]
-@return 0 on success, -1 if the specified video does not exist
+\param p_mi media player
+\param num number of the video (starting from, and most commonly 0)
+\param px pointer to get the pixel width [OUT]
+\param py pointer to get the pixel height [OUT]
+\return 0 on success, -1 if the specified video does not exist
 """
 
 if hasattr(dll, 'libvlc_video_get_cursor'):
@@ -4012,11 +4025,11 @@ on the video rendering area. LibVLC does not track the pointer if it is
 outside of the video widget.
 @note LibVLC does not support multiple pointers (it does of course support
 multiple input devices sharing the same pointer) at the moment.
-@param p_mi media player
-@param num number of the video (starting from, and most commonly 0)
-@param px pointer to get the abscissa [OUT]
-@param py pointer to get the ordinate [OUT]
-@return 0 on success, -1 if the specified video does not exist
+\param p_mi media player
+\param num number of the video (starting from, and most commonly 0)
+\param px pointer to get the abscissa [OUT]
+\param py pointer to get the ordinate [OUT]
+\return 0 on success, -1 if the specified video does not exist
 """
 
 if hasattr(dll, 'libvlc_video_get_scale'):
@@ -4025,8 +4038,8 @@ if hasattr(dll, 'libvlc_video_get_scale'):
     libvlc_video_get_scale = prototype( ("libvlc_video_get_scale", dll), paramflags )
     libvlc_video_get_scale.__doc__ = """Get the current video scaling factor.
 See also libvlc_video_set_scale().
-@param p_mi the media player
-@return the currently configured zoom factor, or 0. if the video is set
+\param p_mi the media player
+\return the currently configured zoom factor, or 0. if the video is set
 to fit to the output window/drawable automatically.
 """
 
@@ -4039,8 +4052,8 @@ screen to the number of pixels in the original decoded video in each
 dimension. Zero is a special value; it will adjust the video to the output
 window/drawable (in windowed mode) or the entire screen.
 Note that not all video outputs support scaling.
-@param p_mi the media player
-@param f_factor the scaling factor, or zero
+\param p_mi the media player
+\param f_factor the scaling factor, or zero
 """
 
 if hasattr(dll, 'libvlc_video_get_aspect_ratio'):
@@ -4048,8 +4061,8 @@ if hasattr(dll, 'libvlc_video_get_aspect_ratio'):
     paramflags=( (1, ), )
     libvlc_video_get_aspect_ratio = prototype( ("libvlc_video_get_aspect_ratio", dll), paramflags )
     libvlc_video_get_aspect_ratio.__doc__ = """Get current video aspect ratio.
-@param p_mi the media player
-@return the video aspect ratio or NULL if unspecified
+\param p_mi the media player
+\return the video aspect ratio or NULL if unspecified
 (the result must be released with free()).
 """
 
@@ -4058,8 +4071,8 @@ if hasattr(dll, 'libvlc_video_set_aspect_ratio'):
     paramflags=(1,), (1,)
     libvlc_video_set_aspect_ratio = prototype( ("libvlc_video_set_aspect_ratio", dll), paramflags )
     libvlc_video_set_aspect_ratio.__doc__ = """Set new video aspect ratio.
-@param p_mi the media player
-@param psz_aspect new video aspect-ratio or NULL to reset to default
+\param p_mi the media player
+\param psz_aspect new video aspect-ratio or NULL to reset to default
 \note Invalid aspect ratios are ignored.
 """
 
@@ -4068,8 +4081,8 @@ if hasattr(dll, 'libvlc_video_get_spu'):
     paramflags=( (1, ), )
     libvlc_video_get_spu = prototype( ("libvlc_video_get_spu", dll), paramflags )
     libvlc_video_get_spu.__doc__ = """Get current video subtitle.
-@param p_mi the media player
-@return the video subtitle selected, or -1 if none
+\param p_mi the media player
+\return the video subtitle selected, or -1 if none
 """
 
 if hasattr(dll, 'libvlc_video_get_spu_count'):
@@ -4077,8 +4090,8 @@ if hasattr(dll, 'libvlc_video_get_spu_count'):
     paramflags=( (1, ), )
     libvlc_video_get_spu_count = prototype( ("libvlc_video_get_spu_count", dll), paramflags )
     libvlc_video_get_spu_count.__doc__ = """Get the number of available video subtitles.
-@param p_mi the media player
-@return the number of available video subtitles
+\param p_mi the media player
+\return the number of available video subtitles
 """
 
 if hasattr(dll, 'libvlc_video_get_spu_description'):
@@ -4086,8 +4099,8 @@ if hasattr(dll, 'libvlc_video_get_spu_description'):
     paramflags=( (1, ), )
     libvlc_video_get_spu_description = prototype( ("libvlc_video_get_spu_description", dll), paramflags )
     libvlc_video_get_spu_description.__doc__ = """Get the description of available video subtitles.
-@param p_mi the media player
-@return list containing description of available video subtitles
+\param p_mi the media player
+\return list containing description of available video subtitles
 """
 
 if hasattr(dll, 'libvlc_video_set_spu'):
@@ -4095,9 +4108,9 @@ if hasattr(dll, 'libvlc_video_set_spu'):
     paramflags=(1,), (1,)
     libvlc_video_set_spu = prototype( ("libvlc_video_set_spu", dll), paramflags )
     libvlc_video_set_spu.__doc__ = """Set new video subtitle.
-@param p_mi the media player
-@param i_spu new video subtitle to select
-@return 0 on success, -1 if out of range
+\param p_mi the media player
+\param i_spu new video subtitle to select
+\return 0 on success, -1 if out of range
 """
 
 if hasattr(dll, 'libvlc_video_set_subtitle_file'):
@@ -4105,9 +4118,9 @@ if hasattr(dll, 'libvlc_video_set_subtitle_file'):
     paramflags=(1,), (1,)
     libvlc_video_set_subtitle_file = prototype( ("libvlc_video_set_subtitle_file", dll), paramflags )
     libvlc_video_set_subtitle_file.__doc__ = """Set new video subtitle file.
-@param p_mi the media player
-@param psz_subtitle new video subtitle file
-@return the success status (boolean)
+\param p_mi the media player
+\param psz_subtitle new video subtitle file
+\return the success status (boolean)
 """
 
 if hasattr(dll, 'libvlc_video_get_title_description'):
@@ -4115,8 +4128,8 @@ if hasattr(dll, 'libvlc_video_get_title_description'):
     paramflags=( (1, ), )
     libvlc_video_get_title_description = prototype( ("libvlc_video_get_title_description", dll), paramflags )
     libvlc_video_get_title_description.__doc__ = """Get the description of available titles.
-@param p_mi the media player
-@return list containing description of available titles
+\param p_mi the media player
+\return list containing description of available titles
 """
 
 if hasattr(dll, 'libvlc_video_get_chapter_description'):
@@ -4124,9 +4137,9 @@ if hasattr(dll, 'libvlc_video_get_chapter_description'):
     paramflags=(1,), (1,)
     libvlc_video_get_chapter_description = prototype( ("libvlc_video_get_chapter_description", dll), paramflags )
     libvlc_video_get_chapter_description.__doc__ = """Get the description of available chapters for specific title.
-@param p_mi the media player
-@param i_title selected title
-@return list containing description of available chapter for title i_title
+\param p_mi the media player
+\param i_title selected title
+\return list containing description of available chapter for title i_title
 """
 
 if hasattr(dll, 'libvlc_video_get_crop_geometry'):
@@ -4134,8 +4147,8 @@ if hasattr(dll, 'libvlc_video_get_crop_geometry'):
     paramflags=( (1, ), )
     libvlc_video_get_crop_geometry = prototype( ("libvlc_video_get_crop_geometry", dll), paramflags )
     libvlc_video_get_crop_geometry.__doc__ = """Get current crop filter geometry.
-@param p_mi the media player
-@return the crop filter geometry or NULL if unset
+\param p_mi the media player
+\return the crop filter geometry or NULL if unset
 """
 
 if hasattr(dll, 'libvlc_video_set_crop_geometry'):
@@ -4143,8 +4156,8 @@ if hasattr(dll, 'libvlc_video_set_crop_geometry'):
     paramflags=(1,), (1,)
     libvlc_video_set_crop_geometry = prototype( ("libvlc_video_set_crop_geometry", dll), paramflags )
     libvlc_video_set_crop_geometry.__doc__ = """Set new crop filter geometry.
-@param p_mi the media player
-@param psz_geometry new crop filter geometry (NULL to unset)
+\param p_mi the media player
+\param psz_geometry new crop filter geometry (NULL to unset)
 """
 
 if hasattr(dll, 'libvlc_video_get_teletext'):
@@ -4152,8 +4165,8 @@ if hasattr(dll, 'libvlc_video_get_teletext'):
     paramflags=( (1, ), )
     libvlc_video_get_teletext = prototype( ("libvlc_video_get_teletext", dll), paramflags )
     libvlc_video_get_teletext.__doc__ = """Get current teletext page requested.
-@param p_mi the media player
-@return the current teletext page requested.
+\param p_mi the media player
+\return the current teletext page requested.
 """
 
 if hasattr(dll, 'libvlc_video_set_teletext'):
@@ -4161,8 +4174,8 @@ if hasattr(dll, 'libvlc_video_set_teletext'):
     paramflags=(1,), (1,)
     libvlc_video_set_teletext = prototype( ("libvlc_video_set_teletext", dll), paramflags )
     libvlc_video_set_teletext.__doc__ = """Set new teletext page to retrieve.
-@param p_mi the media player
-@param i_page teletex page number requested
+\param p_mi the media player
+\param i_page teletex page number requested
 """
 
 if hasattr(dll, 'libvlc_toggle_teletext'):
@@ -4170,7 +4183,7 @@ if hasattr(dll, 'libvlc_toggle_teletext'):
     paramflags=( (1, ), )
     libvlc_toggle_teletext = prototype( ("libvlc_toggle_teletext", dll), paramflags )
     libvlc_toggle_teletext.__doc__ = """Toggle teletext transparent status on video output.
-@param p_mi the media player
+\param p_mi the media player
 """
 
 if hasattr(dll, 'libvlc_video_get_track_count'):
@@ -4178,8 +4191,8 @@ if hasattr(dll, 'libvlc_video_get_track_count'):
     paramflags=( (1, ), )
     libvlc_video_get_track_count = prototype( ("libvlc_video_get_track_count", dll), paramflags )
     libvlc_video_get_track_count.__doc__ = """Get number of available video tracks.
-@param p_mi media player
-@return the number of available video tracks (int)
+\param p_mi media player
+\return the number of available video tracks (int)
 """
 
 if hasattr(dll, 'libvlc_video_get_track_description'):
@@ -4187,8 +4200,8 @@ if hasattr(dll, 'libvlc_video_get_track_description'):
     paramflags=( (1, ), )
     libvlc_video_get_track_description = prototype( ("libvlc_video_get_track_description", dll), paramflags )
     libvlc_video_get_track_description.__doc__ = """Get the description of available video tracks.
-@param p_mi media player
-@return list with description of available video tracks, or NULL on error
+\param p_mi media player
+\return list with description of available video tracks, or NULL on error
 """
 
 if hasattr(dll, 'libvlc_video_get_track'):
@@ -4196,8 +4209,8 @@ if hasattr(dll, 'libvlc_video_get_track'):
     paramflags=( (1, ), )
     libvlc_video_get_track = prototype( ("libvlc_video_get_track", dll), paramflags )
     libvlc_video_get_track.__doc__ = """Get current video track.
-@param p_mi media player
-@return the video track (int) or -1 if none
+\param p_mi media player
+\return the video track (int) or -1 if none
 """
 
 if hasattr(dll, 'libvlc_video_set_track'):
@@ -4205,9 +4218,9 @@ if hasattr(dll, 'libvlc_video_set_track'):
     paramflags=(1,), (1,)
     libvlc_video_set_track = prototype( ("libvlc_video_set_track", dll), paramflags )
     libvlc_video_set_track.__doc__ = """Set video track.
-@param p_mi media player
-@param i_track the track (int)
-@return 0 on success, -1 if out of range
+\param p_mi media player
+\param i_track the track (int)
+\return 0 on success, -1 if out of range
 """
 
 if hasattr(dll, 'libvlc_video_take_snapshot'):
@@ -4217,12 +4230,12 @@ if hasattr(dll, 'libvlc_video_take_snapshot'):
     libvlc_video_take_snapshot.__doc__ = """Take a snapshot of the current video window.
 If i_width AND i_height is 0, original size is used.
 If i_width XOR i_height is 0, original aspect-ratio is preserved.
-@param p_mi media player instance
-@param num number of video output (typically 0 for the first/only one)
-@param psz_filepath the path where to save the screenshot to
-@param i_width the snapshot's width
-@param i_height the snapshot's height
-@return 0 on success, -1 if the video was not found
+\param p_mi media player instance
+\param num number of video output (typically 0 for the first/only one)
+\param psz_filepath the path where to save the screenshot to
+\param i_width the snapshot's width
+\param i_height the snapshot's height
+\return 0 on success, -1 if the video was not found
 """
 
 if hasattr(dll, 'libvlc_video_set_deinterlace'):
@@ -4230,8 +4243,8 @@ if hasattr(dll, 'libvlc_video_set_deinterlace'):
     paramflags=(1,), (1,)
     libvlc_video_set_deinterlace = prototype( ("libvlc_video_set_deinterlace", dll), paramflags )
     libvlc_video_set_deinterlace.__doc__ = """Enable or disable deinterlace filter
-@param p_mi libvlc media player
-@param psz_mode type of deinterlace filter, NULL to disable
+\param p_mi libvlc media player
+\param psz_mode type of deinterlace filter, NULL to disable
 """
 
 if hasattr(dll, 'libvlc_video_get_marquee_int'):
@@ -4239,8 +4252,8 @@ if hasattr(dll, 'libvlc_video_get_marquee_int'):
     paramflags=(1,), (1,)
     libvlc_video_get_marquee_int = prototype( ("libvlc_video_get_marquee_int", dll), paramflags )
     libvlc_video_get_marquee_int.__doc__ = """Get an integer marquee option value
-@param p_mi libvlc media player
-@param option marq option to get \see libvlc_video_marquee_int_option_t
+\param p_mi libvlc media player
+\param option marq option to get \see libvlc_video_marquee_int_option_t
 """
 
 if hasattr(dll, 'libvlc_video_get_marquee_string'):
@@ -4248,8 +4261,8 @@ if hasattr(dll, 'libvlc_video_get_marquee_string'):
     paramflags=(1,), (1,)
     libvlc_video_get_marquee_string = prototype( ("libvlc_video_get_marquee_string", dll), paramflags )
     libvlc_video_get_marquee_string.__doc__ = """Get a string marquee option value
-@param p_mi libvlc media player
-@param option marq option to get \see libvlc_video_marquee_string_option_t
+\param p_mi libvlc media player
+\param option marq option to get \see libvlc_video_marquee_string_option_t
 """
 
 if hasattr(dll, 'libvlc_video_set_marquee_int'):
@@ -4259,9 +4272,9 @@ if hasattr(dll, 'libvlc_video_set_marquee_int'):
     libvlc_video_set_marquee_int.__doc__ = """Enable, disable or set an integer marquee option
 Setting libvlc_marquee_Enable has the side effect of enabling (arg !0)
 or disabling (arg 0) the marq filter.
-@param p_mi libvlc media player
-@param option marq option to set \see libvlc_video_marquee_int_option_t
-@param i_val marq option value
+\param p_mi libvlc media player
+\param option marq option to set \see libvlc_video_marquee_int_option_t
+\param i_val marq option value
 """
 
 if hasattr(dll, 'libvlc_video_set_marquee_string'):
@@ -4269,9 +4282,9 @@ if hasattr(dll, 'libvlc_video_set_marquee_string'):
     paramflags=(1,), (1,), (1,)
     libvlc_video_set_marquee_string = prototype( ("libvlc_video_set_marquee_string", dll), paramflags )
     libvlc_video_set_marquee_string.__doc__ = """Set a marquee string option
-@param p_mi libvlc media player
-@param option marq option to set \see libvlc_video_marquee_string_option_t
-@param psz_text marq option value
+\param p_mi libvlc media player
+\param option marq option to set \see libvlc_video_marquee_string_option_t
+\param psz_text marq option value
 """
 
 if hasattr(dll, 'libvlc_video_get_logo_int'):
@@ -4279,8 +4292,8 @@ if hasattr(dll, 'libvlc_video_get_logo_int'):
     paramflags=(1,), (1,)
     libvlc_video_get_logo_int = prototype( ("libvlc_video_get_logo_int", dll), paramflags )
     libvlc_video_get_logo_int.__doc__ = """Get integer logo option.
-@param p_mi libvlc media player instance
-@param option logo option to get, values of libvlc_video_logo_option_t
+\param p_mi libvlc media player instance
+\param option logo option to get, values of libvlc_video_logo_option_t
 """
 
 if hasattr(dll, 'libvlc_video_set_logo_int'):
@@ -4291,9 +4304,9 @@ if hasattr(dll, 'libvlc_video_set_logo_int'):
 are ignored.
 Passing libvlc_logo_enable as option value has the side effect of
 starting (arg !0) or stopping (arg 0) the logo filter.
-@param p_mi libvlc media player instance
-@param option logo option to set, values of libvlc_video_logo_option_t
-@param value logo option value
+\param p_mi libvlc media player instance
+\param option logo option to set, values of libvlc_video_logo_option_t
+\param value logo option value
 """
 
 if hasattr(dll, 'libvlc_video_set_logo_string'):
@@ -4302,9 +4315,9 @@ if hasattr(dll, 'libvlc_video_set_logo_string'):
     libvlc_video_set_logo_string = prototype( ("libvlc_video_set_logo_string", dll), paramflags )
     libvlc_video_set_logo_string.__doc__ = """Set logo option as string. Options that take a different type value
 are ignored.
-@param p_mi libvlc media player instance
-@param option logo option to set, values of libvlc_video_logo_option_t
-@param psz_value logo option value
+\param p_mi libvlc media player instance
+\param option logo option to set, values of libvlc_video_logo_option_t
+\param psz_value logo option value
 """
 
 if hasattr(dll, 'libvlc_audio_output_list_get'):
@@ -4312,8 +4325,8 @@ if hasattr(dll, 'libvlc_audio_output_list_get'):
     paramflags=( (1, ), )
     libvlc_audio_output_list_get = prototype( ("libvlc_audio_output_list_get", dll), paramflags )
     libvlc_audio_output_list_get.__doc__ = """Get the list of available audio outputs
-@param p_instance libvlc instance
-@return list of available audio outputs. It must be freed it with
+\param p_instance libvlc instance
+\return list of available audio outputs. It must be freed it with
         In case of error, NULL is returned.
 """
 
@@ -4322,7 +4335,7 @@ if hasattr(dll, 'libvlc_audio_output_list_release'):
     paramflags=( (1, ), )
     libvlc_audio_output_list_release = prototype( ("libvlc_audio_output_list_release", dll), paramflags )
     libvlc_audio_output_list_release.__doc__ = """Free the list of available audio outputs
-@param p_list list with audio outputs for release
+\param p_list list with audio outputs for release
 """
 
 if hasattr(dll, 'libvlc_audio_output_set'):
@@ -4331,10 +4344,10 @@ if hasattr(dll, 'libvlc_audio_output_set'):
     libvlc_audio_output_set = prototype( ("libvlc_audio_output_set", dll), paramflags )
     libvlc_audio_output_set.__doc__ = """Set the audio output.
 Change will be applied after stop and play.
-@param p_mi media player
-@param psz_name name of audio output,
+\param p_mi media player
+\param psz_name name of audio output,
               use psz_name of \see libvlc_audio_output_t
-@return true if function succeded
+\return true if function succeded
 """
 
 if hasattr(dll, 'libvlc_audio_output_device_count'):
@@ -4343,9 +4356,9 @@ if hasattr(dll, 'libvlc_audio_output_device_count'):
     libvlc_audio_output_device_count = prototype( ("libvlc_audio_output_device_count", dll), paramflags )
     libvlc_audio_output_device_count.__doc__ = """Get count of devices for audio output, these devices are hardware oriented
 like analor or digital output of sound card
-@param p_instance libvlc instance
-@param psz_audio_output - name of audio output, \see libvlc_audio_output_t
-@return number of devices
+\param p_instance libvlc instance
+\param psz_audio_output - name of audio output, \see libvlc_audio_output_t
+\return number of devices
 """
 
 if hasattr(dll, 'libvlc_audio_output_device_longname'):
@@ -4353,10 +4366,10 @@ if hasattr(dll, 'libvlc_audio_output_device_longname'):
     paramflags=(1,), (1,), (1,)
     libvlc_audio_output_device_longname = prototype( ("libvlc_audio_output_device_longname", dll), paramflags )
     libvlc_audio_output_device_longname.__doc__ = """Get long name of device, if not available short name given
-@param p_instance libvlc instance
-@param psz_audio_output - name of audio output, \see libvlc_audio_output_t
-@param i_device device index
-@return long name of device
+\param p_instance libvlc instance
+\param psz_audio_output - name of audio output, \see libvlc_audio_output_t
+\param i_device device index
+\return long name of device
 """
 
 if hasattr(dll, 'libvlc_audio_output_device_id'):
@@ -4364,10 +4377,10 @@ if hasattr(dll, 'libvlc_audio_output_device_id'):
     paramflags=(1,), (1,), (1,)
     libvlc_audio_output_device_id = prototype( ("libvlc_audio_output_device_id", dll), paramflags )
     libvlc_audio_output_device_id.__doc__ = """Get id name of device
-@param p_instance libvlc instance
-@param psz_audio_output - name of audio output, \see libvlc_audio_output_t
-@param i_device device index
-@return id name of device, use for setting device, need to be free after use
+\param p_instance libvlc instance
+\param psz_audio_output - name of audio output, \see libvlc_audio_output_t
+\param i_device device index
+\return id name of device, use for setting device, need to be free after use
 """
 
 if hasattr(dll, 'libvlc_audio_output_device_set'):
@@ -4375,9 +4388,9 @@ if hasattr(dll, 'libvlc_audio_output_device_set'):
     paramflags=(1,), (1,), (1,)
     libvlc_audio_output_device_set = prototype( ("libvlc_audio_output_device_set", dll), paramflags )
     libvlc_audio_output_device_set.__doc__ = """Set audio output device. Changes are only effective after stop and play.
-@param p_mi media player
-@param psz_audio_output - name of audio output, \see libvlc_audio_output_t
-@param psz_device_id device
+\param p_mi media player
+\param psz_audio_output - name of audio output, \see libvlc_audio_output_t
+\param psz_device_id device
 """
 
 if hasattr(dll, 'libvlc_audio_output_get_device_type'):
@@ -4386,8 +4399,8 @@ if hasattr(dll, 'libvlc_audio_output_get_device_type'):
     libvlc_audio_output_get_device_type = prototype( ("libvlc_audio_output_get_device_type", dll), paramflags )
     libvlc_audio_output_get_device_type.__doc__ = """Get current audio device type. Device type describes something like
 character of output sound - stereo sound, 2.1, 5.1 etc
-@param p_mi media player
-@return the audio devices type \see libvlc_audio_output_device_types_t
+\param p_mi media player
+\return the audio devices type \see libvlc_audio_output_device_types_t
 """
 
 if hasattr(dll, 'libvlc_audio_output_set_device_type'):
@@ -4395,8 +4408,8 @@ if hasattr(dll, 'libvlc_audio_output_set_device_type'):
     paramflags=(1,), (1,)
     libvlc_audio_output_set_device_type = prototype( ("libvlc_audio_output_set_device_type", dll), paramflags )
     libvlc_audio_output_set_device_type.__doc__ = """Set current audio device type.
-@param p_mi vlc instance
-@param device_type the audio device type,
+\param p_mi vlc instance
+\param device_type the audio device type,
 """
 
 if hasattr(dll, 'libvlc_audio_toggle_mute'):
@@ -4404,7 +4417,7 @@ if hasattr(dll, 'libvlc_audio_toggle_mute'):
     paramflags=( (1, ), )
     libvlc_audio_toggle_mute = prototype( ("libvlc_audio_toggle_mute", dll), paramflags )
     libvlc_audio_toggle_mute.__doc__ = """Toggle mute status.
-@param p_mi media player
+\param p_mi media player
 """
 
 if hasattr(dll, 'libvlc_audio_get_mute'):
@@ -4412,8 +4425,8 @@ if hasattr(dll, 'libvlc_audio_get_mute'):
     paramflags=( (1, ), )
     libvlc_audio_get_mute = prototype( ("libvlc_audio_get_mute", dll), paramflags )
     libvlc_audio_get_mute.__doc__ = """Get current mute status.
-@param p_mi media player
-@return the mute status (boolean)
+\param p_mi media player
+\return the mute status (boolean)
 """
 
 if hasattr(dll, 'libvlc_audio_set_mute'):
@@ -4421,8 +4434,8 @@ if hasattr(dll, 'libvlc_audio_set_mute'):
     paramflags=(1,), (1,)
     libvlc_audio_set_mute = prototype( ("libvlc_audio_set_mute", dll), paramflags )
     libvlc_audio_set_mute.__doc__ = """Set mute status.
-@param p_mi media player
-@param status If status is true then mute, otherwise unmute
+\param p_mi media player
+\param status If status is true then mute, otherwise unmute
 """
 
 if hasattr(dll, 'libvlc_audio_get_volume'):
@@ -4430,8 +4443,8 @@ if hasattr(dll, 'libvlc_audio_get_volume'):
     paramflags=( (1, ), )
     libvlc_audio_get_volume = prototype( ("libvlc_audio_get_volume", dll), paramflags )
     libvlc_audio_get_volume.__doc__ = """Get current audio level.
-@param p_mi media player
-@return the audio level (int)
+\param p_mi media player
+\return the audio level (int)
 """
 
 if hasattr(dll, 'libvlc_audio_set_volume'):
@@ -4439,9 +4452,9 @@ if hasattr(dll, 'libvlc_audio_set_volume'):
     paramflags=(1,), (1,)
     libvlc_audio_set_volume = prototype( ("libvlc_audio_set_volume", dll), paramflags )
     libvlc_audio_set_volume.__doc__ = """Set current audio level.
-@param p_mi media player
-@param i_volume the volume (int)
-@return 0 if the volume was set, -1 if it was out of range
+\param p_mi media player
+\param i_volume the volume (int)
+\return 0 if the volume was set, -1 if it was out of range
 """
 
 if hasattr(dll, 'libvlc_audio_get_track_count'):
@@ -4449,8 +4462,8 @@ if hasattr(dll, 'libvlc_audio_get_track_count'):
     paramflags=( (1, ), )
     libvlc_audio_get_track_count = prototype( ("libvlc_audio_get_track_count", dll), paramflags )
     libvlc_audio_get_track_count.__doc__ = """Get number of available audio tracks.
-@param p_mi media player
-@return the number of available audio tracks (int), or -1 if unavailable
+\param p_mi media player
+\return the number of available audio tracks (int), or -1 if unavailable
 """
 
 if hasattr(dll, 'libvlc_audio_get_track_description'):
@@ -4458,8 +4471,8 @@ if hasattr(dll, 'libvlc_audio_get_track_description'):
     paramflags=( (1, ), )
     libvlc_audio_get_track_description = prototype( ("libvlc_audio_get_track_description", dll), paramflags )
     libvlc_audio_get_track_description.__doc__ = """Get the description of available audio tracks.
-@param p_mi media player
-@return list with description of available audio tracks, or NULL
+\param p_mi media player
+\return list with description of available audio tracks, or NULL
 """
 
 if hasattr(dll, 'libvlc_audio_get_track'):
@@ -4467,8 +4480,8 @@ if hasattr(dll, 'libvlc_audio_get_track'):
     paramflags=( (1, ), )
     libvlc_audio_get_track = prototype( ("libvlc_audio_get_track", dll), paramflags )
     libvlc_audio_get_track.__doc__ = """Get current audio track.
-@param p_mi media player
-@return the audio track (int), or -1 if none.
+\param p_mi media player
+\return the audio track (int), or -1 if none.
 """
 
 if hasattr(dll, 'libvlc_audio_set_track'):
@@ -4476,9 +4489,9 @@ if hasattr(dll, 'libvlc_audio_set_track'):
     paramflags=(1,), (1,)
     libvlc_audio_set_track = prototype( ("libvlc_audio_set_track", dll), paramflags )
     libvlc_audio_set_track.__doc__ = """Set current audio track.
-@param p_mi media player
-@param i_track the track (int)
-@return 0 on success, -1 on error
+\param p_mi media player
+\param i_track the track (int)
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_audio_get_channel'):
@@ -4486,8 +4499,8 @@ if hasattr(dll, 'libvlc_audio_get_channel'):
     paramflags=( (1, ), )
     libvlc_audio_get_channel = prototype( ("libvlc_audio_get_channel", dll), paramflags )
     libvlc_audio_get_channel.__doc__ = """Get current audio channel.
-@param p_mi media player
-@return the audio channel \see libvlc_audio_output_channel_t
+\param p_mi media player
+\return the audio channel \see libvlc_audio_output_channel_t
 """
 
 if hasattr(dll, 'libvlc_audio_set_channel'):
@@ -4495,9 +4508,9 @@ if hasattr(dll, 'libvlc_audio_set_channel'):
     paramflags=(1,), (1,)
     libvlc_audio_set_channel = prototype( ("libvlc_audio_set_channel", dll), paramflags )
     libvlc_audio_set_channel.__doc__ = """Set current audio channel.
-@param p_mi media player
-@param channel the audio channel, \see libvlc_audio_output_channel_t
-@return 0 on success, -1 on error
+\param p_mi media player
+\param channel the audio channel, \see libvlc_audio_output_channel_t
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_release'):
@@ -4505,7 +4518,7 @@ if hasattr(dll, 'libvlc_vlm_release'):
     paramflags=( (1, ), )
     libvlc_vlm_release = prototype( ("libvlc_vlm_release", dll), paramflags )
     libvlc_vlm_release.__doc__ = """Release the vlm instance related to the given libvlc_instance_t
-@param p_instance the instance
+\param p_instance the instance
 """
 
 if hasattr(dll, 'libvlc_vlm_add_broadcast'):
@@ -4513,15 +4526,15 @@ if hasattr(dll, 'libvlc_vlm_add_broadcast'):
     paramflags=(1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,)
     libvlc_vlm_add_broadcast = prototype( ("libvlc_vlm_add_broadcast", dll), paramflags )
     libvlc_vlm_add_broadcast.__doc__ = """Add a broadcast, with one input.
-@param p_instance the instance
-@param psz_name the name of the new broadcast
-@param psz_input the input MRL
-@param psz_output the output MRL (the parameter to the "sout" variable)
-@param i_options number of additional options
-@param ppsz_options additional options
-@param b_enabled boolean for enabling the new broadcast
-@param b_loop Should this broadcast be played in loop ?
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the name of the new broadcast
+\param psz_input the input MRL
+\param psz_output the output MRL (the parameter to the "sout" variable)
+\param i_options number of additional options
+\param ppsz_options additional options
+\param b_enabled boolean for enabling the new broadcast
+\param b_loop Should this broadcast be played in loop ?
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_add_vod'):
@@ -4529,14 +4542,14 @@ if hasattr(dll, 'libvlc_vlm_add_vod'):
     paramflags=(1,), (1,), (1,), (1,), (1,), (1,), (1,)
     libvlc_vlm_add_vod = prototype( ("libvlc_vlm_add_vod", dll), paramflags )
     libvlc_vlm_add_vod.__doc__ = """Add a vod, with one input.
-@param p_instance the instance
-@param psz_name the name of the new vod media
-@param psz_input the input MRL
-@param i_options number of additional options
-@param ppsz_options additional options
-@param b_enabled boolean for enabling the new vod
-@param psz_mux the muxer of the vod media
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the name of the new vod media
+\param psz_input the input MRL
+\param i_options number of additional options
+\param ppsz_options additional options
+\param b_enabled boolean for enabling the new vod
+\param psz_mux the muxer of the vod media
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_del_media'):
@@ -4544,9 +4557,9 @@ if hasattr(dll, 'libvlc_vlm_del_media'):
     paramflags=(1,), (1,)
     libvlc_vlm_del_media = prototype( ("libvlc_vlm_del_media", dll), paramflags )
     libvlc_vlm_del_media.__doc__ = """Delete a media (VOD or broadcast).
-@param p_instance the instance
-@param psz_name the media to delete
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the media to delete
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_set_enabled'):
@@ -4554,10 +4567,10 @@ if hasattr(dll, 'libvlc_vlm_set_enabled'):
     paramflags=(1,), (1,), (1,)
     libvlc_vlm_set_enabled = prototype( ("libvlc_vlm_set_enabled", dll), paramflags )
     libvlc_vlm_set_enabled.__doc__ = """Enable or disable a media (VOD or broadcast).
-@param p_instance the instance
-@param psz_name the media to work on
-@param b_enabled the new status
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the media to work on
+\param b_enabled the new status
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_set_output'):
@@ -4565,10 +4578,10 @@ if hasattr(dll, 'libvlc_vlm_set_output'):
     paramflags=(1,), (1,), (1,)
     libvlc_vlm_set_output = prototype( ("libvlc_vlm_set_output", dll), paramflags )
     libvlc_vlm_set_output.__doc__ = """Set the output for a media.
-@param p_instance the instance
-@param psz_name the media to work on
-@param psz_output the output MRL (the parameter to the "sout" variable)
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the media to work on
+\param psz_output the output MRL (the parameter to the "sout" variable)
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_set_input'):
@@ -4577,10 +4590,10 @@ if hasattr(dll, 'libvlc_vlm_set_input'):
     libvlc_vlm_set_input = prototype( ("libvlc_vlm_set_input", dll), paramflags )
     libvlc_vlm_set_input.__doc__ = """Set a media's input MRL. This will delete all existing inputs and
 add the specified one.
-@param p_instance the instance
-@param psz_name the media to work on
-@param psz_input the input MRL
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the media to work on
+\param psz_input the input MRL
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_add_input'):
@@ -4588,10 +4601,10 @@ if hasattr(dll, 'libvlc_vlm_add_input'):
     paramflags=(1,), (1,), (1,)
     libvlc_vlm_add_input = prototype( ("libvlc_vlm_add_input", dll), paramflags )
     libvlc_vlm_add_input.__doc__ = """Add a media's input MRL. This will add the specified one.
-@param p_instance the instance
-@param psz_name the media to work on
-@param psz_input the input MRL
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the media to work on
+\param psz_input the input MRL
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_set_loop'):
@@ -4599,10 +4612,10 @@ if hasattr(dll, 'libvlc_vlm_set_loop'):
     paramflags=(1,), (1,), (1,)
     libvlc_vlm_set_loop = prototype( ("libvlc_vlm_set_loop", dll), paramflags )
     libvlc_vlm_set_loop.__doc__ = """Set a media's loop status.
-@param p_instance the instance
-@param psz_name the media to work on
-@param b_loop the new status
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the media to work on
+\param b_loop the new status
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_set_mux'):
@@ -4610,10 +4623,10 @@ if hasattr(dll, 'libvlc_vlm_set_mux'):
     paramflags=(1,), (1,), (1,)
     libvlc_vlm_set_mux = prototype( ("libvlc_vlm_set_mux", dll), paramflags )
     libvlc_vlm_set_mux.__doc__ = """Set a media's vod muxer.
-@param p_instance the instance
-@param psz_name the media to work on
-@param psz_mux the new muxer
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the media to work on
+\param psz_mux the new muxer
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_change_media'):
@@ -4622,15 +4635,15 @@ if hasattr(dll, 'libvlc_vlm_change_media'):
     libvlc_vlm_change_media = prototype( ("libvlc_vlm_change_media", dll), paramflags )
     libvlc_vlm_change_media.__doc__ = """Edit the parameters of a media. This will delete all existing inputs and
 add the specified one.
-@param p_instance the instance
-@param psz_name the name of the new broadcast
-@param psz_input the input MRL
-@param psz_output the output MRL (the parameter to the "sout" variable)
-@param i_options number of additional options
-@param ppsz_options additional options
-@param b_enabled boolean for enabling the new broadcast
-@param b_loop Should this broadcast be played in loop ?
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the name of the new broadcast
+\param psz_input the input MRL
+\param psz_output the output MRL (the parameter to the "sout" variable)
+\param i_options number of additional options
+\param ppsz_options additional options
+\param b_enabled boolean for enabling the new broadcast
+\param b_loop Should this broadcast be played in loop ?
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_play_media'):
@@ -4638,9 +4651,9 @@ if hasattr(dll, 'libvlc_vlm_play_media'):
     paramflags=(1,), (1,)
     libvlc_vlm_play_media = prototype( ("libvlc_vlm_play_media", dll), paramflags )
     libvlc_vlm_play_media.__doc__ = """Play the named broadcast.
-@param p_instance the instance
-@param psz_name the name of the broadcast
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the name of the broadcast
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_stop_media'):
@@ -4648,9 +4661,9 @@ if hasattr(dll, 'libvlc_vlm_stop_media'):
     paramflags=(1,), (1,)
     libvlc_vlm_stop_media = prototype( ("libvlc_vlm_stop_media", dll), paramflags )
     libvlc_vlm_stop_media.__doc__ = """Stop the named broadcast.
-@param p_instance the instance
-@param psz_name the name of the broadcast
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the name of the broadcast
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_pause_media'):
@@ -4658,9 +4671,9 @@ if hasattr(dll, 'libvlc_vlm_pause_media'):
     paramflags=(1,), (1,)
     libvlc_vlm_pause_media = prototype( ("libvlc_vlm_pause_media", dll), paramflags )
     libvlc_vlm_pause_media.__doc__ = """Pause the named broadcast.
-@param p_instance the instance
-@param psz_name the name of the broadcast
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the name of the broadcast
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_seek_media'):
@@ -4668,10 +4681,10 @@ if hasattr(dll, 'libvlc_vlm_seek_media'):
     paramflags=(1,), (1,), (1,)
     libvlc_vlm_seek_media = prototype( ("libvlc_vlm_seek_media", dll), paramflags )
     libvlc_vlm_seek_media.__doc__ = """Seek in the named broadcast.
-@param p_instance the instance
-@param psz_name the name of the broadcast
-@param f_percentage the percentage to seek to
-@return 0 on success, -1 on error
+\param p_instance the instance
+\param psz_name the name of the broadcast
+\param f_percentage the percentage to seek to
+\return 0 on success, -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_show_media'):
@@ -4686,10 +4699,10 @@ a vlm_media_instance_t, please use the corresponding
 libvlc_vlm_get_media_instance_xxx -functions.
 Currently there are no such functions available for
 vlm_media_t though.
-@param p_instance the instance
-@param psz_name the name of the media,
+\param p_instance the instance
+\param psz_name the name of the media,
      if the name is an empty string, all media is described
-@return string with information about named media, or NULL on error
+\return string with information about named media, or NULL on error
 """
 
 if hasattr(dll, 'libvlc_vlm_get_media_instance_position'):
@@ -4697,10 +4710,10 @@ if hasattr(dll, 'libvlc_vlm_get_media_instance_position'):
     paramflags=(1,), (1,), (1,)
     libvlc_vlm_get_media_instance_position = prototype( ("libvlc_vlm_get_media_instance_position", dll), paramflags )
     libvlc_vlm_get_media_instance_position.__doc__ = """Get vlm_media instance position by name or instance id
-@param p_instance a libvlc instance
-@param psz_name name of vlm media instance
-@param i_instance instance id
-@return position as float or -1. on error
+\param p_instance a libvlc instance
+\param psz_name name of vlm media instance
+\param i_instance instance id
+\return position as float or -1. on error
 """
 
 if hasattr(dll, 'libvlc_vlm_get_media_instance_time'):
@@ -4708,10 +4721,10 @@ if hasattr(dll, 'libvlc_vlm_get_media_instance_time'):
     paramflags=(1,), (1,), (1,)
     libvlc_vlm_get_media_instance_time = prototype( ("libvlc_vlm_get_media_instance_time", dll), paramflags )
     libvlc_vlm_get_media_instance_time.__doc__ = """Get vlm_media instance time by name or instance id
-@param p_instance a libvlc instance
-@param psz_name name of vlm media instance
-@param i_instance instance id
-@return time as integer or -1 on error
+\param p_instance a libvlc instance
+\param psz_name name of vlm media instance
+\param i_instance instance id
+\return time as integer or -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_get_media_instance_length'):
@@ -4719,10 +4732,10 @@ if hasattr(dll, 'libvlc_vlm_get_media_instance_length'):
     paramflags=(1,), (1,), (1,)
     libvlc_vlm_get_media_instance_length = prototype( ("libvlc_vlm_get_media_instance_length", dll), paramflags )
     libvlc_vlm_get_media_instance_length.__doc__ = """Get vlm_media instance length by name or instance id
-@param p_instance a libvlc instance
-@param psz_name name of vlm media instance
-@param i_instance instance id
-@return length of media item or -1 on error
+\param p_instance a libvlc instance
+\param psz_name name of vlm media instance
+\param i_instance instance id
+\return length of media item or -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_get_media_instance_rate'):
@@ -4730,10 +4743,10 @@ if hasattr(dll, 'libvlc_vlm_get_media_instance_rate'):
     paramflags=(1,), (1,), (1,)
     libvlc_vlm_get_media_instance_rate = prototype( ("libvlc_vlm_get_media_instance_rate", dll), paramflags )
     libvlc_vlm_get_media_instance_rate.__doc__ = """Get vlm_media instance playback rate by name or instance id
-@param p_instance a libvlc instance
-@param psz_name name of vlm media instance
-@param i_instance instance id
-@return playback rate or -1 on error
+\param p_instance a libvlc instance
+\param psz_name name of vlm media instance
+\param i_instance instance id
+\return playback rate or -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_get_media_instance_title'):
@@ -4742,10 +4755,10 @@ if hasattr(dll, 'libvlc_vlm_get_media_instance_title'):
     libvlc_vlm_get_media_instance_title = prototype( ("libvlc_vlm_get_media_instance_title", dll), paramflags )
     libvlc_vlm_get_media_instance_title.__doc__ = """Get vlm_media instance title number by name or instance id
 \bug will always return 0
-@param p_instance a libvlc instance
-@param psz_name name of vlm media instance
-@param i_instance instance id
-@return title as number or -1 on error
+\param p_instance a libvlc instance
+\param psz_name name of vlm media instance
+\param i_instance instance id
+\return title as number or -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_get_media_instance_chapter'):
@@ -4754,10 +4767,10 @@ if hasattr(dll, 'libvlc_vlm_get_media_instance_chapter'):
     libvlc_vlm_get_media_instance_chapter = prototype( ("libvlc_vlm_get_media_instance_chapter", dll), paramflags )
     libvlc_vlm_get_media_instance_chapter.__doc__ = """Get vlm_media instance chapter number by name or instance id
 \bug will always return 0
-@param p_instance a libvlc instance
-@param psz_name name of vlm media instance
-@param i_instance instance id
-@return chapter as number or -1 on error
+\param p_instance a libvlc instance
+\param psz_name name of vlm media instance
+\param i_instance instance id
+\return chapter as number or -1 on error
 """
 
 if hasattr(dll, 'libvlc_vlm_get_media_instance_seekable'):
@@ -4766,10 +4779,10 @@ if hasattr(dll, 'libvlc_vlm_get_media_instance_seekable'):
     libvlc_vlm_get_media_instance_seekable = prototype( ("libvlc_vlm_get_media_instance_seekable", dll), paramflags )
     libvlc_vlm_get_media_instance_seekable.__doc__ = """Is libvlc instance seekable ?
 \bug will always return 0
-@param p_instance a libvlc instance
-@param psz_name name of vlm media instance
-@param i_instance instance id
-@return 1 if seekable, 0 if not, -1 if media does not exist
+\param p_instance a libvlc instance
+\param psz_name name of vlm media instance
+\param i_instance instance id
+\return 1 if seekable, 0 if not, -1 if media does not exist
 """
 
 if hasattr(dll, 'libvlc_vlm_get_event_manager'):
@@ -4778,8 +4791,8 @@ if hasattr(dll, 'libvlc_vlm_get_event_manager'):
     libvlc_vlm_get_event_manager = prototype( ("libvlc_vlm_get_event_manager", dll), paramflags )
     libvlc_vlm_get_event_manager.__doc__ = """Get libvlc_event_manager from a vlm media.
 The p_event_manager is immutable, so you don't have to hold the lock
-@param p_instance a libvlc instance
-@return libvlc_event_manager
+\param p_instance a libvlc instance
+\return libvlc_event_manager
 """
 
 ### Start of footer.py ###
@@ -4812,7 +4825,7 @@ class EventUnion(ctypes.Union):
 
 class Event(ctypes.Structure):
     _fields_ = [
-        ('type', Event),
+        ('type', EventType),
         ('object', ctypes.c_void_p),
         ('u', EventUnion),
         ]

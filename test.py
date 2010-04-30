@@ -50,7 +50,7 @@ class TestVLCAPI(unittest.TestCase):
         self.assertEqual(vlc.PlaybackMode.repeat.value, 2)
 
     def test_enum_marquee_int_option(self):
-        self.assertEqual(vlc.VideoMarqueeOption.Size.value, 5)
+        self.assertEqual(vlc.VideoMarqueeOption.Size.value, 6)
 
     def test_enum_output_device_type(self):
         self.assertEqual(vlc.AudioOutputDeviceTypes._2F2R.value, 4)
@@ -79,7 +79,7 @@ class TestVLCAPI(unittest.TestCase):
         mrl='/tmp/foo.avi'
         i=vlc.Instance()
         p=i.media_player_new(mrl)
-        self.assertEqual(p.get_state(), vlc.State.Ended)
+        self.assertEqual(p.get_state(), vlc.State.NothingSpecial)
 
     def test_libvlc_logger(self):
         i=vlc.Instance()
