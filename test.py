@@ -27,6 +27,7 @@
 
 import unittest
 import vlc
+print "Checking ", vlc.__file__
 
 class TestVLCAPI(unittest.TestCase):
     #def setUp(self):
@@ -45,67 +46,17 @@ class TestVLCAPI(unittest.TestCase):
     def test_enum_state(self):
         self.assertEqual(vlc.State.Playing.value, 3)
 
-    def test_enum_media_option(self):
-        self.assertEqual(vlc.MediaOption.unique.value, 256)
-
     def test_enum_playback_mode(self):
         self.assertEqual(vlc.PlaybackMode.repeat.value, 2)
 
     def test_enum_marquee_int_option(self):
-        self.assertEqual(vlc.VideoMarqueeIntOption.Size.value, 5)
+        self.assertEqual(vlc.VideoMarqueeOption.Size.value, 5)
 
     def test_enum_output_device_type(self):
         self.assertEqual(vlc.AudioOutputDeviceTypes._2F2R.value, 4)
 
     def test_enum_output_channel(self):
         self.assertEqual(vlc.AudioOutputChannel.Dolbys.value, 5)
-
-    def test_enum_position_origin(self):
-        self.assertEqual(vlc.PositionOrigin.ModuloPosition.value, 2)
-
-    def test_enum_position_key(self):
-        self.assertEqual(vlc.PositionKey.MediaTime.value, 2)
-
-    def test_enum_player_status(self):
-        self.assertEqual(vlc.PlayerStatus.StopStatus.value, 5)
-
-    # Basic MediaControl tests
-    def test_mediacontrol_creation(self):
-        mc=vlc.MediaControl()
-        self.assert_(mc)
-
-    def test_mediacontrol_initial_mrl(self):
-        mc=vlc.MediaControl()
-        self.assertEqual(mc.get_mrl(), '')
-
-    def test_mediacontrol_set_mrl(self):
-        mrl='/tmp/foo.avi'
-        mc=vlc.MediaControl()
-        mc.set_mrl(mrl)
-        self.assertEqual(mc.get_mrl(), mrl)
-
-    def test_mediacontrol_position(self):
-        p=vlc.MediaControlPosition(value=2,
-                                   origin=vlc.PositionOrigin.RelativePosition,
-                                   key=vlc.PositionKey.MediaTime)
-        self.assertEqual(p.value, 2)
-
-    def test_mediacontrol_position_shortcut(self):
-        p=vlc.MediaControlPosition(2)
-        self.assertEqual(p.value, 2)
-        self.assertEqual(p.key, vlc.PositionKey.MediaTime)
-        self.assertEqual(p.origin, vlc.PositionOrigin.AbsolutePosition)
-
-    def test_mediacontrol_get_media_position(self):
-        mc=vlc.MediaControl()
-        p=mc.get_media_position()
-        self.assertEqual(p.value, -1)
-
-    def test_mediacontrol_get_stream_information(self):
-        mc=vlc.MediaControl()
-        s=mc.get_stream_information()
-        self.assertEqual(s.position, 0)
-        self.assertEqual(s.length, 0)
 
     # Basic libvlc tests
     def test_instance_creation(self):
