@@ -1,4 +1,4 @@
-MODULE_NAME=vlc.py
+MODULE_NAME=generated/vlc.py
 
 all: $(MODULE_NAME)
 
@@ -9,7 +9,7 @@ doc: $(MODULE_NAME)
 	-epydoc -v -o doc $<
 
 test: $(MODULE_NAME)
-	python test.py
+	PYTHONPATH=generated python test.py
 
 check: $(MODULE_NAME)
 	-pyflakes $<
