@@ -36,7 +36,7 @@ class VLCWidget(gtk.DrawingArea):
             else:
                 self.player.set_xwindow(self.window.xid)
             return True
-        self.connect("map-event", handle_embed)
+        self.connect("map", handle_embed)
         self.set_size_request(320, 200)
 
 class DecoratedVLCWidget(gtk.VBox):
