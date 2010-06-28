@@ -56,6 +56,7 @@ class DefaultDict(dict):
 
 # Methods not decorated/not referenced
 blacklist=[
+    "libvlc_set_exit_handler",
     ]
 
 # Precompiled regexps
