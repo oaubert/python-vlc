@@ -36,13 +36,16 @@ import logging
 import ctypes
 import sys
 
-build_date="Fri Apr 30 11:03:00 2010"
+build_date="Mon Jun 28 18:13:12 2010"
 
 # Used for win32 and MacOS X
 detected_plugin_path=None
 
 if sys.platform == 'linux2':
-    dll=ctypes.CDLL('libvlc.so')
+    try:
+        dll=ctypes.CDLL('libvlc.so')
+    except OSError:
+        dll=ctypes.CDLL('libvlc.so.5')
 elif sys.platform == 'win32':
     import ctypes.util
     import os
@@ -259,7 +262,7 @@ Meta.TrackID=Meta(16)
 class State(ctypes.c_ulong):
     """*
 Note the order of libvlc_state_t enum must match exactly the order of
-@see mediacontrol_PlayerStatus, @see input_state_e enums,
+\see mediacontrol_PlayerStatus, \see input_state_e enums,
 and VideoLAN.LibVLC.State (at bindings/cil/src/media.cs).
 Expected states by web plugins are:
 IDLE/CLOSE=0, OPENING=1, BUFFERING=2, PLAYING=3, PAUSED=4,
@@ -418,6 +421,36 @@ VideoLogoOption.delay=VideoLogoOption(4)
 VideoLogoOption.repeat=VideoLogoOption(5)
 VideoLogoOption.opacity=VideoLogoOption(6)
 VideoLogoOption.position=VideoLogoOption(7)
+
+class VideoAdjustOption(ctypes.c_ulong):
+    """* option values for libvlc_video_{get,set}_adjust_{int,float,bool} */
+
+    """
+    _names={
+        0: 'Enable',
+        1: 'Contrast',
+        2: 'Brightness',
+        3: 'Hue',
+        4: 'Saturation',
+        5: 'Gamma',
+    }
+
+    def __repr__(self):
+        return ".".join((self.__class__.__module__, self.__class__.__name__, self._names[self.value]))
+
+    def __eq__(self, other):
+        return ( (isinstance(other, ctypes.c_ulong) and self.value == other.value)
+                 or (isinstance(other, (int, long)) and self.value == other ) )
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    
+VideoAdjustOption.Enable=VideoAdjustOption(0)
+VideoAdjustOption.Contrast=VideoAdjustOption(1)
+VideoAdjustOption.Brightness=VideoAdjustOption(2)
+VideoAdjustOption.Hue=VideoAdjustOption(3)
+VideoAdjustOption.Saturation=VideoAdjustOption(4)
+VideoAdjustOption.Gamma=VideoAdjustOption(5)
 
 class AudioOutputDeviceTypes(ctypes.c_ulong):
     """*
@@ -1309,7 +1342,7 @@ See libvlc_state_t
 
     if hasattr(dll, 'libvlc_media_get_stats'):
         def get_stats(self, p_stats):
-            """get the current statistics about the media
+            """Get the current statistics about the media
 @param p_stats:: structure that contain the statistics about the media
 @return: true if the statistics are available, false otherwise
         """
@@ -1849,6 +1882,17 @@ class MediaPlayer(object):
         """
         return self._instance
 
+    def set_mrl(self, mrl, *options):
+        """Set the MRL to play.
+
+        @param mrl: The MRL
+        @param options: a list of options
+        @return The Media object
+        """
+        m = self.get_instance().media_new(mrl, *options)
+        self.set_media(m)
+        return m
+
 
     if hasattr(dll, 'libvlc_media_player_release'):
         def release(self):
@@ -2209,7 +2253,7 @@ handled by the LibVLC video widget.
 click events per window. If your application has subscribed to those events
 for the X window ID of the video widget, then LibVLC will not be able to
 handle key presses and mouse clicks in any case.
-\warning This function is only implemented for X11 at the moment.
+\warning This function is only implemented for X11 and Win32 at the moment.
 @param on: true to handle key press events, false to ignore them.
         """
             return libvlc_video_set_key_input(self, on)
@@ -2220,7 +2264,7 @@ handle key presses and mouse clicks in any case.
 handled. This is needed for DVD menus to work, as well as a few video
 filters such as "puzzle".
 \note See also libvlc_video_set_key_input().
-\warning This function is only implemented for X11 at the moment.
+\warning This function is only implemented for X11 and Win32 at the moment.
 @param on: true to handle mouse click events, false to ignore them.
         """
             return libvlc_video_set_mouse_input(self, on)
@@ -2481,6 +2525,40 @@ are ignored.
 @param psz_value: logo option value
         """
             return libvlc_video_set_logo_string(self, option, psz_value)
+
+    if hasattr(dll, 'libvlc_video_get_adjust_int'):
+        def video_get_adjust_int(self, option):
+            """Get integer adjust option.
+@param option: adjust option to get, values of libvlc_video_adjust_option_t
+        """
+            return libvlc_video_get_adjust_int(self, option)
+
+    if hasattr(dll, 'libvlc_video_set_adjust_int'):
+        def video_set_adjust_int(self, option, value):
+            """Set adjust option as integer. Options that take a different type value
+are ignored.
+Passing libvlc_adjust_enable as option value has the side effect of
+starting (arg !0) or stopping (arg 0) the adjust filter.
+@param option: adust option to set, values of libvlc_video_adjust_option_t
+@param value: adjust option value
+        """
+            return libvlc_video_set_adjust_int(self, option, value)
+
+    if hasattr(dll, 'libvlc_video_get_adjust_float'):
+        def video_get_adjust_float(self, option):
+            """Get float adjust option.
+@param option: adjust option to get, values of libvlc_video_adjust_option_t
+        """
+            return libvlc_video_get_adjust_float(self, option)
+
+    if hasattr(dll, 'libvlc_video_set_adjust_float'):
+        def video_set_adjust_float(self, option, value):
+            """Set adjust option as float. Options that take a different type value
+are ignored.
+@param option: adust option to set, values of libvlc_video_adjust_option_t
+@param value: adjust option value
+        """
+            return libvlc_video_set_adjust_float(self, option, value)
 
     if hasattr(dll, 'libvlc_audio_output_set'):
         def audio_output_set(self, psz_name):
@@ -2983,8 +3061,8 @@ are defined in libvlc_structures.c ( libvlc_NothingSpecial=0,
 libvlc_Opening, libvlc_Buffering, libvlc_Playing, libvlc_Paused,
 libvlc_Stopped, libvlc_Ended,
 libvlc_Error).
-@see libvlc_state_t
-\param p_meta_desc a media descriptor object
+\see libvlc_state_t
+\param p_md a media descriptor object
 \return state of media descriptor object
 """
 
@@ -2992,11 +3070,11 @@ if hasattr(dll, 'libvlc_media_get_stats'):
     prototype=ctypes.CFUNCTYPE(ctypes.c_int, Media, ctypes.POINTER(MediaStats))
     paramflags=(1,), (1,)
     libvlc_media_get_stats = prototype( ("libvlc_media_get_stats", dll), paramflags )
-    libvlc_media_get_stats.__doc__ = """get the current statistics about the media
-@param p_md: media descriptor object
-@param p_stats: structure that contain the statistics about the media
+    libvlc_media_get_stats.__doc__ = """Get the current statistics about the media
+\param p_md: media descriptor object
+\param p_stats: structure that contain the statistics about the media
                 (this structure must be allocated by the caller)
-@return true if the statistics are available, false otherwise
+\return true if the statistics are available, false otherwise
 """
 
 if hasattr(dll, 'libvlc_media_subitems'):
@@ -3040,7 +3118,7 @@ The method is synchronous.
 \see libvlc_media_parse_async
 \see libvlc_media_get_meta
 \see libvlc_media_get_tracks_info
-\param media media descriptor object
+\param p_md media descriptor object
 """
 
 if hasattr(dll, 'libvlc_media_parse_async'):
@@ -3057,7 +3135,7 @@ event.
 \see libvlc_MediaParsedChanged
 \see libvlc_media_get_meta
 \see libvlc_media_get_tracks_info
-\param media media descriptor object
+\param p_md media descriptor object
 """
 
 if hasattr(dll, 'libvlc_media_is_parsed'):
@@ -3108,7 +3186,7 @@ libvlc_media_player_release(player);
 @endcode
 This is very likely to change in next release, and be done at the parsing
 phase.
-\param media media descriptor object
+\param p_md media descriptor object
 \param tracks address to store an allocated array of Elementary Streams
 descriptions (must be freed by the caller)
 return the number of Elementary Streams
@@ -3980,7 +4058,7 @@ handled by the LibVLC video widget.
 click events per window. If your application has subscribed to those events
 for the X window ID of the video widget, then LibVLC will not be able to
 handle key presses and mouse clicks in any case.
-\warning This function is only implemented for X11 at the moment.
+\warning This function is only implemented for X11 and Win32 at the moment.
 \param p_mi the media player
 \param on true to handle key press events, false to ignore them.
 """
@@ -3993,7 +4071,7 @@ if hasattr(dll, 'libvlc_video_set_mouse_input'):
 handled. This is needed for DVD menus to work, as well as a few video
 filters such as "puzzle".
 \note See also libvlc_video_set_key_input().
-\warning This function is only implemented for X11 at the moment.
+\warning This function is only implemented for X11 and Win32 at the moment.
 \param p_mi the media player
 \param on true to handle mouse click events, false to ignore them.
 """
@@ -4318,6 +4396,48 @@ are ignored.
 \param p_mi libvlc media player instance
 \param option logo option to set, values of libvlc_video_logo_option_t
 \param psz_value logo option value
+"""
+
+if hasattr(dll, 'libvlc_video_get_adjust_int'):
+    prototype=ctypes.CFUNCTYPE(ctypes.c_int, MediaPlayer, ctypes.c_uint)
+    paramflags=(1,), (1,)
+    libvlc_video_get_adjust_int = prototype( ("libvlc_video_get_adjust_int", dll), paramflags )
+    libvlc_video_get_adjust_int.__doc__ = """Get integer adjust option.
+\param p_mi libvlc media player instance
+\param option adjust option to get, values of libvlc_video_adjust_option_t
+"""
+
+if hasattr(dll, 'libvlc_video_set_adjust_int'):
+    prototype=ctypes.CFUNCTYPE(None, MediaPlayer, ctypes.c_uint, ctypes.c_int)
+    paramflags=(1,), (1,), (1,)
+    libvlc_video_set_adjust_int = prototype( ("libvlc_video_set_adjust_int", dll), paramflags )
+    libvlc_video_set_adjust_int.__doc__ = """Set adjust option as integer. Options that take a different type value
+are ignored.
+Passing libvlc_adjust_enable as option value has the side effect of
+starting (arg !0) or stopping (arg 0) the adjust filter.
+\param p_mi libvlc media player instance
+\param option adust option to set, values of libvlc_video_adjust_option_t
+\param value adjust option value
+"""
+
+if hasattr(dll, 'libvlc_video_get_adjust_float'):
+    prototype=ctypes.CFUNCTYPE(ctypes.c_float, MediaPlayer, ctypes.c_uint)
+    paramflags=(1,), (1,)
+    libvlc_video_get_adjust_float = prototype( ("libvlc_video_get_adjust_float", dll), paramflags )
+    libvlc_video_get_adjust_float.__doc__ = """Get float adjust option.
+\param p_mi libvlc media player instance
+\param option adjust option to get, values of libvlc_video_adjust_option_t
+"""
+
+if hasattr(dll, 'libvlc_video_set_adjust_float'):
+    prototype=ctypes.CFUNCTYPE(None, MediaPlayer, ctypes.c_uint, ctypes.c_float)
+    paramflags=(1,), (1,), (1,)
+    libvlc_video_set_adjust_float = prototype( ("libvlc_video_set_adjust_float", dll), paramflags )
+    libvlc_video_set_adjust_float.__doc__ = """Set adjust option as float. Options that take a different type value
+are ignored.
+\param p_mi libvlc media player instance
+\param option adust option to set, values of libvlc_video_adjust_option_t
+\param value adjust option value
 """
 
 if hasattr(dll, 'libvlc_audio_output_list_get'):
@@ -4940,6 +5060,7 @@ if __name__ == '__main__':
 
 # Not wrapped methods:
 #    libvlc_get_version
+#    libvlc_set_exit_handler
 #    libvlc_get_changeset
 #    libvlc_errmsg
 #    libvlc_clearerr
