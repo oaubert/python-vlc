@@ -98,6 +98,17 @@ class MediaPlayer:
         """
         return self._instance
 
+    def set_mrl(self, mrl, *options):
+        """Set the MRL to play.
+
+        @param mrl: The MRL
+        @param options: a list of options
+        @return The Media object
+        """
+        m = self.get_instance().media_new(mrl, *options)
+        self.set_media(m)
+        return m
+
 class MediaListPlayer:
     """Create a new MediaPlayer instance.
 
