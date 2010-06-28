@@ -42,7 +42,10 @@ build_date="This will be replaced by the build date"
 detected_plugin_path=None
 
 if sys.platform == 'linux2':
-    dll=ctypes.CDLL('libvlc.so')
+    try:
+        dll=ctypes.CDLL('libvlc.so')
+    except OSError:
+        dll=ctypes.CDLL('libvlc.so.5')
 elif sys.platform == 'win32':
     import ctypes.util
     import os
