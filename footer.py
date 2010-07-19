@@ -139,5 +139,9 @@ if __name__ == '__main__':
                 # Numeric value. Jump to a fraction of the movie.
                 v=0.1*(o-48)
                 player.set_position(v)
+    else:
+        print "Syntax: %s movie_filename" % sys.argv[0]
+        print "Once launched, type ? to get commands."
+
 
 
