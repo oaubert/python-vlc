@@ -36,7 +36,7 @@ import logging
 import ctypes
 import sys
 
-build_date="Mon Jun 28 18:13:12 2010"
+build_date="Mon Jul 19 11:18:51 2010"
 
 # Used for win32 and MacOS X
 detected_plugin_path=None
@@ -768,6 +768,15 @@ The initial reference count is 1 after libvlc_new() returns.
 You should start at least one interface first, using libvlc_add_intf().
         """
             return libvlc_wait(self)
+
+    if hasattr(dll, 'libvlc_set_user_agent'):
+        def set_user_agent(self, name, http):
+            """Sets the application name. LibVLC passes this as the user agent string
+when a protocol requires it.
+@param name: human-readable application name, e.g. "FooBar player 1.2.3"
+@param http: HTTP User Agent, e.g. "FooBar/1.2.3 Python/2.6.0"
+        """
+            return libvlc_set_user_agent(self, name, http)
 
     if hasattr(dll, 'libvlc_get_log_verbosity'):
         def get_log_verbosity(self):
@@ -1947,6 +1956,13 @@ previous md will be released.
         """
             return libvlc_media_player_play(self)
 
+    if hasattr(dll, 'libvlc_media_player_set_pause'):
+        def set_pause(self, do_pause):
+            """Pause or resume (no effect if there is no media)
+@param do_pause: play/resume if zero, pause if non-zero
+        """
+            return libvlc_media_player_set_pause(self, do_pause)
+
     if hasattr(dll, 'libvlc_media_player_pause'):
         def pause(self):
             """Toggle pause (no effect if there is no media)
@@ -1958,6 +1974,17 @@ previous md will be released.
             """Stop (no effect if there is no media)
         """
             return libvlc_media_player_stop(self)
+
+    if hasattr(dll, 'libvlc_video_set_format'):
+        def video_set_format(self, chroma, width, height, pitch):
+            """Set decoded video chroma and dimensions. This only works in combination with
+libvlc_video_set_callbacks().
+@param chroma: a four-characters string identifying the chroma
+@param width: pixel width
+@param height: pixel height
+@param pitch: line pitch (in bytes)
+        """
+            return libvlc_video_set_format(self, chroma, width, height, pitch)
 
     if hasattr(dll, 'libvlc_media_player_set_nsobject'):
         def set_nsobject(self, drawable):
@@ -2229,10 +2256,10 @@ as to libvlc_set_fullscreen().
             """Enable or disable fullscreen.
 @warning With most window managers, only a top-level windows can be in
 full-screen mode. Hence, this function will not operate properly if
-libvlc_media_player_set_xid() was used to embed the video in a non-top-level
-window. In that case, the embedding window must be reparented to the root
-window <b>before</b> fullscreen mode is enabled. You will want to reparent
-it back to its normal parent when disabling fullscreen.
+libvlc_media_player_set_xwindow() was used to embed the video in a
+non-top-level window. In that case, the embedding window must be reparented
+to the root window <b>before</b> fullscreen mode is enabled. You will want
+to reparent it back to its normal parent when disabling fullscreen.
 @param b_fullscreen: boolean for fullscreen status
         """
             return libvlc_set_fullscreen(self, b_fullscreen)
@@ -2671,6 +2698,21 @@ character of output sound - stereo sound, 2.1, 5.1 etc
         """
             return libvlc_audio_set_channel(self, channel)
 
+    if hasattr(dll, 'libvlc_audio_get_delay'):
+        def audio_get_delay(self):
+            """Get current audio delay.
+@return: the audio delay (microseconds)
+        """
+            return libvlc_audio_get_delay(self)
+
+    if hasattr(dll, 'libvlc_audio_set_delay'):
+        def audio_set_delay(self, i_delay):
+            """Set current audio delay. The audio delay will be reset to zero each time the media changes.
+@param i_delay: the audio delay (microseconds)
+@return: 0 on success, -1 on error
+        """
+            return libvlc_audio_set_delay(self, i_delay)
+
 class TrackDescription(object):
 
     def __new__(cls, pointer=None):
@@ -2763,6 +2805,18 @@ if hasattr(dll, 'libvlc_wait'):
     libvlc_wait.__doc__ = """Waits until an interface causes the instance to exit.
 You should start at least one interface first, using libvlc_add_intf().
 \param p_instance the instance
+"""
+
+if hasattr(dll, 'libvlc_set_user_agent'):
+    prototype=ctypes.CFUNCTYPE(None, Instance, ctypes.c_char_p, ctypes.c_char_p)
+    paramflags=(1,), (1,), (1,)
+    libvlc_set_user_agent = prototype( ("libvlc_set_user_agent", dll), paramflags )
+    libvlc_set_user_agent.__doc__ = """Sets the application name. LibVLC passes this as the user agent string
+when a protocol requires it.
+\param p_instance LibVLC instance
+\param name human-readable application name, e.g. "FooBar player 1.2.3"
+\param http HTTP User Agent, e.g. "FooBar/1.2.3 Python/2.6.0"
+\version LibVLC 1.1.1 or later
 """
 
 if hasattr(dll, 'libvlc_get_version'):
@@ -3668,6 +3722,16 @@ if hasattr(dll, 'libvlc_media_player_play'):
 \return 0 if playback started (and was already started), or -1 on error.
 """
 
+if hasattr(dll, 'libvlc_media_player_set_pause'):
+    prototype=ctypes.CFUNCTYPE(None, MediaPlayer, ctypes.c_int)
+    paramflags=(1,), (1,)
+    libvlc_media_player_set_pause = prototype( ("libvlc_media_player_set_pause", dll), paramflags )
+    libvlc_media_player_set_pause.__doc__ = """Pause or resume (no effect if there is no media)
+\param mp the Media Player
+\param do_pause play/resume if zero, pause if non-zero
+\version LibVLC 1.1.1 or later
+"""
+
 if hasattr(dll, 'libvlc_media_player_pause'):
     prototype=ctypes.CFUNCTYPE(None, MediaPlayer)
     paramflags=( (1, ), )
@@ -3682,6 +3746,21 @@ if hasattr(dll, 'libvlc_media_player_stop'):
     libvlc_media_player_stop = prototype( ("libvlc_media_player_stop", dll), paramflags )
     libvlc_media_player_stop.__doc__ = """Stop (no effect if there is no media)
 \param p_mi the Media Player
+"""
+
+if hasattr(dll, 'libvlc_video_set_format'):
+    prototype=ctypes.CFUNCTYPE(None, MediaPlayer, ctypes.c_char_p, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint)
+    paramflags=(1,), (1,), (1,), (1,), (1,)
+    libvlc_video_set_format = prototype( ("libvlc_video_set_format", dll), paramflags )
+    libvlc_video_set_format.__doc__ = """Set decoded video chroma and dimensions. This only works in combination with
+libvlc_video_set_callbacks().
+\param mp the media player
+\param chroma a four-characters string identifying the chroma
+              (e.g. "RV32" or "I420")
+\param width pixel width
+\param height pixel height
+\param pitch line pitch (in bytes)
+\version LibVLC 1.1.1 or later
 """
 
 if hasattr(dll, 'libvlc_media_player_set_nsobject'):
@@ -3725,7 +3804,7 @@ if hasattr(dll, 'libvlc_media_player_get_nsobject'):
 """
 
 if hasattr(dll, 'libvlc_media_player_set_agl'):
-    prototype=ctypes.CFUNCTYPE(None, MediaPlayer, ctypes.c_uint)
+    prototype=ctypes.CFUNCTYPE(None, MediaPlayer, ctypes.c_uint32)
     paramflags=(1,), (1,)
     libvlc_media_player_set_agl = prototype( ("libvlc_media_player_set_agl", dll), paramflags )
     libvlc_media_player_set_agl.__doc__ = """Set the agl handler where the media player should render its video output.
@@ -3734,7 +3813,7 @@ if hasattr(dll, 'libvlc_media_player_set_agl'):
 """
 
 if hasattr(dll, 'libvlc_media_player_get_agl'):
-    prototype=ctypes.CFUNCTYPE(ctypes.c_uint, MediaPlayer)
+    prototype=ctypes.CFUNCTYPE(ctypes.c_uint32, MediaPlayer)
     paramflags=( (1, ), )
     libvlc_media_player_get_agl = prototype( ("libvlc_media_player_get_agl", dll), paramflags )
     libvlc_media_player_get_agl.__doc__ = """Get the agl handler previously set with libvlc_media_player_set_agl().
@@ -3743,7 +3822,7 @@ if hasattr(dll, 'libvlc_media_player_get_agl'):
 """
 
 if hasattr(dll, 'libvlc_media_player_set_xwindow'):
-    prototype=ctypes.CFUNCTYPE(None, MediaPlayer, ctypes.c_uint)
+    prototype=ctypes.CFUNCTYPE(None, MediaPlayer, ctypes.c_uint32)
     paramflags=(1,), (1,)
     libvlc_media_player_set_xwindow = prototype( ("libvlc_media_player_set_xwindow", dll), paramflags )
     libvlc_media_player_set_xwindow.__doc__ = """Set an X Window System drawable where the media player should render its
@@ -3761,7 +3840,7 @@ pad, black pixel. This is a bug.
 """
 
 if hasattr(dll, 'libvlc_media_player_get_xwindow'):
-    prototype=ctypes.CFUNCTYPE(ctypes.c_uint, MediaPlayer)
+    prototype=ctypes.CFUNCTYPE(ctypes.c_uint32, MediaPlayer)
     paramflags=( (1, ), )
     libvlc_media_player_get_xwindow = prototype( ("libvlc_media_player_get_xwindow", dll), paramflags )
     libvlc_media_player_get_xwindow.__doc__ = """Get the X Window System window identifier previously set with
@@ -4030,10 +4109,10 @@ if hasattr(dll, 'libvlc_set_fullscreen'):
     libvlc_set_fullscreen.__doc__ = """Enable or disable fullscreen.
 @warning With most window managers, only a top-level windows can be in
 full-screen mode. Hence, this function will not operate properly if
-libvlc_media_player_set_xid() was used to embed the video in a non-top-level
-window. In that case, the embedding window must be reparented to the root
-window <b>before</b> fullscreen mode is enabled. You will want to reparent
-it back to its normal parent when disabling fullscreen.
+libvlc_media_player_set_xwindow() was used to embed the video in a
+non-top-level window. In that case, the embedding window must be reparented
+to the root window <b>before</b> fullscreen mode is enabled. You will want
+to reparent it back to its normal parent when disabling fullscreen.
 \param p_mi the media player
 \param b_fullscreen boolean for fullscreen status
 """
@@ -4405,6 +4484,7 @@ if hasattr(dll, 'libvlc_video_get_adjust_int'):
     libvlc_video_get_adjust_int.__doc__ = """Get integer adjust option.
 \param p_mi libvlc media player instance
 \param option adjust option to get, values of libvlc_video_adjust_option_t
+\version LibVLC 1.1.1 and later.
 """
 
 if hasattr(dll, 'libvlc_video_set_adjust_int'):
@@ -4418,6 +4498,7 @@ starting (arg !0) or stopping (arg 0) the adjust filter.
 \param p_mi libvlc media player instance
 \param option adust option to set, values of libvlc_video_adjust_option_t
 \param value adjust option value
+\version LibVLC 1.1.1 and later.
 """
 
 if hasattr(dll, 'libvlc_video_get_adjust_float'):
@@ -4427,6 +4508,7 @@ if hasattr(dll, 'libvlc_video_get_adjust_float'):
     libvlc_video_get_adjust_float.__doc__ = """Get float adjust option.
 \param p_mi libvlc media player instance
 \param option adjust option to get, values of libvlc_video_adjust_option_t
+\version LibVLC 1.1.1 and later.
 """
 
 if hasattr(dll, 'libvlc_video_set_adjust_float'):
@@ -4438,6 +4520,7 @@ are ignored.
 \param p_mi libvlc media player instance
 \param option adust option to set, values of libvlc_video_adjust_option_t
 \param value adjust option value
+\version LibVLC 1.1.1 and later.
 """
 
 if hasattr(dll, 'libvlc_audio_output_list_get'):
@@ -4631,6 +4714,27 @@ if hasattr(dll, 'libvlc_audio_set_channel'):
 \param p_mi media player
 \param channel the audio channel, \see libvlc_audio_output_channel_t
 \return 0 on success, -1 on error
+"""
+
+if hasattr(dll, 'libvlc_audio_get_delay'):
+    prototype=ctypes.CFUNCTYPE(ctypes.c_int64, MediaPlayer)
+    paramflags=( (1, ), )
+    libvlc_audio_get_delay = prototype( ("libvlc_audio_get_delay", dll), paramflags )
+    libvlc_audio_get_delay.__doc__ = """Get current audio delay.
+\param p_mi media player
+\return the audio delay (microseconds)
+\version LibVLC 1.1.1 or later
+"""
+
+if hasattr(dll, 'libvlc_audio_set_delay'):
+    prototype=ctypes.CFUNCTYPE(ctypes.c_int, MediaPlayer, ctypes.c_int64)
+    paramflags=(1,), (1,)
+    libvlc_audio_set_delay = prototype( ("libvlc_audio_set_delay", dll), paramflags )
+    libvlc_audio_set_delay.__doc__ = """Set current audio delay. The audio delay will be reset to zero each time the media changes.
+\param p_mi media player
+\param i_delay the audio delay (microseconds)
+\return 0 on success, -1 on error
+\version LibVLC 1.1.1 or later
 """
 
 if hasattr(dll, 'libvlc_vlm_release'):
@@ -5056,6 +5160,10 @@ if __name__ == '__main__':
                 # Numeric value. Jump to a fraction of the movie.
                 v=0.1*(o-48)
                 player.set_position(v)
+    else:
+        print "Syntax: %s movie_filename" % sys.argv[0]
+        print "Once launched, type ? to get commands."
+
 
 
 # Not wrapped methods:
@@ -5064,6 +5172,7 @@ if __name__ == '__main__':
 #    libvlc_get_changeset
 #    libvlc_errmsg
 #    libvlc_clearerr
+#    libvlc_video_set_callbacks
 #    libvlc_get_compiler
 #    libvlc_new
 #    libvlc_event_type_name
