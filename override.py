@@ -27,7 +27,7 @@ class Instance:
         return libvlc_new(len(p), p)
 
     def media_player_new(self, uri=None):
-        """Create a new Media Player object.
+        """Create a new MediaPlayer instance.
 
         @param uri: an optional URI to play in the player.
         """
@@ -38,14 +38,14 @@ class Instance:
         return p
 
     def media_list_player_new(self):
-        """Create an empty Media Player object
+        """Create a new MediaListPlayer instance.
         """
         p=libvlc_media_list_player_new(self)
         p._instance=self
         return p
 
     def media_new(self, mrl, *options):
-        """Create an empty Media Player object
+        """Create a new Media instance.
 
         Options can be specified as supplementary string parameters, e.g.
         m=i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')
