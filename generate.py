@@ -57,6 +57,7 @@ class DefaultDict(dict):
 # Methods not decorated/not referenced
 blacklist=[
     "libvlc_set_exit_handler",
+    "libvlc_video_set_callbacks",
     ]
 
 # Precompiled regexps
@@ -318,7 +319,8 @@ class PythonGenerator(object):
         'short': 'ctypes.c_short',
         'char*': 'ctypes.c_char_p',
         'char**': 'ListPOINTER(ctypes.c_char_p)',
-        'uint32_t': 'ctypes.c_uint',
+        'uint32_t': 'ctypes.c_uint32',
+        'int64_t': 'ctypes.c_int64',
         'float': 'ctypes.c_float',
         'unsigned': 'ctypes.c_uint',
         'unsigned*': 'ctypes.POINTER(ctypes.c_uint)',
