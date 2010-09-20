@@ -178,4 +178,14 @@ class LogMessage(ctypes.Structure):
     def __str__(self):
         return "vlc.LogMessage(%d:%s): %s" % (self.severity, self.type, self.message)
 
+
+class AudioOutputItem(ctypes.Structure):
+    def __str__(self):
+        return "vlc.AudioOutput(%s:%s)" % (self.name, self.description)
+AudioOutputItem._fields_= [
+    ('name', ctypes.c_char_p),
+    ('description', ctypes.c_char_p),
+    ('next', ctypes.POINTER(AudioOutputItem)),
+    ]
+
 ### End of header.py ###

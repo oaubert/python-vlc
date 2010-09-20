@@ -55,6 +55,22 @@ class Instance:
             libvlc_media_add_option(m, o)
         return m
 
+    def audio_output_enumerate_devices(self):
+        """Enumerate the defined audio output devices.
+
+        The result is a list of dict (name, description)
+        """
+        l = []
+        ao = libvlc_audio_output_list_get(self)
+        while ao:
+            l.append( { 'name': ao.contents.name, 
+                        'description': ao.contents.description,
+                        'devices': [ { 'id': libvlc_audio_output_device_id(self, ao.contents.name, i), 
+                                       'longname': libvlc_audio_output_device_longname(self, ao.contents.name, i) } 
+                                     for i in range(libvlc_audio_output_device_count(self, ao.contents.name) ) ] } )
+            ao = ao.contents.next
+        return l
+
 class Media:
     def add_options(self, *list_of_options):
         """Add a list of options to the media.

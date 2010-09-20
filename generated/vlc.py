@@ -36,7 +36,7 @@ import logging
 import ctypes
 import sys
 
-build_date="Mon Jul 19 11:18:51 2010"
+build_date="Mon Sep 20 14:18:42 2010"
 
 # Used for win32 and MacOS X
 detected_plugin_path=None
@@ -605,34 +605,17 @@ class LogMessage(ctypes.Structure):
     def __str__(self):
         return "vlc.LogMessage(%d:%s): %s" % (self.severity, self.type, self.message)
 
+
+class AudioOutputItem(ctypes.Structure):
+    def __str__(self):
+        return "vlc.AudioOutput(%s:%s)" % (self.name, self.description)
+AudioOutputItem._fields_= [
+    ('name', ctypes.c_char_p),
+    ('description', ctypes.c_char_p),
+    ('next', ctypes.POINTER(AudioOutputItem)),
+    ]
+
 ### End of header.py ###
-class AudioOutput(object):
-
-    def __new__(cls, pointer=None):
-        '''Internal method used for instanciating wrappers from ctypes.
-        '''
-        if pointer is None:
-            raise Exception("Internal method. Surely this class cannot be instanciated by itself.")
-        if pointer == 0:
-            return None
-        else:
-            o=object.__new__(cls)
-            o._as_parameter_=ctypes.c_void_p(pointer)
-            return o
-
-
-    @staticmethod
-    def from_param(arg):
-        '''(INTERNAL) ctypes parameter conversion method.
-        '''
-        return arg._as_parameter_
-
-    if hasattr(dll, 'libvlc_audio_output_list_release'):
-        def list_release(self):
-            """Free the list of available audio outputs
-        """
-            return libvlc_audio_output_list_release(self)
-
 class EventManager(object):
 
     def __new__(cls, pointer=None):
@@ -711,7 +694,7 @@ class Instance(object):
         return libvlc_new(len(p), p)
 
     def media_player_new(self, uri=None):
-        """Create a new Media Player object.
+        """Create a new MediaPlayer instance.
 
         @param uri: an optional URI to play in the player.
         """
@@ -722,14 +705,14 @@ class Instance(object):
         return p
 
     def media_list_player_new(self):
-        """Create an empty Media Player object
+        """Create a new MediaListPlayer instance.
         """
         p=libvlc_media_list_player_new(self)
         p._instance=self
         return p
 
     def media_new(self, mrl, *options):
-        """Create an empty Media Player object
+        """Create a new Media instance.
 
         Options can be specified as supplementary string parameters, e.g.
         m=i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')
@@ -738,6 +721,22 @@ class Instance(object):
         for o in options:
             libvlc_media_add_option(m, o)
         return m
+
+    def audio_output_enumerate_devices(self):
+        """Enumerate the defined audio output devices.
+
+        The result is a list of dict (name, description)
+        """
+        l = []
+        ao = libvlc_audio_output_list_get(self)
+        while ao:
+            l.append( { 'name': ao.contents.name, 
+                        'description': ao.contents.description,
+                        'devices': [ { 'id': libvlc_audio_output_device_id(self, ao.contents.name, i), 
+                                       'longname': libvlc_audio_output_device_longname(self, ao.contents.name, i) } 
+                                     for i in range(libvlc_audio_output_device_count(self, ao.contents.name) ) ] } )
+            ao = ao.contents.next
+        return l
 
 
     if hasattr(dll, 'libvlc_release'):
@@ -1396,7 +1395,7 @@ See libvlc_media_get_tracks_info
         def parse_async(self):
             """Parse a media.
 This fetches (local) meta data and tracks information.
-The method is the asynchronous of libvlc_media_parse_async().
+The method is the asynchronous of libvlc_media_parse().
 To track when this is over you can listen to libvlc_MediaParsedChanged
 event. However if the media was already parsed you will not receive this
 event.
@@ -2044,9 +2043,6 @@ The specified identifier must correspond to an existing Input/Output class
 X11 window. Pixmaps are <b>not</b> supported. The caller shall ensure that
 the X11 server is the same as the one the VLC instance has been configured
 with.
-If XVideo is <b>not</b> used, it is assumed that the drawable has the
-following properties in common with the default X11 screen: depth, scan line
-pad, black pixel. This is a bug.
 @param drawable: the ID of the X window
         """
             return libvlc_media_player_set_xwindow(self, drawable)
@@ -3181,7 +3177,7 @@ if hasattr(dll, 'libvlc_media_parse_async'):
     libvlc_media_parse_async = prototype( ("libvlc_media_parse_async", dll), paramflags )
     libvlc_media_parse_async.__doc__ = """Parse a media.
 This fetches (local) meta data and tracks information.
-The method is the asynchronous of libvlc_media_parse_async().
+The method is the asynchronous of libvlc_media_parse().
 To track when this is over you can listen to libvlc_MediaParsedChanged
 event. However if the media was already parsed you will not receive this
 event.
@@ -3832,9 +3828,6 @@ The specified identifier must correspond to an existing Input/Output class
 X11 window. Pixmaps are <b>not</b> supported. The caller shall ensure that
 the X11 server is the same as the one the VLC instance has been configured
 with.
-If XVideo is <b>not</b> used, it is assumed that the drawable has the
-following properties in common with the default X11 screen: depth, scan line
-pad, black pixel. This is a bug.
 \param p_mi the Media Player
 \param drawable the ID of the X window
 """
@@ -4524,7 +4517,7 @@ are ignored.
 """
 
 if hasattr(dll, 'libvlc_audio_output_list_get'):
-    prototype=ctypes.CFUNCTYPE(AudioOutput, Instance)
+    prototype=ctypes.CFUNCTYPE(ctypes.POINTER(AudioOutputItem), Instance)
     paramflags=( (1, ), )
     libvlc_audio_output_list_get = prototype( ("libvlc_audio_output_list_get", dll), paramflags )
     libvlc_audio_output_list_get.__doc__ = """Get the list of available audio outputs
@@ -4534,7 +4527,7 @@ if hasattr(dll, 'libvlc_audio_output_list_get'):
 """
 
 if hasattr(dll, 'libvlc_audio_output_list_release'):
-    prototype=ctypes.CFUNCTYPE(None, AudioOutput)
+    prototype=ctypes.CFUNCTYPE(None, ctypes.POINTER(AudioOutputItem))
     paramflags=( (1, ), )
     libvlc_audio_output_list_release = prototype( ("libvlc_audio_output_list_release", dll), paramflags )
     libvlc_audio_output_list_release.__doc__ = """Free the list of available audio outputs
@@ -5171,6 +5164,7 @@ if __name__ == '__main__':
 #    libvlc_set_exit_handler
 #    libvlc_get_changeset
 #    libvlc_errmsg
+#    libvlc_audio_output_list_release
 #    libvlc_clearerr
 #    libvlc_video_set_callbacks
 #    libvlc_get_compiler
