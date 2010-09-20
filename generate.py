@@ -307,7 +307,7 @@ class PythonGenerator(object):
         'libvlc_media_list_t*': 'MediaList',
         'libvlc_media_list_player_t*': 'MediaListPlayer',
         'libvlc_media_list_view_t*': 'MediaListView',
-        'libvlc_track_description_t*': 'TrackDescription',
+        'libvlc_track_description_t*': 'ctypes.POINTER(TrackDescription)',
         'libvlc_audio_output_t*': 'ctypes.POINTER(AudioOutput)',
         'libvlc_media_stats_t*': 'ctypes.POINTER(MediaStats)',
         'libvlc_media_track_info_t**': 'ctypes.POINTER(ctypes.POINTER(MediaTrackInfo))',
@@ -345,7 +345,6 @@ class PythonGenerator(object):
         'MediaList',
         'MediaListPlayer',
         'MediaListView',
-        'TrackDescription',
         )
 
     def __init__(self, parser=None):

@@ -36,7 +36,7 @@ import logging
 import ctypes
 import sys
 
-build_date="Mon Sep 20 14:18:42 2010"
+build_date="Mon Sep 20 15:42:06 2010"
 
 # Used for win32 and MacOS X
 detected_plugin_path=None
@@ -606,14 +606,34 @@ class LogMessage(ctypes.Structure):
         return "vlc.LogMessage(%d:%s): %s" % (self.severity, self.type, self.message)
 
 
-class AudioOutputItem(ctypes.Structure):
+class AudioOutput(ctypes.Structure):
     def __str__(self):
         return "vlc.AudioOutput(%s:%s)" % (self.name, self.description)
-AudioOutputItem._fields_= [
+AudioOutput._fields_= [
     ('name', ctypes.c_char_p),
     ('description', ctypes.c_char_p),
-    ('next', ctypes.POINTER(AudioOutputItem)),
+    ('next', ctypes.POINTER(AudioOutput)),
     ]
+
+class TrackDescription(ctypes.Structure):
+    def __str__(self):
+        return "vlc.TrackDescription(%d:%s)" % (self.id, self.name)
+TrackDescription._fields_= [
+    ('id', ctypes.c_int),
+    ('name', ctypes.c_char_p),
+    ('next', ctypes.POINTER(TrackDescription)),
+    ]
+def track_description_list(head):
+    """Convert a TrackDescription linked list to a python list, and release the linked list.
+    """
+    l = []
+    item = head
+    while item:
+        l.append( (item.contents.id, item.contents.name) )
+        item = item.contents.next
+    if head:
+        libvlc_track_description_release(head)
+    return l
 
 ### End of header.py ###
 class EventManager(object):
@@ -728,7 +748,7 @@ class Instance(object):
         The result is a list of dict (name, description)
         """
         l = []
-        ao = libvlc_audio_output_list_get(self)
+        head = ao = libvlc_audio_output_list_get(self)
         while ao:
             l.append( { 'name': ao.contents.name, 
                         'description': ao.contents.description,
@@ -736,6 +756,7 @@ class Instance(object):
                                        'longname': libvlc_audio_output_device_longname(self, ao.contents.name, i) } 
                                      for i in range(libvlc_audio_output_device_count(self, ao.contents.name) ) ] } )
             ao = ao.contents.next
+        libvlc_audio_output_list_release(head)
         return l
 
 
@@ -1901,6 +1922,32 @@ class MediaPlayer(object):
         self.set_media(m)
         return m
 
+    def video_get_spu_description(self):
+        """Get the description of available video subtitles.
+        """
+        return track_description_list(libvlc_video_get_spu_description(self))
+
+    def video_get_title_description(self):
+        """Get the description of available titles.
+        """
+        return track_description_list(libvlc_video_get_title_description(self))
+
+    def video_get_chapter_description(self, title):
+        """Get the description of available chapters for specific title.
+        @param i_title selected title (int)
+        """
+        return track_description_list(libvlc_video_get_chapter_description(self, title))
+
+    def video_get_track_description(self):
+        """Get the description of available video tracks.
+        """
+        return track_description_list(libvlc_video_get_track_description(self))
+
+    def audio_get_track_description(self):
+        """Get the description of available audio tracks.
+        """
+        return track_description_list(libvlc_audio_get_track_description(self))
+
 
     if hasattr(dll, 'libvlc_media_player_release'):
         def release(self):
@@ -2369,13 +2416,6 @@ Note that not all video outputs support scaling.
         """
             return libvlc_video_get_spu_count(self)
 
-    if hasattr(dll, 'libvlc_video_get_spu_description'):
-        def video_get_spu_description(self):
-            """Get the description of available video subtitles.
-@return: list containing description of available video subtitles
-        """
-            return libvlc_video_get_spu_description(self)
-
     if hasattr(dll, 'libvlc_video_set_spu'):
         def video_set_spu(self, i_spu):
             """Set new video subtitle.
@@ -2391,21 +2431,6 @@ Note that not all video outputs support scaling.
 @return: the success status (boolean)
         """
             return libvlc_video_set_subtitle_file(self, psz_subtitle)
-
-    if hasattr(dll, 'libvlc_video_get_title_description'):
-        def video_get_title_description(self):
-            """Get the description of available titles.
-@return: list containing description of available titles
-        """
-            return libvlc_video_get_title_description(self)
-
-    if hasattr(dll, 'libvlc_video_get_chapter_description'):
-        def video_get_chapter_description(self, i_title):
-            """Get the description of available chapters for specific title.
-@param i_title: selected title
-@return: list containing description of available chapter for title i_title
-        """
-            return libvlc_video_get_chapter_description(self, i_title)
 
     if hasattr(dll, 'libvlc_video_get_crop_geometry'):
         def video_get_crop_geometry(self):
@@ -2447,13 +2472,6 @@ Note that not all video outputs support scaling.
 @return: the number of available video tracks (int)
         """
             return libvlc_video_get_track_count(self)
-
-    if hasattr(dll, 'libvlc_video_get_track_description'):
-        def video_get_track_description(self):
-            """Get the description of available video tracks.
-@return: list with description of available video tracks, or NULL on error
-        """
-            return libvlc_video_get_track_description(self)
 
     if hasattr(dll, 'libvlc_video_get_track'):
         def video_get_track(self):
@@ -2657,13 +2675,6 @@ character of output sound - stereo sound, 2.1, 5.1 etc
         """
             return libvlc_audio_get_track_count(self)
 
-    if hasattr(dll, 'libvlc_audio_get_track_description'):
-        def audio_get_track_description(self):
-            """Get the description of available audio tracks.
-@return: list with description of available audio tracks, or NULL
-        """
-            return libvlc_audio_get_track_description(self)
-
     if hasattr(dll, 'libvlc_audio_get_track'):
         def audio_get_track(self):
             """Get current audio track.
@@ -2708,33 +2719,6 @@ character of output sound - stereo sound, 2.1, 5.1 etc
 @return: 0 on success, -1 on error
         """
             return libvlc_audio_set_delay(self, i_delay)
-
-class TrackDescription(object):
-
-    def __new__(cls, pointer=None):
-        '''Internal method used for instanciating wrappers from ctypes.
-        '''
-        if pointer is None:
-            raise Exception("Internal method. Surely this class cannot be instanciated by itself.")
-        if pointer == 0:
-            return None
-        else:
-            o=object.__new__(cls)
-            o._as_parameter_=ctypes.c_void_p(pointer)
-            return o
-
-
-    @staticmethod
-    def from_param(arg):
-        '''(INTERNAL) ctypes parameter conversion method.
-        '''
-        return arg._as_parameter_
-
-    if hasattr(dll, 'libvlc_track_description_release'):
-        def release(self):
-            """Release (free) libvlc_track_description_t
-        """
-            return libvlc_track_description_release(self)
 
 if hasattr(dll, 'libvlc_errmsg'):
     prototype=ctypes.CFUNCTYPE(ctypes.c_char_p)
@@ -4078,7 +4062,7 @@ if hasattr(dll, 'libvlc_media_player_next_frame'):
 """
 
 if hasattr(dll, 'libvlc_track_description_release'):
-    prototype=ctypes.CFUNCTYPE(None, TrackDescription)
+    prototype=ctypes.CFUNCTYPE(None, ctypes.POINTER(TrackDescription))
     paramflags=( (1, ), )
     libvlc_track_description_release = prototype( ("libvlc_track_description_release", dll), paramflags )
     libvlc_track_description_release.__doc__ = """Release (free) libvlc_track_description_t
@@ -4245,7 +4229,7 @@ if hasattr(dll, 'libvlc_video_get_spu_count'):
 """
 
 if hasattr(dll, 'libvlc_video_get_spu_description'):
-    prototype=ctypes.CFUNCTYPE(TrackDescription, MediaPlayer)
+    prototype=ctypes.CFUNCTYPE(ctypes.POINTER(TrackDescription), MediaPlayer)
     paramflags=( (1, ), )
     libvlc_video_get_spu_description = prototype( ("libvlc_video_get_spu_description", dll), paramflags )
     libvlc_video_get_spu_description.__doc__ = """Get the description of available video subtitles.
@@ -4274,7 +4258,7 @@ if hasattr(dll, 'libvlc_video_set_subtitle_file'):
 """
 
 if hasattr(dll, 'libvlc_video_get_title_description'):
-    prototype=ctypes.CFUNCTYPE(TrackDescription, MediaPlayer)
+    prototype=ctypes.CFUNCTYPE(ctypes.POINTER(TrackDescription), MediaPlayer)
     paramflags=( (1, ), )
     libvlc_video_get_title_description = prototype( ("libvlc_video_get_title_description", dll), paramflags )
     libvlc_video_get_title_description.__doc__ = """Get the description of available titles.
@@ -4283,7 +4267,7 @@ if hasattr(dll, 'libvlc_video_get_title_description'):
 """
 
 if hasattr(dll, 'libvlc_video_get_chapter_description'):
-    prototype=ctypes.CFUNCTYPE(TrackDescription, MediaPlayer, ctypes.c_int)
+    prototype=ctypes.CFUNCTYPE(ctypes.POINTER(TrackDescription), MediaPlayer, ctypes.c_int)
     paramflags=(1,), (1,)
     libvlc_video_get_chapter_description = prototype( ("libvlc_video_get_chapter_description", dll), paramflags )
     libvlc_video_get_chapter_description.__doc__ = """Get the description of available chapters for specific title.
@@ -4346,7 +4330,7 @@ if hasattr(dll, 'libvlc_video_get_track_count'):
 """
 
 if hasattr(dll, 'libvlc_video_get_track_description'):
-    prototype=ctypes.CFUNCTYPE(TrackDescription, MediaPlayer)
+    prototype=ctypes.CFUNCTYPE(ctypes.POINTER(TrackDescription), MediaPlayer)
     paramflags=( (1, ), )
     libvlc_video_get_track_description = prototype( ("libvlc_video_get_track_description", dll), paramflags )
     libvlc_video_get_track_description.__doc__ = """Get the description of available video tracks.
@@ -4517,7 +4501,7 @@ are ignored.
 """
 
 if hasattr(dll, 'libvlc_audio_output_list_get'):
-    prototype=ctypes.CFUNCTYPE(ctypes.POINTER(AudioOutputItem), Instance)
+    prototype=ctypes.CFUNCTYPE(ctypes.POINTER(AudioOutput), Instance)
     paramflags=( (1, ), )
     libvlc_audio_output_list_get = prototype( ("libvlc_audio_output_list_get", dll), paramflags )
     libvlc_audio_output_list_get.__doc__ = """Get the list of available audio outputs
@@ -4527,7 +4511,7 @@ if hasattr(dll, 'libvlc_audio_output_list_get'):
 """
 
 if hasattr(dll, 'libvlc_audio_output_list_release'):
-    prototype=ctypes.CFUNCTYPE(None, ctypes.POINTER(AudioOutputItem))
+    prototype=ctypes.CFUNCTYPE(None, ctypes.POINTER(AudioOutput))
     paramflags=( (1, ), )
     libvlc_audio_output_list_release = prototype( ("libvlc_audio_output_list_release", dll), paramflags )
     libvlc_audio_output_list_release.__doc__ = """Free the list of available audio outputs
@@ -4663,7 +4647,7 @@ if hasattr(dll, 'libvlc_audio_get_track_count'):
 """
 
 if hasattr(dll, 'libvlc_audio_get_track_description'):
-    prototype=ctypes.CFUNCTYPE(TrackDescription, MediaPlayer)
+    prototype=ctypes.CFUNCTYPE(ctypes.POINTER(TrackDescription), MediaPlayer)
     paramflags=( (1, ), )
     libvlc_audio_get_track_description = prototype( ("libvlc_audio_get_track_description", dll), paramflags )
     libvlc_audio_get_track_description.__doc__ = """Get the description of available audio tracks.
@@ -5166,6 +5150,7 @@ if __name__ == '__main__':
 #    libvlc_errmsg
 #    libvlc_audio_output_list_release
 #    libvlc_clearerr
+#    libvlc_track_description_release
 #    libvlc_video_set_callbacks
 #    libvlc_get_compiler
 #    libvlc_new

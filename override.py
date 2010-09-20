@@ -61,7 +61,7 @@ class Instance:
         The result is a list of dict (name, description)
         """
         l = []
-        ao = libvlc_audio_output_list_get(self)
+        head = ao = libvlc_audio_output_list_get(self)
         while ao:
             l.append( { 'name': ao.contents.name, 
                         'description': ao.contents.description,
@@ -69,6 +69,7 @@ class Instance:
                                        'longname': libvlc_audio_output_device_longname(self, ao.contents.name, i) } 
                                      for i in range(libvlc_audio_output_device_count(self, ao.contents.name) ) ] } )
             ao = ao.contents.next
+        libvlc_audio_output_list_release(head)
         return l
 
 class Media:
@@ -124,6 +125,32 @@ class MediaPlayer:
         m = self.get_instance().media_new(mrl, *options)
         self.set_media(m)
         return m
+
+    def video_get_spu_description(self):
+        """Get the description of available video subtitles.
+        """
+        return track_description_list(libvlc_video_get_spu_description(self))
+
+    def video_get_title_description(self):
+        """Get the description of available titles.
+        """
+        return track_description_list(libvlc_video_get_title_description(self))
+
+    def video_get_chapter_description(self, title):
+        """Get the description of available chapters for specific title.
+        @param i_title selected title (int)
+        """
+        return track_description_list(libvlc_video_get_chapter_description(self, title))
+
+    def video_get_track_description(self):
+        """Get the description of available video tracks.
+        """
+        return track_description_list(libvlc_video_get_track_description(self))
+
+    def audio_get_track_description(self):
+        """Get the description of available audio tracks.
+        """
+        return track_description_list(libvlc_audio_get_track_description(self))
 
 class MediaListPlayer:
     """Create a new MediaPlayer instance.

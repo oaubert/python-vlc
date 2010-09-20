@@ -179,13 +179,33 @@ class LogMessage(ctypes.Structure):
         return "vlc.LogMessage(%d:%s): %s" % (self.severity, self.type, self.message)
 
 
-class AudioOutputItem(ctypes.Structure):
+class AudioOutput(ctypes.Structure):
     def __str__(self):
         return "vlc.AudioOutput(%s:%s)" % (self.name, self.description)
-AudioOutputItem._fields_= [
+AudioOutput._fields_= [
     ('name', ctypes.c_char_p),
     ('description', ctypes.c_char_p),
-    ('next', ctypes.POINTER(AudioOutputItem)),
+    ('next', ctypes.POINTER(AudioOutput)),
     ]
+
+class TrackDescription(ctypes.Structure):
+    def __str__(self):
+        return "vlc.TrackDescription(%d:%s)" % (self.id, self.name)
+TrackDescription._fields_= [
+    ('id', ctypes.c_int),
+    ('name', ctypes.c_char_p),
+    ('next', ctypes.POINTER(TrackDescription)),
+    ]
+def track_description_list(head):
+    """Convert a TrackDescription linked list to a python list, and release the linked list.
+    """
+    l = []
+    item = head
+    while item:
+        l.append( (item.contents.id, item.contents.name) )
+        item = item.contents.next
+    if head:
+        libvlc_track_description_release(head)
+    return l
 
 ### End of header.py ###
