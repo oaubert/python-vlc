@@ -1,38 +1,5 @@
 ### Start of footer.py ###
 
-class MediaEvent(ctypes.Structure):
-    _fields_ = [
-        ('media_name', ctypes.c_char_p),
-        ('instance_name', ctypes.c_char_p),
-        ]
-
-class EventUnion(ctypes.Union):
-    _fields_ = [
-        ('meta_type', ctypes.c_uint),
-        ('new_child', ctypes.c_uint),
-        ('new_duration', ctypes.c_longlong),
-        ('new_status', ctypes.c_int),
-        ('media', ctypes.c_void_p),
-        ('new_state', ctypes.c_uint),
-        # Media instance
-        ('new_position', ctypes.c_float),
-        ('new_time', ctypes.c_longlong),
-        ('new_title', ctypes.c_int),
-        ('new_seekable', ctypes.c_longlong),
-        ('new_pausable', ctypes.c_longlong),
-        # FIXME: Skipped MediaList and MediaListView...
-        ('filename', ctypes.c_char_p),
-        ('new_length', ctypes.c_longlong),
-        ('media_event', MediaEvent),
-        ]
-
-class Event(ctypes.Structure):
-    _fields_ = [
-        ('type', EventType),
-        ('object', ctypes.c_void_p),
-        ('u', EventUnion),
-        ]
-
 _EventManagers = {}
 
 # FIXME: the EventManager global dict could be removed if
