@@ -160,10 +160,7 @@ class MediaPlayer:
 
         @param num: video number (default 0)
         """
-        x, y = ctypes.c_ulong(), ctypes.c_ulong()  # or c_uint?
-        if libvlc_video_get_size(self, num, ctypes.byref(x), ctypes.byref(y)):
-            raise LibVLCException('invalid video number (%s)' % (num,))
-        return int(x.value), int(y.value)
+        return libvlc_video_get_size(self, num)
 
     def video_get_width(self, num=0):
         """Get the width of a video in pixels.
@@ -198,10 +195,7 @@ class MediaPlayer:
 
         @param num: video number (default 0)
         """
-        x, y = ctypes.c_long(), ctypes.c_long()  # or c_int?
-        if libvlc_video_get_cursor(self, num, ctypes.byref(x), ctypes.byref(y)):
-            raise LibVLCException('invalid video number (%s)' % (num,))
-        return int(x.value), int(y.value)
+        return libvlc_video_get_cursor(self, num)
 
 class MediaListPlayer:
     """Create a new MediaListPlayer instance.
