@@ -73,6 +73,9 @@ class Instance:
         return l
 
 class Media:
+    """Create a new Media instance.
+    """
+
     def add_options(self, *list_of_options):
         """Add a list of options to the media.
 
@@ -153,7 +156,7 @@ class MediaPlayer:
         return track_description_list(libvlc_audio_get_track_description(self))
 
 class MediaListPlayer:
-    """Create a new MediaPlayer instance.
+    """Create a new MediaListPlayer instance.
 
     It may take as parameter either:
       - a vlc.Instance
@@ -183,6 +186,8 @@ class MediaListPlayer:
         return self._instance
 
 class LogIterator:
+    """Create a new VLC log iterator.
+    """
     def __iter__(self):
         return self
 
@@ -194,6 +199,8 @@ class LogIterator:
         return ret.contents
 
 class Log:
+    """Create a new VLC log instance.
+    """
     def __iter__(self):
         return self.get_iterator()
 
