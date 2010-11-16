@@ -36,24 +36,6 @@ import operator
 import itertools
 from optparse import OptionParser
 
-# DefaultDict from ASPN python cookbook
-import copy
-class DefaultDict(dict):
-    """Dictionary with a default value for unknown keys."""
-    def __init__(self, default=None, **items):
-        dict.__init__(self, **items)
-        self.default = default
-
-    def __getitem__(self, key):
-        if key in self:
-            return self.get(key)
-        else:
-            ## Need copy in case self.default is something like []
-            return self.setdefault(key, copy.deepcopy(self.default))
-
-    def __copy__(self):
-        return DefaultDict(self.default, **self)
-
 # Methods not decorated/not referenced
 blacklist=[
     "libvlc_set_exit_handler",
@@ -69,10 +51,29 @@ python_param_re=re.compile('(@param\s+\S+)(.+)')
 forward_re=re.compile('.+\(\s*(.+?)\s*\)(\s*\S+)')
 enum_re=re.compile('(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\S+)?;')
 
-# Definition of parameter passing mode for types.  This should not be
-# hardcoded this way, but works alright ATM.
-parameter_passing=DefaultDict(default=1)
-parameter_passing['libvlc_exception_t*']=3
+
+# Parameter direction definitions.
+class Flag(object):
+    """Enum-like, parameter direction flag constants.
+    """
+    In = 1     # input only
+    Out = 2    # output only
+    InOut = 3  # in- and output
+    InZero = 4 # input, default int 0
+    def __init__(self):
+        raise TypeError('Constants only')
+
+# Parameter passing flags for types.  This shouldn't
+# be hardcoded this way, but works all right ATM.
+def paramFlag3(typ, *name_default):
+    # return the parameter flags as 1-, 2- or 3-tuple for the
+    # given type and optional parameter name and default value
+    t=( { 'int*':                Flag.Out,  # _video_get_cursor
+          'unsigned*':           Flag.Out,  # _video_get_size
+          'libvlc_exception_t*': Flag.InOut,
+          }.get(typ, Flag.In), )
+    return str(t + name_default)
+
 
 class Parser(object):
     def __init__(self, list_of_files):
@@ -493,24 +494,24 @@ class _Enum(ctypes.c_ulong):
             # FIXME
             return
 
-        self.output("""if hasattr(dll, '%s'):""" % method)
-        if params:
-            self.output("    prototype=ctypes.CFUNCTYPE(%s, %s)" % (self.type2class.get(rtype, 'FIXME_%s' % rtype),
-                                                                ", ".join( self.type2class[p[0]] for p in params )))
-        else:
-            self.output("    prototype=ctypes.CFUNCTYPE(%s)" % self.type2class.get(rtype, 'FIXME_%s' % rtype))
+         # return value and arg types
+        args = ", ".join( [self.type2class.get(rtype, 'FIXME_%s' % (rtype,))]
+                          + [self.type2class[p[0]] for p in params] )
 
+         # tuple of arg flag tuples
+        flags = ", ".join( paramFlag3(p[0]) for p in params )
+        if flags:
+            flags += ','
 
-        if not params:
-            flags='    paramflags= tuple()'
-        elif len(params) == 1:
-            flags="    paramflags=( (%d, ), )" % parameter_passing[params[0][0]]
-        else:
-            flags="    paramflags=%s" % ", ".join( '(%d,)' % parameter_passing[p[0]] for p in params )
-        self.output(flags)
-        self.output('    %s = prototype( ("%s", dll), paramflags )' % (method, method))
-        self.output('    %s.__doc__ = """%s"""' % (method, comment))
-        self.output()
+        comment = self.epydoc_comment(comment)
+
+        self.output('''if hasattr(dll, '%(method)s'):
+    p = ctypes.CFUNCTYPE(%(args)s)
+    f = (%(flags)s)
+    %(method)s = p( ('%(method)s', dll), f )
+    %(method)s.__doc__ = """%(comment)s
+"""
+''' % locals())
 
     def parse_override(self, name):
         """Parse override definitions file.
@@ -549,26 +550,23 @@ class _Enum(ctypes.c_ulong):
 
         return code, overridden_methods, docstring
 
-    def fix_python_comment(self, c, in_class=False):
-        """Transform comment into python syntax.
+    def epydoc_comment(self, comment, fix_first=False):
+        """Transform Doxygen into epydoc syntax and fix first parameter.
         """
-        # Transform Doxygen syntax into epydoc syntax
-        c=c.replace('@{', '').replace('@see', 'See').replace('\\see', 'See').replace('\\ingroup', '').replace('\\param', '@param').replace('\\return', '@return')
-        if in_class:
-            # Class method, remove first parameter (self)
-            data=c.splitlines()
-            body=itertools.takewhile(lambda l: not '@param' in l and not '@return' in l, data)
-            param=[ python_param_re.sub('\\1:\\2', l) for l in  itertools.ifilter(lambda l: '@param' in l, data) ]
-            ret=[ l.replace('@return', '@return:') for l in itertools.ifilter(lambda l: '@return' in l, data) ]
+        lines=comment.replace('@{', '').replace('\\ingroup', '') \
+                     .replace('@see', 'See').replace('\\see', 'See') \
+                     .replace('\\note', 'NOTE:').replace('\\warning', 'WARNING:') \
+                     .replace('\\param', '@param').replace('\\return', '@return') \
+                     .strip().splitlines()
 
-            if len(param) >= 2:
-                param=param[1:]
-            elif len(param) == 1:
-                param=[]
+        doc = [ l for l in lines if '@param' not in l and '@return' not in l ]
+        ret = [ l.replace('@return', '@return:') for l in lines if '@return' in l ]
 
-            return "\n".join(itertools.chain(body, param, ret))
-        else:
-            return c
+        params = [ python_param_re.sub('\\1:\\2', l) for l in lines if '@param' in l ]
+        if fix_first and params:  # remove (self)
+            params = params[1:]
+
+        return "\n".join( doc + params + ret )
 
     def generate_wrappers(self, methods):
         """Generate class wrappers for all appropriate methods.
@@ -615,27 +613,30 @@ class _Enum(ctypes.c_ulong):
             if classname in overrides:
                 self.output(overrides[classname])
 
-            prefix=self.prefixes.get(classname, '')
+            prefix = self.prefixes.get(classname, '')
 
             for cl, rtype, method, params, comment in el:
                 if method in blacklist:
                     continue
                 # Strip prefix
-                name=method.replace(prefix, '').replace('libvlc_', '')
+                name = method.replace(prefix, '').replace('libvlc_', '')
                 ret.add(method)
                 if name in overriden_methods.get(cl, []):
                     # Method already defined in override.py
                     continue
 
                 if params:
-                    params[0]=(params[0][0], 'self')
-                args=", ".join( p[1] for p in params )
+                    params[0] = (params[0][0], 'self')
+                args = ", ".join( p[1] for p in params )
 
-                self.output("    if hasattr(dll, '%s'):" % method)
-                self.output("        def %s(%s):" % (name, args))
-                self.output('            """%s\n        """' % self.fix_python_comment(comment, in_class=True))
-                self.output("            return %s(%s)" % (method, args))
-                self.output()
+                comment = self.epydoc_comment(comment, fix_first=True)
+
+                self.output('''    if hasattr(dll, '%(method)s'):
+        def %(name)s(%(args)s):
+            """%(comment)s
+            """
+            return %(method)s(%(args)s)
+''' % locals())
 
                 # Check for standard methods
                 if name == 'count':
