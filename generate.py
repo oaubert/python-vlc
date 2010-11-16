@@ -437,48 +437,53 @@ class PythonGenerator(object):
         return res
 
     def generate_enums(self, enums):
-        for (typ, name, values, comment) in enums:
-            if typ != 'enum':
-                raise Exception('This method only handles enums')
-            pyname=self.type2class[name]
+        self.output("""
+class _Enum(ctypes.c_ulong):
+    '''Base class
+    '''
+    _names={}
 
-            self.output("class %s(ctypes.c_ulong):" % pyname)
-            self.output('    """%s\n    """' % comment)
+    def __str__(self):
+        n=self._names.get(self.value, '') or ('FIXME_(%r)' % (self.value,))
+        return '.'.join((self.__class__.__name__, n))
 
-            conv={}
-            # Convert symbol names
-            for k, v in values:
-                n=k.split('_')[-1]
-                if len(n) == 1:
-                    # Single character. Some symbols use 1_1, 5_1, etc.
-                    n="_".join( k.split('_')[-2:] )
-                if re.match('^[0-9]', n):
-                    # Cannot start an identifier with a number
-                    n='_'+n
-                conv[k]=n
-
-            self.output("    _names={")
-            for k, v in values:
-                self.output("        %s: '%s'," % (v, conv[k]))
-            self.output("    }")
-
-            self.output("""
     def __repr__(self):
-        return ".".join((self.__class__.__module__, self.__class__.__name__, self._names[self.value]))
+        return '.'.join((self.__class__.__module__, self.__str__()))
 
     def __eq__(self, other):
-        return ( (isinstance(other, ctypes.c_ulong) and self.value == other.value)
-                 or (isinstance(other, (int, long)) and self.value == other ) )
+        return ( (isinstance(other, _Enum)       and self.value == other.value)
+              or (isinstance(other, (int, long)) and self.value == other) )
 
     def __ne__(self, other):
         return not self.__eq__(other)
-    """)
+""")
+        for (typ, name, values, comment) in enums:
+            if typ != 'enum':
+                raise Exception('This method only handles enums')
+
+            pyname = self.type2class[name]
+
+            self.output("class %s(_Enum):" % pyname)
+            self.output('    """%s\n    """' % comment)
+
+            self.output("    _names={")
+            l = []
+            # Convert symbol names
             for k, v in values:
-                self.output("%(class)s.%(attribute)s=%(class)s(%(value)s)" % {
+                k = k.split('_')
+                n = k[-1]
+                if len(n) <= 1:  # Single character name
+                    n = '_'.join( k[-2:] )  # Some use 1_1, 5_1, etc.
+                if n[0].isdigit(): # Cannot start with a number
+                    n = '_' + n
+                self.output("        %s: '%s'," % (v, n))
+                l.append("%(class)s.%(attribute)s=%(class)s(%(value)s)" % {
                         'class': pyname,
-                        'attribute': conv[k],
-                        'value': v
+                        'attribute': n,
+                        'value': v,
                         })
+            self.output("    }")
+            self.output("\n".join(sorted(l)))
             self.output("")
 
     def output_ctypes(self, rtype, method, params, comment):
