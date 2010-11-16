@@ -63,10 +63,10 @@ class Instance:
         l = []
         head = ao = libvlc_audio_output_list_get(self)
         while ao:
-            l.append( { 'name': ao.contents.name, 
+            l.append( { 'name': ao.contents.name,
                         'description': ao.contents.description,
-                        'devices': [ { 'id': libvlc_audio_output_device_id(self, ao.contents.name, i), 
-                                       'longname': libvlc_audio_output_device_longname(self, ao.contents.name, i) } 
+                        'devices': [ { 'id': libvlc_audio_output_device_id(self, ao.contents.name, i),
+                                       'longname': libvlc_audio_output_device_longname(self, ao.contents.name, i) }
                                      for i in range(libvlc_audio_output_device_count(self, ao.contents.name) ) ] } )
             ao = ao.contents.next
         libvlc_audio_output_list_release(head)
@@ -229,7 +229,7 @@ class EventManager:
         o = object.__new__(cls)
         o._as_parameter_ = ptr  # was ctypes.c_void_p(ptr)
         o._callbacks_ = {}  # 3-tuples of Python objs
-        _EventManagers[id(o)] = o  # map id to instance
+        o._callback_handler = None
         return o
 
     def event_attach(self, eventtype, callback, *args, **kwds):
@@ -250,7 +250,26 @@ class EventManager:
         if not hasattr(callback, '__call__'):  # callable()
             raise LibVLCException("%s required: %r" % ('callable', callback))
 
-        r = libvlc_event_attach(self, eventtype, _callback_handler, id(self))
+        if self._callback_handler is None:
+            _called_from_ctypes = ctypes.CFUNCTYPE(None, ctypes.POINTER(Event), ctypes.c_void_p)
+            @_called_from_ctypes
+            def _callback_handler(event, data):
+                """(INTERNAL) handle callback call from ctypes.
+
+                Note: we cannot simply make this an instance method of
+                EventManager since ctypes callback does not append
+                self as first parameter. Hence we use a closure.
+                """
+                try: # retrieve Python callback and arguments
+                    call, args, kwds = self._callbacks_[event.contents.type.value]
+                    # FIXME: event could be dereferenced here to event.contents,
+                    # this would simplify the callback code.
+                    call(event, *args, **kwds)
+                except KeyError:  # detached?
+                    pass
+            self._callback_handler = _callback_handler
+
+        r = libvlc_event_attach(self, eventtype, self._callback_handler, None)
         if not r:
             self._callbacks_[eventtype.value] = (callback, args, kwds)
         return r
@@ -266,4 +285,4 @@ class EventManager:
         t = eventtype.value
         if t in self._callbacks_:
             del self._callbacks_[t] # remove, regardless of libvlc return value
-            libvlc_event_detach(self, eventtype, _callback_handler, id(self))
+            libvlc_event_detach(self, eventtype, self._callback_handler, None)

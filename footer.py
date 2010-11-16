@@ -1,22 +1,5 @@
 ### Start of footer.py ###
 
-_EventManagers = {}
-
-# FIXME: the EventManager global dict could be removed if
-# _callback_handler was made a method of EventManager.
-_called_from_ctypes = ctypes.CFUNCTYPE(None, ctypes.POINTER(Event), ctypes.c_void_p)
-@_called_from_ctypes
-def _callback_handler(event, key):
-    '''(INTERNAL) handle callback call from ctypes.
-    '''
-    try: # retrieve Python callback and arguments
-        call, args, kwds = _EventManagers[key]._callbacks_[event.contents.type.value]
-        # FIXME: event could be dereferenced here to event.contents,
-        # this would simplify the callback code.
-        call(event, *args, **kwds)
-    except KeyError:  # detached?
-        pass
-
 def callbackmethod(f):
     """Backward compatibility with the now useless @callbackmethod decorator.
     
