@@ -33,15 +33,38 @@ class Event(ctypes.Structure):
         ('u', EventUnion),
         ]
 
-# Decorator for callback methods
-callbackmethod=ctypes.CFUNCTYPE(None, ctypes.POINTER(Event), ctypes.c_void_p)
+_EventManagers = {}
 
-# Example callback method
-@callbackmethod
-def debug_callback(event, data):
-    print "Debug callback method"
-    print "Event:", event.contents.type
-    print "Data", data
+# FIXME: the EventManager global dict could be removed if
+# _callback_handler was made a method of EventManager.
+_called_from_ctypes = ctypes.CFUNCTYPE(None, ctypes.POINTER(Event), ctypes.c_void_p)
+@_called_from_ctypes
+def _callback_handler(event, key):
+    '''(INTERNAL) handle callback call from ctypes.
+    '''
+    try: # retrieve Python callback and arguments
+        call, args, kwds = _EventManagers[key]._callbacks_[event.contents.type.value]
+        # FIXME: event could be dereferenced here to event.contents,
+        # this would simplify the callback code.
+        call(event, *args, **kwds)
+    except KeyError:  # detached?
+        pass
+
+def callbackmethod(f):
+    """Backward compatibility with the now useless @callbackmethod decorator.
+    
+    This method will be removed after a transition period.
+    """
+    return f
+
+# Example callback, useful for debugging
+def debug_callback(event, *args, **kwds):
+    l = ["event %s" % (event.contents.type,)]
+    if args:
+       l.extend(map(str, args))
+    if kwds:
+       l.extend(sorted( "%s=%s" % t for t in kwds.iteritems() ))
+    print "Debug callback (%s)" % ", ".join(l)
 
 if __name__ == '__main__':
     try:
@@ -59,10 +82,16 @@ if __name__ == '__main__':
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
             return ch
 
-    @callbackmethod
-    def end_callback(event, data):
+    def end_callback(event):
         print "End of stream"
         sys.exit(0)
+
+    echo_position = False
+    def pos_callback(event, player):
+        if echo_position:
+            print "%s to %.2f%% (%.2f%%)" % (event.contents.type,
+                   event.contents.u.new_position * 100,
+                   player.get_position() * 100)
 
     if sys.argv[1:]:
         instance=Instance()
@@ -71,12 +100,17 @@ if __name__ == '__main__':
         player.set_media(media)
         player.play()
 
-        event_manager=player.event_manager()
-        event_manager.event_attach(EventType.MediaPlayerEndReached, end_callback, None)
+         # Some event manager examples.  Note, the callback can be any Python
+         # callable and does not need to be decorated.  Optionally, specify
+         # any number of positional and/or keyword arguments to be passed
+         # to the callback (in addition to the first one, an Event instance).
+        event_manager = player.event_manager()
+        event_manager.event_attach(EventType.MediaPlayerEndReached, end_callback)
+        event_manager.event_attach(EventType.MediaPlayerPositionChanged, pos_callback, player)
 
         def print_info():
             """Print information about the media."""
-            media=player.get_media()
+            media = player.get_media()
             print "State:", player.get_state()
             print "Media:", media.get_mrl()
             try:
@@ -116,6 +150,11 @@ if __name__ == '__main__':
             """Exit."""
             sys.exit(0)
 
+        def toggle_echo_position():
+            """Toggle echoing of media position"""
+            global echo_position
+            echo_position = not echo_position
+
         keybindings={
             'f': player.toggle_fullscreen,
             ' ': player.pause,
@@ -125,6 +164,7 @@ if __name__ == '__main__':
             ',': one_frame_backward,
             '?': print_help,
             'i': print_info,
+            'p': toggle_echo_position,
             'q': quit_app,
             }
 

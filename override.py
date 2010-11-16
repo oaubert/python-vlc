@@ -199,3 +199,71 @@ class Log:
 
     def dump(self):
         return [ str(m) for m in self ]
+
+class EventManager:
+    """Create an event manager and handler.
+
+       This class interposes the registration and handling of
+       event notifications in order to (a) allow any number of
+       positional and/or keyword arguments to the callback (in
+       addition to the Event instance), (b) preserve the Python
+       argument objects and (c) remove the need for decorating
+       each callback with decorator '@callbackmethod'.
+
+       Calls from ctypes to Python callbacks are handled by
+       function _callback_handler.
+
+       A side benefit of this scheme is that the callback and
+       all argument objects remain alive (i.e. are not garbage
+       collected) until *after* the event notification has
+       been unregistered.
+
+       NOTE: only a single notification can be registered for
+       each event type in an EventManager instance.
+    """
+    def __new__(cls, ptr=None):
+        if ptr is None:
+            raise LibVLCException("(INTERNAL) ctypes class.")
+        if ptr == 0:
+            return None
+        o = object.__new__(cls)
+        o._as_parameter_ = ptr  # was ctypes.c_void_p(ptr)
+        o._callbacks_ = {}  # 3-tuples of Python objs
+        _EventManagers[id(o)] = o  # map id to instance
+        return o
+
+    def event_attach(self, eventtype, callback, *args, **kwds):
+        """Register an event notification.
+
+        @param eventtype: the desired event type to be notified about
+        @param callback: the function to call when the event occurs
+        @param args: optional positional arguments for the callback
+        @param kwds: optional keyword arguments for the callback
+        @return: 0 on success, ENOMEM on error
+
+        NOTE: The callback must have at least one argument, the Event
+        instance.  The optional positional and keyword arguments are
+        in addition to the first one.
+        """
+        if not isinstance(eventtype, EventType):
+            raise LibVLCException("%s required: %r" % ('EventType', eventtype))
+        if not hasattr(callback, '__call__'):  # callable()
+            raise LibVLCException("%s required: %r" % ('callable', callback))
+
+        r = libvlc_event_attach(self, eventtype, _callback_handler, id(self))
+        if not r:
+            self._callbacks_[eventtype.value] = (callback, args, kwds)
+        return r
+
+    def event_detach(self, eventtype):
+        """Unregister an event notification.
+
+        @param eventtype: the event type notification to be removed
+        """
+        if not isinstance(eventtype, EventType):
+            raise LibVLCException("%s required: %r" % ('EventType', eventtype))
+
+        t = eventtype.value
+        if t in self._callbacks_:
+            del self._callbacks_[t] # remove, regardless of libvlc return value
+            libvlc_event_detach(self, eventtype, _callback_handler, id(self))
