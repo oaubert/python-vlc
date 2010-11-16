@@ -119,8 +119,6 @@ class Parser(object):
         with type == 'enum' (for the moment) and value_list being a list of (name, value)
         Note that values are string, since this is intended for code generation.
         """
-        event_names=[]
-
         f=open(name, 'r')
         accumulator=''
         comment=""
@@ -129,7 +127,7 @@ class Parser(object):
             # Note: lstrip() should not be necessary, but there is 1 badly
             # formatted comment in vlc1.0.0 includes
             if l.lstrip().startswith('/**'):
-                comment=l[2:]
+                comment = l[3:]
                 continue
             elif l.startswith(' * '):
                 comment = comment + l[3:]
@@ -139,15 +137,17 @@ class Parser(object):
 
             if l.startswith('/*'):
                 # Simple comment start
-                simple_comment=l[2:]
                 if l.endswith('*/'):
-                    simple_comment=None
+                    simple_comment = None
+                else:
+                    simple_comment = l[2:]
                 continue
             elif simple_comment is not None:
                 # We are in a comment
-                simple_comment += l
                 if l.endswith('*/'):
-                    simple_comment=None
+                    simple_comment = None
+                else:
+                    simple_comment += l
                 continue
 
             if re.match('^(?:typedef\s+)?enum', l) and not l.endswith(';'):
@@ -193,9 +193,15 @@ class Parser(object):
                 else:
                     name=name.strip()
 
+                # Clean up comment text
+                if comment.endswith('*/'):
+                    comment = comment[:-2]
+                comment = comment.strip()
+                if comment:
+                    comment = comment.capitalize().rstrip('.') + '.'
+
                 yield (typ, name, values, comment)
                 comment=""
-                continue
 
     def parse_include(self, name):
         """Parse include file.
@@ -214,7 +220,7 @@ class Parser(object):
                 comment=''
                 continue
             elif l.startswith(' * '):
-                comment = comment + l[3:]
+                comment += l[3:]
                 continue
 
             l=l.strip()
@@ -312,6 +318,9 @@ class PythonGenerator(object):
         'libvlc_media_stats_t*': 'ctypes.POINTER(MediaStats)',
         'libvlc_media_track_info_t**': 'ctypes.POINTER(ctypes.POINTER(MediaTrackInfo))',
 
+        'libvlc_drawable_t': 'ctypes.c_uint',  # FIXME?
+        'libvlc_rectangle_t*': 'ctypes.POINTER(Rectangle)',  # FIXME?
+
         'WINDOWHANDLE': 'ctypes.c_ulong',
 
         'void': 'None',
@@ -323,10 +332,10 @@ class PythonGenerator(object):
         'int64_t': 'ctypes.c_int64',
         'float': 'ctypes.c_float',
         'unsigned': 'ctypes.c_uint',
-        'unsigned*': 'ctypes.POINTER(ctypes.c_uint)',
+        'unsigned*': 'ctypes.POINTER(ctypes.c_uint)',  # _video_get_size
         'int': 'ctypes.c_int',
-        'int*': 'ctypes.POINTER(ctypes.c_int)',
-        '...': 'FIXMEva_list',
+        'int*': 'ctypes.POINTER(ctypes.c_int)',  # _video_get_cursor
+        '...': 'FIXME_va_list',
         'libvlc_callback_t': 'ctypes.c_void_p',
         'libvlc_time_t': 'ctypes.c_longlong',
         }
@@ -367,16 +376,18 @@ class PythonGenerator(object):
             self.fd=open(filename, 'w')
 
         self.insert_code('header.py')
-        wrapped_methods=self.generate_wrappers(self.parser.methods)
+        wrapped_methods=self.generate_wrappers(self.parser.methods)  # set
+        unwrapped_methods=[]
         for l in self.parser.methods:
             self.output_ctypes(*l)
+            m = l[1] # is method wrapped?
+            if m not in wrapped_methods:
+                unwrapped_methods.append("#  " + m)
         self.insert_code('footer.py')
 
-        all_methods=set( t[1] for t in self.parser.methods )
-        not_wrapped=all_methods.difference(wrapped_methods)
-        self.output("# Not wrapped methods:")
-        for m in not_wrapped:
-            self.output("#   ", m)
+        if unwrapped_methods:
+            self.output("# %d methods not wrapped :" % len(unwrapped_methods))
+            self.output("\n".join(sorted(unwrapped_methods)))
 
         if self.fd != sys.stdout:
             self.fd.close()
@@ -570,9 +581,9 @@ class PythonGenerator(object):
         overrides, overriden_methods, docstring=self.parse_override('override.py')
 
         for classname, el in itertools.groupby(elements, key=operator.itemgetter(0)):
-            self.output("""class %(name)s(object):""" % {'name': classname})
+            self.output('class %s(object):' % classname)
             if classname in docstring:
-                self.output('    """%s\n    """' % docstring[classname])
+                self.output('    """%s\n    """' % docstring[classname].strip())
 
             if not 'def __new__' in overrides.get(classname, ''):
                 self.output("""
@@ -583,10 +594,9 @@ class PythonGenerator(object):
             raise Exception("Internal method. Surely this class cannot be instanciated by itself.")
         if pointer == 0:
             return None
-        else:
-            o=object.__new__(cls)
-            o._as_parameter_=ctypes.c_void_p(pointer)
-            return o
+        o=object.__new__(cls)
+        o._as_parameter_=ctypes.c_void_p(pointer)
+        return o
 """)
 
             self.output("""
@@ -804,20 +814,6 @@ public enum %s
             self.output(fd, "}")
             fd.close()
 
-    def fix_python_comment(self, c):
-        """Fix comment by removing first parameter (self)
-        """
-        data=c.replace('@{', '').replace('@see', 'See').splitlines()
-        body=itertools.takewhile(lambda l: not '@param' in l and not '@return' in l, data)
-        param=[ python_param_re.sub('\\1:\\2', l) for l in  itertools.ifilter(lambda l: '@param' in l, data) ]
-        ret=[ l.replace('@return', '@return:') for l in itertools.ifilter(lambda l: '@return' in l, data) ]
-
-        if len(param) >= 2:
-            param=param[1:]
-        elif len(param) == 1:
-            param=[]
-
-        return "\n".join(itertools.chain(body, param, ret))
 
 def process(output, list_of_includes):
     p=Parser(list_of_includes)
