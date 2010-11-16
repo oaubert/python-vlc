@@ -65,14 +65,14 @@ class Flag(object):
 
 # Parameter passing flags for types.  This shouldn't
 # be hardcoded this way, but works all right ATM.
-def paramFlag3(typ, *name_default):
+def paramFlag3(typ):
     # return the parameter flags as 1-, 2- or 3-tuple for the
     # given type and optional parameter name and default value
     t=( { 'int*':                Flag.Out,  # _video_get_cursor
           'unsigned*':           Flag.Out,  # _video_get_size
           'libvlc_exception_t*': Flag.InOut,
           }.get(typ, Flag.In), )
-    return str(t + name_default)
+    return t
 
 
 class Parser(object):
@@ -499,7 +499,7 @@ class _Enum(ctypes.c_ulong):
                           + [self.type2class[p[0]] for p in params] )
 
          # tuple of arg flag tuples
-        flags = ", ".join( paramFlag3(p[0]) for p in params )
+        flags = ", ".join( str(paramFlag3(p[0])) for p in params )
         if flags:
             flags += ','
 
@@ -562,7 +562,7 @@ class _Enum(ctypes.c_ulong):
         doc = [ l for l in lines if '@param' not in l and '@return' not in l ]
         ret = [ l.replace('@return', '@return:') for l in lines if '@return' in l ]
 
-        params = [ python_param_re.sub('\\1:\\2', l) for l in lines if '@param' in l ]
+        params = [ python_param_re.sub('\\1:\\2', l) for l in lines if '@param' in l and not '[OUT]' in l ]
         if fix_first and params:  # remove (self)
             params = params[1:]
 
@@ -627,7 +627,7 @@ class _Enum(ctypes.c_ulong):
 
                 if params:
                     params[0] = (params[0][0], 'self')
-                args = ", ".join( p[1] for p in params )
+                args = ", ".join( p[1] for p in params if paramFlag3(p[0])[0] != Flag.Out )
 
                 comment = self.epydoc_comment(comment, fix_first=True)
 
