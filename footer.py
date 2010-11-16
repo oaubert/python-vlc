@@ -33,7 +33,7 @@ if __name__ == '__main__':
             return ch
 
     def end_callback(event):
-        print "End of stream"
+        print "End of media stream (event %s)" % event.type
         sys.exit(0)
 
     echo_position = False
@@ -42,6 +42,14 @@ if __name__ == '__main__':
             print "%s to %.2f%% (%.2f%%)\r" % (event.type,
                    event.u.new_position * 100,
                    player.get_position() * 100)
+
+    def print_version():
+        """Print libvlc version.
+        """
+        try:
+            print "LibVLC version", libvlc_get_version()
+        except:
+            print "Error:", sys.exc_info()[1]
 
     if sys.argv[1:]:
         instance=Instance()
@@ -60,21 +68,29 @@ if __name__ == '__main__':
 
         def print_info():
             """Print information about the media."""
-            media = player.get_media()
-            print "State:", player.get_state()
-            print "Media:", media.get_mrl()
             try:
+                print_version()
+                media = player.get_media()
+                print "State:", player.get_state()
+                print "Media:", media.get_mrl()
+                print "Track:", player.video_get_track(), "/", player.video_get_track_count()
                 print "Current time:", player.get_time(), "/", media.get_duration()
                 print "Position:", player.get_position()
                 print "FPS:", player.get_fps()
                 print "Rate:", player.get_rate()
-                print "Video size: (%d, %d)" % (player.video_get_width(), player.video_get_height())
+                print "Video size: (%d, %d)" % player.video_get_size()
+                print "Scale:", player.video_get_scale()
+                print "Aspect ratio:", player.video_get_aspect_ratio()
             except Exception:
-                pass
+                print "Error:", sys.exc_info()[1]
 
         def forward():
             """Go forward 1s"""
             player.set_time(player.get_time() + 1000)
+
+        def backward():
+            """Go backward 1s"""
+            player.set_time(player.get_time() - 1000)
 
         def one_frame_forward():
             """Go forward one frame"""
@@ -84,16 +100,12 @@ if __name__ == '__main__':
             """Go backward one frame"""
             player.set_time(player.get_time() - long(1000 / (player.get_fps() or 25)))
 
-        def backward():
-            """Go backward 1s"""
-            player.set_time(player.get_time() - 1000)
-
         def print_help():
             """Print help
             """
-            print "Commands:"
+            print "Single-character commands:"
             for k, m in keybindings.iteritems():
-                print "  %s: %s" % (k, (m.__doc__ or m.__name__).splitlines()[0])
+                print "  %s: %s" % (k, (m.__doc__ or m.__name__).splitlines()[0].rstrip("."))
             print " 1-9: go to the given fraction of the movie"
 
         def quit_app():
@@ -106,32 +118,33 @@ if __name__ == '__main__':
             echo_position = not echo_position
 
         keybindings={
-            'f': player.toggle_fullscreen,
             ' ': player.pause,
             '+': forward,
             '-': backward,
             '.': one_frame_forward,
             ',': one_frame_backward,
             '?': print_help,
+            'f': player.toggle_fullscreen,
             'i': print_info,
             'p': toggle_echo_position,
             'q': quit_app,
             }
 
         print "Press q to quit, ? to get help."
+        print
         while True:
-            k=getch()
-            o=ord(k)
-            method=keybindings.get(k, None)
-            if method is not None:
-                method()
-            elif o >= 49 and o <= 57:
+            k = getch()
+            print ">", k
+            if k in keybindings:
+                keybindings[k]()
+            elif k.isdigit():
                 # Numeric value. Jump to a fraction of the movie.
-                v=0.1*(o-48)
-                player.set_position(v)
+                player.set_position(float('0.'+k))
     else:
-        print "Syntax: %s movie_filename" % sys.argv[0]
-        print "Once launched, type ? to get commands."
+        print "Syntax: %s <movie_filename>" % sys.argv[0]
+        print "Once launched, type ? to get help."
+        print_version()
+
 
 
 
