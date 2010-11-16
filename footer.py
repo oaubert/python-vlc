@@ -9,7 +9,7 @@ def callbackmethod(f):
 
 # Example callback, useful for debugging
 def debug_callback(event, *args, **kwds):
-    l = ["event %s" % (event.contents.type,)]
+    l = ["event %s" % (event.type,)]
     if args:
        l.extend(map(str, args))
     if kwds:
@@ -39,8 +39,8 @@ if __name__ == '__main__':
     echo_position = False
     def pos_callback(event, player):
         if echo_position:
-            print "%s to %.2f%% (%.2f%%)" % (event.contents.type,
-                   event.contents.u.new_position * 100,
+            print "%s to %.2f%% (%.2f%%)\r" % (event.type,
+                   event.u.new_position * 100,
                    player.get_position() * 100)
 
     if sys.argv[1:]:

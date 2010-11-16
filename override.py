@@ -262,9 +262,8 @@ class EventManager:
                 """
                 try: # retrieve Python callback and arguments
                     call, args, kwds = self._callbacks_[event.contents.type.value]
-                    # FIXME: event could be dereferenced here to event.contents,
-                    # this would simplify the callback code.
-                    call(event, *args, **kwds)
+                    # We dereference event.contents here to simplify callback code.
+                    call(event.contents, *args, **kwds)
                 except KeyError:  # detached?
                     pass
             self._callback_handler = _callback_handler
