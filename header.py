@@ -133,7 +133,8 @@ class MediaStats(ctypes.Structure):
                 ]
 
     def __str__(self):
-        return "MediaStats\n%s" % "\n".join( "%s:\t%s" % (n, getattr(self, n)) for n in self._fields_ )
+        return "\n".join( [ self.__class__.__name__ ]
+                          + [" %s:\t%s" % (n, getattr(self, n)) for n in self._fields_] )
 
 class MediaTrackInfo(ctypes.Structure):
     _fields_= [
@@ -147,7 +148,8 @@ class MediaTrackInfo(ctypes.Structure):
         ]
 
     def __str__(self):
-        return "MediaTrackInfo \n%s" % "\n".join( "%s:\t%s" % (n, getattr(self, n)) for n in self._fields_ )
+        return "\n".join( [self.__class__.__name__]
+                          + [" %s:\t%s" % (n, getattr(self, n)) for n in self._fields_])
 
 class PlaylistItem(ctypes.Structure):
     _fields_= [
@@ -157,7 +159,7 @@ class PlaylistItem(ctypes.Structure):
                 ]
 
     def __str__(self):
-        return "PlaylistItem #%d %s (%uri)" % (self.id, self.name, self.uri)
+        return "%s #%d %s (uri %s)" % (self.__class__.__name__, self.id, self.name, self.uri)
 
 class LogMessage(ctypes.Structure):
     _fields_= [
@@ -174,12 +176,12 @@ class LogMessage(ctypes.Structure):
         self.size=ctypes.sizeof(self)
 
     def __str__(self):
-        return "vlc.LogMessage(%d:%s): %s" % (self.severity, self.type, self.message)
+        return "%s(%d:%s): %s" % (self.__class__.__name__, self.severity, self.type, self.message)
 
 
 class AudioOutput(ctypes.Structure):
     def __str__(self):
-        return "vlc.AudioOutput(%s:%s)" % (self.name, self.description)
+        return "%s(%s:%s)" % (self.__class__.__name__, self.name, self.description)
 AudioOutput._fields_= [
     ('name', ctypes.c_char_p),
     ('description', ctypes.c_char_p),
@@ -188,7 +190,7 @@ AudioOutput._fields_= [
 
 class TrackDescription(ctypes.Structure):
     def __str__(self):
-        return "vlc.TrackDescription(%d:%s)" % (self.id, self.name)
+        return "%s(%d:%s)" % (self.__class__.__name__, self.id, self.name)
 TrackDescription._fields_= [
     ('id', ctypes.c_int),
     ('name', ctypes.c_char_p),
@@ -199,10 +201,10 @@ def track_description_list(head):
     """
     l = []
     item = head
-    while item:
-        l.append( (item.contents.id, item.contents.name) )
-        item = item.contents.next
     if head:
+        while item:
+            l.append( (item.contents.id, item.contents.name) )
+            item = item.contents.next
         libvlc_track_description_release(head)
     return l
 
