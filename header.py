@@ -241,4 +241,12 @@ class Event(ctypes.Structure):
         ('u', EventUnion),
         ]
 
+class Rectangle(ctypes.Structure):
+    _fields_ = [
+        ('top',    ctypes.c_int),
+        ('left',   ctypes.c_int),
+        ('bottom', ctypes.c_int),
+        ('right',  ctypes.c_int),
+        ]
+
 ### End of header.py ###
