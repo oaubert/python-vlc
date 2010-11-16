@@ -32,61 +32,59 @@ create a libvlc Instance. From this instance, you can then create
 L{MediaPlayer} and L{MediaListPlayer} instances.
 """
 
-import logging
 import ctypes
 import sys
+import os
 
 build_date="This will be replaced by the build date"
 
 # Used for win32 and MacOS X
 detected_plugin_path=None
 
-if sys.platform == 'linux2':
+if sys.platform.startswith('linux'):
     try:
         dll=ctypes.CDLL('libvlc.so')
     except OSError:
         dll=ctypes.CDLL('libvlc.so.5')
-elif sys.platform == 'win32':
+
+elif sys.platform.startswith('win'):
     import ctypes.util
-    import os
-    detected_plugin_path=None
-    path=ctypes.util.find_library('libvlc.dll')
-    if path is None:
-        # Try to use registry settings
-        import _winreg
-        detected_plugin_path_found = None
-        subkey, name = 'Software\\VideoLAN\\VLC','InstallDir'
-        for hkey in _winreg.HKEY_LOCAL_MACHINE, _winreg.HKEY_CURRENT_USER:
+    p=ctypes.util.find_library('libvlc.dll')
+    if p is None:
+        import _winreg  # Try to use registry settings
+        for r in _winreg.HKEY_LOCAL_MACHINE, _winreg.HKEY_CURRENT_USER:
             try:
-                reg = _winreg.OpenKey(hkey, subkey)
-                detected_plugin_path_found, type_id = _winreg.QueryValueEx(reg, name)
-                _winreg.CloseKey(reg)
+                r = _winreg.OpenKey(r, 'Software\\VideoLAN\\VLC')
+                detected_plugin_path, _ = _winreg.QueryValueEx(r, 'InstallDir')
+                _winreg.CloseKey(r)
                 break
             except _winreg.error:
                 pass
-        if detected_plugin_path_found:
-            detected_plugin_path = detected_plugin_path_found
-        else:
-            # Try a standard location.
-            p='c:\\Program Files\\VideoLAN\\VLC\\libvlc.dll'
-            if os.path.exists(p):
-                detected_plugin_path=os.path.dirname(p)
-        os.chdir(detected_plugin_path)
+        else:  # Try some standard locations.
+            for p in ('c:\\Program Files', 'c:'):
+                p += '\\VideoLAN\\VLC\\libvlc.dll'
+                if os.path.exists(p):
+                    detected_plugin_path = os.path.dirname(p)
+                    break
+        del r, _winreg
+        os.chdir(detected_plugin_path or os.curdir)
         # If chdir failed, this will not work and raise an exception
-        path='libvlc.dll'
+        p = 'libvlc.dll'
     else:
-        detected_plugin_path=os.path.dirname(path)
-    dll=ctypes.CDLL(path)
-elif sys.platform == 'darwin':
+        detected_plugin_path = os.path.dirname(p)
+    dll=ctypes.CDLL(p)
+    del p
+elif sys.platform.startswith('darwin'):
     # FIXME: should find a means to configure path
-    d='/Applications/VLC.app'
-    import os
+    d='/Applications/VLC.app/Contents/MacOS'
     if os.path.exists(d):
-        dll=ctypes.CDLL(d+'/Contents/MacOS/lib/libvlc.dylib')
-        detected_plugin_path=d+'/Contents/MacOS/modules'
-    else:
-        # Hope some default path is set...
-        dll=ctypes.CDLL('libvlc.dylib')
+        dll = ctypes.CDLL(d+'/lib/libvlc.dylib')
+        detected_plugin_path = d + '/modules'
+    else: # Hope some default path is set...
+        dll = ctypes.CDLL('libvlc.dylib')
+    del d
+else:
+    raise NotImplementedError('O/S %r not supported' % sys.platform)
 
 #
 # Generated enum types.
