@@ -274,7 +274,7 @@ class EventManager:
         if self._callback_handler is None:
             _called_from_ctypes = ctypes.CFUNCTYPE(None, ctypes.POINTER(Event), ctypes.c_void_p)
             @_called_from_ctypes
-            def _callback_handler(event, data):
+            def _callback_handler(event, unused):
                 """(INTERNAL) handle callback call from ctypes.
 
                 Note: we cannot simply make this an instance method of
