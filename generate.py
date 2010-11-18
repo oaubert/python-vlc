@@ -203,6 +203,7 @@ class Parser(object):
 
                 yield (typ, name, values, comment)
                 comment=""
+        f.close()
 
     def parse_include(self, name):
         """Parse include file.
@@ -282,6 +283,7 @@ class Parser(object):
                        params,
                        comment)
                 comment=''
+        f.close()
 
     def dump_methods(self):
         print "** Defined functions **"
