@@ -78,7 +78,7 @@ if __name__ == '__main__':
                 print "Position:", player.get_position()
                 print "FPS:", player.get_fps()
                 print "Rate:", player.get_rate()
-                print "Video size: (%d, %d)" % player.video_get_size()
+                print "Video size: (%d, %d)" % player.video_get_size(0)
                 print "Scale:", player.video_get_scale()
                 print "Aspect ratio:", player.video_get_aspect_ratio()
             except Exception:
