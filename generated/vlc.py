@@ -36,7 +36,7 @@ import ctypes
 import sys
 import os
 
-build_date="Tue Nov 16 12:19:50 2010"
+build_date="Thu Nov 18 18:31:42 2010"
 
 # Used for win32 and MacOS X
 detected_plugin_path=None
@@ -538,8 +538,8 @@ def track_description_list(head):
     """Convert a TrackDescription linked list to a python list, and release the linked list.
     """
     l = []
-    item = head
     if head:
+        item = head
         while item:
             l.append( (item.contents.id, item.contents.name) )
             item = item.contents.next
@@ -586,6 +586,26 @@ class Rectangle(ctypes.Structure):
         ('bottom', ctypes.c_int),
         ('right',  ctypes.c_int),
         ]
+
+class Position(object):
+    """Enum-like, position constants for VideoMarqueePosition option.
+    """
+    Center=0
+    Left=1
+    CenterLeft=1
+    Right=2
+    CenterRight=2
+    Top=4
+    TopCenter=4
+    TopLeft=5
+    TopRight=6
+    Bottom=8
+    BottomCenter=8
+    BottomLeft=9
+    BottomRight=10
+
+    def __init__(self):
+        raise TypeError('Constants only')
 
 ### End of header.py ###
 class EventManager(object):
@@ -5132,11 +5152,31 @@ if __name__ == '__main__':
             print "Error:", sys.exc_info()[1]
 
     if sys.argv[1:]:
-        instance=Instance()
-        media=instance.media_new(sys.argv[1])
-        player=instance.media_player_new()
+        instance = Instance()
+        try:
+            # load marq option
+            media = instance.media_new(sys.argv[1], "sub-filter=marq")
+        except NameError:
+            print "NameError:", sys.exc_info()[1], "(VLC release too old?)"
+            sys.exit(1)
+        player = instance.media_player_new()
         player.set_media(media)
         player.play()
+
+         # Some marquee examples.  Marquee requires 'sub-filter=marq' in the
+         # media_new() call above.  See also the Media.add_options method.
+         # <http://www.videolan.org/doc/play-howto/en/ch04.html>
+        player.video_set_marquee_int(VideoMarqueeOption.Enable, 1)
+        player.video_set_marquee_int(VideoMarqueeOption.Size, 24)  # pixels
+        player.video_set_marquee_int(VideoMarqueeOption.Position, Position.Bottom)
+        if False:  # only one marquee can be specified
+            player.video_set_marquee_int(VideoMarqueeOption.Timeout, 5000)  # millisec, 0=forever
+            t = media.get_mrl()  # movie
+        else: # update marquee text periodically
+            player.video_set_marquee_int(VideoMarqueeOption.Timeout, 0)  # millisec, 0=forever
+            player.video_set_marquee_int(VideoMarqueeOption.Refresh, 1000)  # millisec (or sec?)
+            t = '%Y-%m-%d  %H:%M:%S'
+        player.video_set_marquee_string(VideoMarqueeOption.Text, t)
 
          # Some event manager examples.  Note, the callback can be any Python
          # callable and does not need to be decorated.  Optionally, specify
@@ -5158,7 +5198,7 @@ if __name__ == '__main__':
                 print "Position:", player.get_position()
                 print "FPS:", player.get_fps()
                 print "Rate:", player.get_rate()
-                print "Video size: (%d, %d)" % player.video_get_size()
+                print "Video size: (%d, %d)" % player.video_get_size(0)
                 print "Scale:", player.video_get_scale()
                 print "Aspect ratio:", player.video_get_aspect_ratio()
             except Exception:

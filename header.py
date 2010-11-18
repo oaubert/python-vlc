@@ -200,8 +200,8 @@ def track_description_list(head):
     """Convert a TrackDescription linked list to a python list, and release the linked list.
     """
     l = []
-    item = head
     if head:
+        item = head
         while item:
             l.append( (item.contents.id, item.contents.name) )
             item = item.contents.next
@@ -248,5 +248,25 @@ class Rectangle(ctypes.Structure):
         ('bottom', ctypes.c_int),
         ('right',  ctypes.c_int),
         ]
+
+class Position(object):
+    """Enum-like, position constants for VideoMarqueePosition option.
+    """
+    Center=0
+    Left=1
+    CenterLeft=1
+    Right=2
+    CenterRight=2
+    Top=4
+    TopCenter=4
+    TopLeft=5
+    TopRight=6
+    Bottom=8
+    BottomCenter=8
+    BottomLeft=9
+    BottomRight=10
+
+    def __init__(self):
+        raise TypeError('Constants only')
 
 ### End of header.py ###

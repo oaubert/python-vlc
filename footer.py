@@ -2,7 +2,7 @@
 
 def callbackmethod(f):
     """Backward compatibility with the now useless @callbackmethod decorator.
-    
+
     This method will be removed after a transition period.
     """
     return f
@@ -52,11 +52,31 @@ if __name__ == '__main__':
             print "Error:", sys.exc_info()[1]
 
     if sys.argv[1:]:
-        instance=Instance()
-        media=instance.media_new(sys.argv[1])
-        player=instance.media_player_new()
+        instance = Instance()
+        try:
+            # load marq option
+            media = instance.media_new(sys.argv[1], "sub-filter=marq")
+        except NameError:
+            print "NameError:", sys.exc_info()[1], "(VLC release too old?)"
+            sys.exit(1)
+        player = instance.media_player_new()
         player.set_media(media)
         player.play()
+
+         # Some marquee examples.  Marquee requires 'sub-filter=marq' in the
+         # media_new() call above.  See also the Media.add_options method.
+         # <http://www.videolan.org/doc/play-howto/en/ch04.html>
+        player.video_set_marquee_int(VideoMarqueeOption.Enable, 1)
+        player.video_set_marquee_int(VideoMarqueeOption.Size, 24)  # pixels
+        player.video_set_marquee_int(VideoMarqueeOption.Position, Position.Bottom)
+        if False:  # only one marquee can be specified
+            player.video_set_marquee_int(VideoMarqueeOption.Timeout, 5000)  # millisec, 0=forever
+            t = media.get_mrl()  # movie
+        else: # update marquee text periodically
+            player.video_set_marquee_int(VideoMarqueeOption.Timeout, 0)  # millisec, 0=forever
+            player.video_set_marquee_int(VideoMarqueeOption.Refresh, 1000)  # millisec (or sec?)
+            t = '%Y-%m-%d  %H:%M:%S'
+        player.video_set_marquee_string(VideoMarqueeOption.Text, t)
 
          # Some event manager examples.  Note, the callback can be any Python
          # callable and does not need to be decorated.  Optionally, specify
