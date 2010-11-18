@@ -36,7 +36,7 @@ import ctypes
 import sys
 import os
 
-build_date="Thu Nov 18 18:31:42 2010"
+build_date="Thu Nov 18 18:34:30 2010"
 
 # Used for win32 and MacOS X
 detected_plugin_path=None
@@ -50,6 +50,7 @@ if sys.platform.startswith('linux'):
 elif sys.platform.startswith('win'):
     import ctypes.util
     p=ctypes.util.find_library('libvlc.dll')
+    current_path = os.getcwd()
     if p is None:
         import _winreg  # Try to use registry settings
         for r in _winreg.HKEY_LOCAL_MACHINE, _winreg.HKEY_CURRENT_USER:
@@ -73,6 +74,8 @@ elif sys.platform.startswith('win'):
     else:
         detected_plugin_path = os.path.dirname(p)
     dll=ctypes.CDLL(p)
+    # Restore correct path once the DLL is loaded
+    os.chdir(current_path)
     del p
 elif sys.platform.startswith('darwin'):
     # FIXME: should find a means to configure path
@@ -669,7 +672,7 @@ class EventManager(object):
         if self._callback_handler is None:
             _called_from_ctypes = ctypes.CFUNCTYPE(None, ctypes.POINTER(Event), ctypes.c_void_p)
             @_called_from_ctypes
-            def _callback_handler(event, data):
+            def _callback_handler(event, unused):
                 """(INTERNAL) handle callback call from ctypes.
 
                 Note: we cannot simply make this an instance method of
@@ -818,7 +821,7 @@ You should start at least one interface first, using libvlc_add_intf().
         def set_user_agent(self, name, http):
             """Sets the application name. LibVLC passes this as the user agent string
 when a protocol requires it.
-\version LibVLC 1.1.1 or later
+@version: LibVLC 1.1.1 or later
 @param name: human-readable application name, e.g. "FooBar player 1.2.3"
 @param http: HTTP User Agent, e.g. "FooBar/1.2.3 Python/2.6.0"
             """
@@ -1128,7 +1131,7 @@ vlm_media_t though.
     if hasattr(dll, 'libvlc_vlm_get_media_instance_title'):
         def vlm_get_media_instance_title(self, psz_name, i_instance):
             """Get vlm_media instance title number by name or instance id
-\bug will always return 0
+@bug: will always return 0
 @param psz_name: name of vlm media instance
 @param i_instance: instance id
 @return: title as number or -1 on error
@@ -1138,7 +1141,7 @@ vlm_media_t though.
     if hasattr(dll, 'libvlc_vlm_get_media_instance_chapter'):
         def vlm_get_media_instance_chapter(self, psz_name, i_instance):
             """Get vlm_media instance chapter number by name or instance id
-\bug will always return 0
+@bug: will always return 0
 @param psz_name: name of vlm media instance
 @param i_instance: instance id
 @return: chapter as number or -1 on error
@@ -1148,7 +1151,7 @@ vlm_media_t though.
     if hasattr(dll, 'libvlc_vlm_get_media_instance_seekable'):
         def vlm_get_media_instance_seekable(self, psz_name, i_instance):
             """Is libvlc instance seekable ?
-\bug will always return 0
+@bug: will always return 0
 @param psz_name: name of vlm media instance
 @param i_instance: instance id
 @return: 1 if seekable, 0 if not, -1 if media does not exist
@@ -2059,7 +2062,7 @@ previous md will be released.
     if hasattr(dll, 'libvlc_media_player_set_pause'):
         def set_pause(self, do_pause):
             """Pause or resume (no effect if there is no media)
-\version LibVLC 1.1.1 or later
+@version: LibVLC 1.1.1 or later
 @param do_pause: play/resume if zero, pause if non-zero
             """
             return libvlc_media_player_set_pause(self, do_pause)
@@ -2081,7 +2084,7 @@ previous md will be released.
             """Set decoded video chroma and dimensions. This only works in combination with
 libvlc_video_set_callbacks().
               (e.g. "RV32" or "I420")
-\version LibVLC 1.1.1 or later
+@version: LibVLC 1.1.1 or later
 @param chroma: a four-characters string identifying the chroma
 @param width: pixel width
 @param height: pixel height
@@ -2348,7 +2351,7 @@ not actually work depending on the underlying media protocol)
     if hasattr(dll, 'libvlc_media_player_navigate'):
         def navigate(self, navigate):
             """Navigate through DVD Menu
-\version libVLC 1.2.0 or later
+@version: libVLC 1.2.0 or later
 @param navigate: the Navigation mode
             """
             return libvlc_media_player_navigate(self, navigate)
@@ -2386,11 +2389,11 @@ to reparent it back to its normal parent when disabling fullscreen.
             """Enable or disable key press events handling, according to the LibVLC hotkeys
 configuration. By default and for historical reasons, keyboard events are
 handled by the LibVLC video widget.
-NOTE: On X11, there can be only one subscriber for key press and mouse
+@note: On X11, there can be only one subscriber for key press and mouse
 click events per window. If your application has subscribed to those events
 for the X window ID of the video widget, then LibVLC will not be able to
 handle key presses and mouse clicks in any case.
-WARNING: This function is only implemented for X11 and Win32 at the moment.
+@warning: This function is only implemented for X11 and Win32 at the moment.
 @param on: true to handle key press events, false to ignore them.
             """
             return libvlc_video_set_key_input(self, on)
@@ -2400,8 +2403,8 @@ WARNING: This function is only implemented for X11 and Win32 at the moment.
             """Enable or disable mouse click events handling. By default, those events are
 handled. This is needed for DVD menus to work, as well as a few video
 filters such as "puzzle".
-NOTE: See also libvlc_video_set_key_input().
-WARNING: This function is only implemented for X11 and Win32 at the moment.
+@note: See also libvlc_video_set_key_input().
+@warning: This function is only implemented for X11 and Win32 at the moment.
 @param on: true to handle mouse click events, false to ignore them.
             """
             return libvlc_video_set_mouse_input(self, on)
@@ -2410,7 +2413,7 @@ WARNING: This function is only implemented for X11 and Win32 at the moment.
         def video_get_size(self, num):
             """Get the pixel dimensions of a video.
 @param num: number of the video (starting from, and most commonly 0)
-@return: 0 on success, -1 if the specified video does not exist
+@return x, y
             """
             return libvlc_video_get_size(self, num)
 
@@ -2428,7 +2431,7 @@ outside of the video widget.
 @note LibVLC does not support multiple pointers (it does of course support
 multiple input devices sharing the same pointer) at the moment.
 @param num: number of the video (starting from, and most commonly 0)
-@return: 0 on success, -1 if the specified video does not exist
+@return x, y
             """
             return libvlc_video_get_cursor(self, num)
 
@@ -2463,7 +2466,7 @@ Note that not all video outputs support scaling.
     if hasattr(dll, 'libvlc_video_set_aspect_ratio'):
         def video_set_aspect_ratio(self, psz_aspect):
             """Set new video aspect ratio.
-NOTE: Invalid aspect ratios are ignored.
+@note: Invalid aspect ratios are ignored.
 @param psz_aspect: new video aspect-ratio or NULL to reset to default
             """
             return libvlc_video_set_aspect_ratio(self, psz_aspect)
@@ -2636,7 +2639,7 @@ are ignored.
     if hasattr(dll, 'libvlc_video_get_adjust_int'):
         def video_get_adjust_int(self, option):
             """Get integer adjust option.
-\version LibVLC 1.1.1 and later.
+@version: LibVLC 1.1.1 and later.
 @param option: adjust option to get, values of libvlc_video_adjust_option_t
             """
             return libvlc_video_get_adjust_int(self, option)
@@ -2647,7 +2650,7 @@ are ignored.
 are ignored.
 Passing libvlc_adjust_enable as option value has the side effect of
 starting (arg !0) or stopping (arg 0) the adjust filter.
-\version LibVLC 1.1.1 and later.
+@version: LibVLC 1.1.1 and later.
 @param option: adust option to set, values of libvlc_video_adjust_option_t
 @param value: adjust option value
             """
@@ -2656,7 +2659,7 @@ starting (arg !0) or stopping (arg 0) the adjust filter.
     if hasattr(dll, 'libvlc_video_get_adjust_float'):
         def video_get_adjust_float(self, option):
             """Get float adjust option.
-\version LibVLC 1.1.1 and later.
+@version: LibVLC 1.1.1 and later.
 @param option: adjust option to get, values of libvlc_video_adjust_option_t
             """
             return libvlc_video_get_adjust_float(self, option)
@@ -2665,7 +2668,7 @@ starting (arg !0) or stopping (arg 0) the adjust filter.
         def video_set_adjust_float(self, option, value):
             """Set adjust option as float. Options that take a different type value
 are ignored.
-\version LibVLC 1.1.1 and later.
+@version: LibVLC 1.1.1 and later.
 @param option: adust option to set, values of libvlc_video_adjust_option_t
 @param value: adjust option value
             """
@@ -2779,7 +2782,7 @@ character of output sound - stereo sound, 2.1, 5.1 etc
     if hasattr(dll, 'libvlc_audio_get_delay'):
         def audio_get_delay(self):
             """Get current audio delay.
-\version LibVLC 1.1.1 or later
+@version: LibVLC 1.1.1 or later
 @return: the audio delay (microseconds)
             """
             return libvlc_audio_get_delay(self)
@@ -2787,7 +2790,7 @@ character of output sound - stereo sound, 2.1, 5.1 etc
     if hasattr(dll, 'libvlc_audio_set_delay'):
         def audio_set_delay(self, i_delay):
             """Set current audio delay. The audio delay will be reset to zero each time the media changes.
-\version LibVLC 1.1.1 or later
+@version: LibVLC 1.1.1 or later
 @param i_delay: the audio delay (microseconds)
 @return: 0 on success, -1 on error
             """
@@ -2820,14 +2823,14 @@ if hasattr(dll, 'libvlc_new'):
     libvlc_new.__doc__ = """Create and initialize a libvlc instance.
 This functions accept a list of "command line" arguments similar to the
 main(). These arguments affect the LibVLC instance default configuration.
-\version
+@version:
 Arguments are meant to be passed from the command line to LibVLC, just like
 VLC media player does. The list of valid arguments depends on the LibVLC
 version, the operating system and platform, and set of available LibVLC
 plugins. Invalid or unsupported arguments will cause the function to fail
 (i.e. return NULL). Also, some arguments may alter the behaviour or
 otherwise interfere with other LibVLC functions.
-WARNING:
+@warning:
 There is absolutely no warranty or promise of forward, backward and
 cross-platform compatibility with regards to libvlc_new() arguments.
 We recommend that you do not use them, other than when debugging.
@@ -2879,7 +2882,7 @@ if hasattr(dll, 'libvlc_set_user_agent'):
     libvlc_set_user_agent = p( ('libvlc_set_user_agent', dll), f )
     libvlc_set_user_agent.__doc__ = """Sets the application name. LibVLC passes this as the user agent string
 when a protocol requires it.
-\version LibVLC 1.1.1 or later
+@version: LibVLC 1.1.1 or later
 @param p_instance: LibVLC instance
 @param name: human-readable application name, e.g. "FooBar player 1.2.3"
 @param http: HTTP User Agent, e.g. "FooBar/1.2.3 Python/2.6.0"
@@ -3803,7 +3806,7 @@ if hasattr(dll, 'libvlc_media_player_set_pause'):
     f = ((1,), (1,),)
     libvlc_media_player_set_pause = p( ('libvlc_media_player_set_pause', dll), f )
     libvlc_media_player_set_pause.__doc__ = """Pause or resume (no effect if there is no media)
-\version LibVLC 1.1.1 or later
+@version: LibVLC 1.1.1 or later
 @param mp: the Media Player
 @param do_pause: play/resume if zero, pause if non-zero
 """
@@ -3831,7 +3834,7 @@ if hasattr(dll, 'libvlc_video_set_format'):
     libvlc_video_set_format.__doc__ = """Set decoded video chroma and dimensions. This only works in combination with
 libvlc_video_set_callbacks().
               (e.g. "RV32" or "I420")
-\version LibVLC 1.1.1 or later
+@version: LibVLC 1.1.1 or later
 @param mp: the media player
 @param chroma: a four-characters string identifying the chroma
 @param width: pixel width
@@ -4162,7 +4165,7 @@ if hasattr(dll, 'libvlc_media_player_navigate'):
     f = ((1,), (1,),)
     libvlc_media_player_navigate = p( ('libvlc_media_player_navigate', dll), f )
     libvlc_media_player_navigate.__doc__ = """Navigate through DVD Menu
-\version libVLC 1.2.0 or later
+@version: libVLC 1.2.0 or later
 @param p_mi: the Media Player
 @param navigate: the Navigation mode
 """
@@ -4216,11 +4219,11 @@ if hasattr(dll, 'libvlc_video_set_key_input'):
     libvlc_video_set_key_input.__doc__ = """Enable or disable key press events handling, according to the LibVLC hotkeys
 configuration. By default and for historical reasons, keyboard events are
 handled by the LibVLC video widget.
-NOTE: On X11, there can be only one subscriber for key press and mouse
+@note: On X11, there can be only one subscriber for key press and mouse
 click events per window. If your application has subscribed to those events
 for the X window ID of the video widget, then LibVLC will not be able to
 handle key presses and mouse clicks in any case.
-WARNING: This function is only implemented for X11 and Win32 at the moment.
+@warning: This function is only implemented for X11 and Win32 at the moment.
 @param p_mi: the media player
 @param on: true to handle key press events, false to ignore them.
 """
@@ -4232,8 +4235,8 @@ if hasattr(dll, 'libvlc_video_set_mouse_input'):
     libvlc_video_set_mouse_input.__doc__ = """Enable or disable mouse click events handling. By default, those events are
 handled. This is needed for DVD menus to work, as well as a few video
 filters such as "puzzle".
-NOTE: See also libvlc_video_set_key_input().
-WARNING: This function is only implemented for X11 and Win32 at the moment.
+@note: See also libvlc_video_set_key_input().
+@warning: This function is only implemented for X11 and Win32 at the moment.
 @param p_mi: the media player
 @param on: true to handle mouse click events, false to ignore them.
 """
@@ -4245,7 +4248,7 @@ if hasattr(dll, 'libvlc_video_get_size'):
     libvlc_video_get_size.__doc__ = """Get the pixel dimensions of a video.
 @param p_mi: media player
 @param num: number of the video (starting from, and most commonly 0)
-@return: 0 on success, -1 if the specified video does not exist
+@return x, y
 """
 
 if hasattr(dll, 'libvlc_video_get_cursor'):
@@ -4265,7 +4268,7 @@ outside of the video widget.
 multiple input devices sharing the same pointer) at the moment.
 @param p_mi: media player
 @param num: number of the video (starting from, and most commonly 0)
-@return: 0 on success, -1 if the specified video does not exist
+@return x, y
 """
 
 if hasattr(dll, 'libvlc_video_get_scale'):
@@ -4307,7 +4310,7 @@ if hasattr(dll, 'libvlc_video_set_aspect_ratio'):
     f = ((1,), (1,),)
     libvlc_video_set_aspect_ratio = p( ('libvlc_video_set_aspect_ratio', dll), f )
     libvlc_video_set_aspect_ratio.__doc__ = """Set new video aspect ratio.
-NOTE: Invalid aspect ratios are ignored.
+@note: Invalid aspect ratios are ignored.
 @param p_mi: the media player
 @param psz_aspect: new video aspect-ratio or NULL to reset to default
 """
@@ -4561,7 +4564,7 @@ if hasattr(dll, 'libvlc_video_get_adjust_int'):
     f = ((1,), (1,),)
     libvlc_video_get_adjust_int = p( ('libvlc_video_get_adjust_int', dll), f )
     libvlc_video_get_adjust_int.__doc__ = """Get integer adjust option.
-\version LibVLC 1.1.1 and later.
+@version: LibVLC 1.1.1 and later.
 @param p_mi: libvlc media player instance
 @param option: adjust option to get, values of libvlc_video_adjust_option_t
 """
@@ -4574,7 +4577,7 @@ if hasattr(dll, 'libvlc_video_set_adjust_int'):
 are ignored.
 Passing libvlc_adjust_enable as option value has the side effect of
 starting (arg !0) or stopping (arg 0) the adjust filter.
-\version LibVLC 1.1.1 and later.
+@version: LibVLC 1.1.1 and later.
 @param p_mi: libvlc media player instance
 @param option: adust option to set, values of libvlc_video_adjust_option_t
 @param value: adjust option value
@@ -4585,7 +4588,7 @@ if hasattr(dll, 'libvlc_video_get_adjust_float'):
     f = ((1,), (1,),)
     libvlc_video_get_adjust_float = p( ('libvlc_video_get_adjust_float', dll), f )
     libvlc_video_get_adjust_float.__doc__ = """Get float adjust option.
-\version LibVLC 1.1.1 and later.
+@version: LibVLC 1.1.1 and later.
 @param p_mi: libvlc media player instance
 @param option: adjust option to get, values of libvlc_video_adjust_option_t
 """
@@ -4596,7 +4599,7 @@ if hasattr(dll, 'libvlc_video_set_adjust_float'):
     libvlc_video_set_adjust_float = p( ('libvlc_video_set_adjust_float', dll), f )
     libvlc_video_set_adjust_float.__doc__ = """Set adjust option as float. Options that take a different type value
 are ignored.
-\version LibVLC 1.1.1 and later.
+@version: LibVLC 1.1.1 and later.
 @param p_mi: libvlc media player instance
 @param option: adust option to set, values of libvlc_video_adjust_option_t
 @param value: adjust option value
@@ -4800,7 +4803,7 @@ if hasattr(dll, 'libvlc_audio_get_delay'):
     f = ((1,),)
     libvlc_audio_get_delay = p( ('libvlc_audio_get_delay', dll), f )
     libvlc_audio_get_delay.__doc__ = """Get current audio delay.
-\version LibVLC 1.1.1 or later
+@version: LibVLC 1.1.1 or later
 @param p_mi: media player
 @return: the audio delay (microseconds)
 """
@@ -4810,7 +4813,7 @@ if hasattr(dll, 'libvlc_audio_set_delay'):
     f = ((1,), (1,),)
     libvlc_audio_set_delay = p( ('libvlc_audio_set_delay', dll), f )
     libvlc_audio_set_delay.__doc__ = """Set current audio delay. The audio delay will be reset to zero each time the media changes.
-\version LibVLC 1.1.1 or later
+@version: LibVLC 1.1.1 or later
 @param p_mi: media player
 @param i_delay: the audio delay (microseconds)
 @return: 0 on success, -1 on error
@@ -5057,7 +5060,7 @@ if hasattr(dll, 'libvlc_vlm_get_media_instance_title'):
     f = ((1,), (1,), (1,),)
     libvlc_vlm_get_media_instance_title = p( ('libvlc_vlm_get_media_instance_title', dll), f )
     libvlc_vlm_get_media_instance_title.__doc__ = """Get vlm_media instance title number by name or instance id
-\bug will always return 0
+@bug: will always return 0
 @param p_instance: a libvlc instance
 @param psz_name: name of vlm media instance
 @param i_instance: instance id
@@ -5069,7 +5072,7 @@ if hasattr(dll, 'libvlc_vlm_get_media_instance_chapter'):
     f = ((1,), (1,), (1,),)
     libvlc_vlm_get_media_instance_chapter = p( ('libvlc_vlm_get_media_instance_chapter', dll), f )
     libvlc_vlm_get_media_instance_chapter.__doc__ = """Get vlm_media instance chapter number by name or instance id
-\bug will always return 0
+@bug: will always return 0
 @param p_instance: a libvlc instance
 @param psz_name: name of vlm media instance
 @param i_instance: instance id
@@ -5081,7 +5084,7 @@ if hasattr(dll, 'libvlc_vlm_get_media_instance_seekable'):
     f = ((1,), (1,), (1,),)
     libvlc_vlm_get_media_instance_seekable = p( ('libvlc_vlm_get_media_instance_seekable', dll), f )
     libvlc_vlm_get_media_instance_seekable.__doc__ = """Is libvlc instance seekable ?
-\bug will always return 0
+@bug: will always return 0
 @param p_instance: a libvlc instance
 @param psz_name: name of vlm media instance
 @param i_instance: instance id
