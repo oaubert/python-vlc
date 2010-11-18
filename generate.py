@@ -557,8 +557,9 @@ class _Enum(ctypes.c_ulong):
         """
         lines=comment.replace('@{', '').replace('\\ingroup', '') \
                      .replace('@see', 'See').replace('\\see', 'See') \
-                     .replace('\\note', 'NOTE:').replace('\\warning', 'WARNING:') \
                      .replace('\\param', '@param').replace('\\return', '@return') \
+                     .replace('\\note', '@note:').replace('\\warning', '@warning:') \
+                     .replace('\\bug', '@bug:').replace('\\version', '@version:') \
                      .strip().splitlines()
 
         doc = [ l for l in lines if '@param' not in l and '@return' not in l ]
