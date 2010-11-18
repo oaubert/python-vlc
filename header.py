@@ -50,6 +50,7 @@ if sys.platform.startswith('linux'):
 elif sys.platform.startswith('win'):
     import ctypes.util
     p=ctypes.util.find_library('libvlc.dll')
+    current_path = os.getcwd()
     if p is None:
         import _winreg  # Try to use registry settings
         for r in _winreg.HKEY_LOCAL_MACHINE, _winreg.HKEY_CURRENT_USER:
@@ -73,6 +74,8 @@ elif sys.platform.startswith('win'):
     else:
         detected_plugin_path = os.path.dirname(p)
     dll=ctypes.CDLL(p)
+    # Restore correct path once the DLL is loaded
+    os.chdir(current_path)
     del p
 elif sys.platform.startswith('darwin'):
     # FIXME: should find a means to configure path
