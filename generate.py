@@ -563,6 +563,11 @@ class _Enum(ctypes.c_ulong):
         ret = [ l.replace('@return', '@return:') for l in lines if '@return' in l ]
 
         params = [ python_param_re.sub('\\1:\\2', l) for l in lines if '@param' in l and not '[OUT]' in l ]
+        outparams = [ python_param_re.findall(l)[0][0] for l in lines if '@param' in l and '[OUT]' in l ]
+        if outparams:
+            # Replace the @return line
+            ret = [ '@return %s' % ", ".join(p.strip("@param ") for p in outparams) ]
+        
         if fix_first and params:  # remove (self)
             params = params[1:]
 
