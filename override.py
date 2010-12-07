@@ -225,28 +225,26 @@ class MediaListPlayer:
       - a vlc.Instance
       - nothing
     """
-    def __new__(cls, *p):
-        if p and p[0] == 0:
-            return None
-        elif p and isinstance(p[0], (int, long)):
-            # instance creation from ctypes
-            o=object.__new__(cls)
-            o._as_parameter_=ctypes.c_void_p(p[0])
-            return o
-        elif len(p) == 1 and isinstance(p[0], (tuple, list)):
-            p=p[0]
+    def __new__(cls, *args):
+        if len(args) == 1:
+            i = args[0]
+            if i == 0:
+                return None
+            if isinstance(i, _Ints):
+                return _Cobject(cls, ctypes.c_void_p(i))
+            if isinstance(i, _Seqs):
+                args = i
 
-        if p and isinstance(p[0], Instance):
-            return p[0].media_list_player_new()
+        if args and isinstance(args[0], Instance):
+            i = args[0]
         else:
-            i=Instance()
-            o=i.media_list_player_new()
-            return o
+            i = Instance()
+        return i.media_list_player_new()
 
     def get_instance(self):
-        """Return the associated vlc.Instance.
+        """Return the associated Instance.
         """
-        return self._instance
+        return self._instance  #PYCHOK expected
 
 class LogIterator:
     """Create a new VLC log iterator.
@@ -255,11 +253,11 @@ class LogIterator:
         return self
 
     def next(self):
-        if not self.has_next():
-            raise StopIteration
-        buf=LogMessage()
-        ret=libvlc_log_iterator_next(self, buf)
-        return ret.contents
+        if self.has_next():
+            b = LogMessage()
+            i = libvlc_log_iterator_next(self, b)
+            return i.contents
+        raise StopIteration
 
 class Log:
     """Create a new VLC log instance.
