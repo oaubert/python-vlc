@@ -1,11 +1,43 @@
-### Start of footer.py ###
 
-def callbackmethod(f):
-    """Backward compatibility with the now useless @callbackmethod decorator.
+# Start of footer.py #
 
-    This method will be removed after a transition period.
+# Backward compatibility
+def callbackmethod(callback):
+    """Now obsolete @callbackmethod decorator."""
+    return callback
+
+# Version functions
+def _dot2int(v):
+    '''(INTERNAL) Convert 'i.i.i[.i]' str to int.
+    '''
+    t = [int(i) for i in v.split('.')]
+    if len(t) == 3:
+        t.append(0)
+    elif len(t) != 4:
+        raise ValueError('"i.i.i[.i]": %r' % (v,))
+    if min(t) < 0 or max(t) > 255:
+        raise ValueError('[0..255]: %r' % (v,))
+    i = t.pop(0)
+    while t:
+        i = (i << 8) + t.pop(0)
+    return i
+
+def hex_version():
+    """Return the version of these bindings in hex or 0 if unavailable.
     """
-    return f
+    try:
+        return _dot2int(__version__.split('-')[-1])
+    except (NameError, ValueError):
+        return 0
+
+def libvlc_hex_version():
+    """Return the libvlc version in hex or 0 if unavailable.
+    """
+    try:
+        return _dot2int(libvlc_get_version().split()[0])
+    except ValueError:
+        return 0
+
 
 # Example callback, useful for debugging
 def debug_callback(event, *args, **kwds):
