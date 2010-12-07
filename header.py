@@ -38,61 +38,80 @@ C{get_instance} method of L{MediaPlayer} and L{MediaListPlayer}.
 """
 
 import ctypes
-import sys
 import os
+import sys
 
-build_date="This will be replaced by the build date"
+# Used by EventManager in override.py
+try:
+    from inspect import getargspec
+except ImportError:
+    getargspec = None
 
-# Used for win32 and MacOS X
-detected_plugin_path=None
+build_date  = ''  # build time stamp and __version__, see generate.py
+
+ # Used on win32 and MacOS in override.py
+plugin_path = None
 
 if sys.platform.startswith('linux'):
     try:
-        dll=ctypes.CDLL('libvlc.so')
-    except OSError:
-        dll=ctypes.CDLL('libvlc.so.5')
+        dll = ctypes.CDLL('libvlc.so')
+    except OSError:  # may fail
+        dll = ctypes.CDLL('libvlc.so.5')
 
 elif sys.platform.startswith('win'):
-    import ctypes.util
-    p=ctypes.util.find_library('libvlc.dll')
-    current_path = os.getcwd()
+    import ctypes.util as u
+    p = u.find_library('libvlc.dll') 
     if p is None:
-        import _winreg  # Try to use registry settings
-        for r in _winreg.HKEY_LOCAL_MACHINE, _winreg.HKEY_CURRENT_USER:
-            try:
-                r = _winreg.OpenKey(r, 'Software\\VideoLAN\\VLC')
-                detected_plugin_path, _ = _winreg.QueryValueEx(r, 'InstallDir')
-                _winreg.CloseKey(r)
-                break
-            except _winreg.error:
-                pass
-        else:  # Try some standard locations.
-            for p in ('c:\\Program Files', 'c:'):
-                p += '\\VideoLAN\\VLC\\libvlc.dll'
-                if os.path.exists(p):
-                    detected_plugin_path = os.path.dirname(p)
+        try:  # some registry settings
+            import _winreg as w  # leaner than win32api, win32con
+            for r in w.HKEY_LOCAL_MACHINE, w.HKEY_CURRENT_USER:
+                try:
+                    r = w.OpenKey(r, 'Software\\VideoLAN\\VLC')
+                    plugin_path, _ = w.QueryValueEx(r, 'InstallDir')
+                    w.CloseKey(r)
                     break
-        del r, _winreg
-        os.chdir(detected_plugin_path or os.curdir)
-        # If chdir failed, this will not work and raise an exception
-        p = 'libvlc.dll'
+                except w.error:
+                    pass
+            del r, w
+        except ImportError:  # no PyWin32
+            pass
+        if plugin_path is None:
+             # try some standard locations.
+            for p in ('Program Files\\VideoLan\\', 'VideoLan\\',
+                      'Program Files\\',           ''):
+                p = 'C:\\' + p + 'VLC\\libvlc.dll'
+                if os.path.exists(p):
+                    plugin_path = os.path.dirname(p)
+                    break
+        if plugin_path is not None:  # try loading
+            p = os.getcwd()
+            os.chdir(plugin_path)
+             # if chdir failed, this will raise an exception
+            dll = ctypes.CDLL('libvlc.dll')
+             # restore cwd after dll has been loaded
+            os.chdir(p)
+        else:  # may fail
+            dll = ctypes.CDLL('libvlc.dll')
     else:
-        detected_plugin_path = os.path.dirname(p)
-    dll=ctypes.CDLL(p)
-    # Restore correct path once the DLL is loaded
-    os.chdir(current_path)
-    del p
+        plugin_path = os.path.dirname(p)
+        dll = ctypes.CDLL(p)
+    del p, u
+
 elif sys.platform.startswith('darwin'):
     # FIXME: should find a means to configure path
-    d='/Applications/VLC.app/Contents/MacOS'
-    if os.path.exists(d):
-        dll = ctypes.CDLL(d+'/lib/libvlc.dylib')
-        detected_plugin_path = d + '/modules'
-    else: # Hope some default path is set...
+    d = '/Applications/VLC.app/Contents/MacOS/'
+    p = d + 'lib/libvlc.dylib'
+    if os.path.exists(p):
+        dll = ctypes.CDLL(p)
+        d += 'modules'
+        if os.path.isdir(d):
+            plugin_path = d
+    else:  # hope, some PATH is set...
         dll = ctypes.CDLL('libvlc.dylib')
-    del d
+    del d, p
+
 else:
-    raise NotImplementedError('O/S %r not supported' % sys.platform)
+    raise NotImplementedError('%s: %s not supported' % (sys.argv[0], sys.platform))
 
 #
 # Generated enum types.
