@@ -100,7 +100,6 @@ if __name__ == '__main__':
         try:
             media = instance.media_new(movie, 'sub-filter=marq')  # load marqee option
         except NameError:
-            x = 
             print('NameError: %s (%s vs LibVLC %s)' % (sys.exc_info()[1],
                                                        __version__, 
                                                        libvlc_get_version()))
