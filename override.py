@@ -169,6 +169,17 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         """
         return track_description_list(libvlc_audio_get_track_description(self))
 
+    def video_get_size(self, num=0):
+        """Get the video size in pixels as 2-tuple (width, height).
+
+        @param num: video number (default 0).
+        """
+        r = libvlc_video_get_size(self, num)
+        if isinstance(r, tuple) and len(r) == 2:
+            return r
+        else:
+            raise VLCException('invalid video number (%s)' % (num,))
+
     def video_get_width(self, num=0):
         """Get the width of a video in pixels.
 
@@ -182,6 +193,30 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         @param num: video number (default 0).
         """
         return self.video_get_size(num)[1]
+
+    def video_get_cursor(self, num=0):
+        """Get the mouse pointer coordinates over a video as 2-tuple (x, y).
+
+        Coordinates are expressed in terms of the decoded video resolution,
+        B{not} in terms of pixels on the screen/viewport.  To get the
+        latter, you must query your windowing system directly.
+ 
+        Either coordinate may be negative or larger than the corresponding
+        size of the video, if the cursor is outside the rendering area.
+ 
+        @warning: The coordinates may be out-of-date if the pointer is not
+        located on the video rendering area.  LibVLC does not track the
+        mouse pointer if the latter is outside the video widget.
+ 
+        @note: LibVLC does not support multiple mouse pointers (but does
+        support multiple input devices sharing the same pointer).
+ 
+        @param num: video number (default 0).
+        """
+        r = libvlc_video_get_cursor(self, num)
+        if isinstance(r, tuple) and len(r) == 2:
+            return r
+        raise VLCException('invalid video number (%s)' % (num,))
 
 class MediaListPlayer:
     """Create a new MediaListPlayer instance.
