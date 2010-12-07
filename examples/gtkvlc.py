@@ -1,6 +1,25 @@
 #! /usr/bin/python
 
-"""VLC Widget classes.
+#
+# gtk example/widget for VLC Python bindings
+# Copyright (C) 2009-2010 the VideoLAN team
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
+#
+
+"""VLC Gtk Widget classes + example application.
 
 This module provides two helper classes, to ease the embedding of a
 VLC component inside a pygtk application.
@@ -8,6 +27,8 @@ VLC component inside a pygtk application.
 VLCWidget is a simple VLC widget.
 
 DecoratedVLCWidget provides simple player controls.
+
+When called as an application, it behaves as a video player.
 
 $Id$
 """
@@ -18,8 +39,8 @@ import vlc
 
 from gettext import gettext as _
 
-# Create a single vlc.Instance() to be share by (possible) multiple players.
-instance=vlc.Instance()
+# Create a single vlc.Instance() to be shared by (possible) multiple players.
+instance = vlc.Instance()
 
 class VLCWidget(gtk.DrawingArea):
     """Simple VLC widget.
@@ -29,7 +50,7 @@ class VLCWidget(gtk.DrawingArea):
     """
     def __init__(self, *p):
         gtk.DrawingArea.__init__(self)
-        self.player=instance.media_player_new()
+        self.player = instance.media_player_new()
         def handle_embed(*args):
             if sys.platform == 'win32':
                 self.player.set_hwnd(self.window.handle)
@@ -49,8 +70,8 @@ class DecoratedVLCWidget(gtk.VBox):
     """
     def __init__(self, *p):
         gtk.VBox.__init__(self)
-        self._vlc_widget=VLCWidget(*p)
-        self.player=self._vlc_widget.player
+        self._vlc_widget = VLCWidget(*p)
+        self.player = self._vlc_widget.player
         self.pack_start(self._vlc_widget, expand=True)
         self._toolbar = self.get_player_control_toolbar()
         self.pack_start(self._toolbar, expand=False)
@@ -58,18 +79,15 @@ class DecoratedVLCWidget(gtk.VBox):
     def get_player_control_toolbar(self):
         """Return a player control toolbar
         """
-        tb=gtk.Toolbar()
+        tb = gtk.Toolbar()
         tb.set_style(gtk.TOOLBAR_ICONS)
-
-        tb_list = (
+        for text, tooltip, stock, callback in (
             (_("Play"), _("Play"), gtk.STOCK_MEDIA_PLAY, lambda b: self.player.play()),
             (_("Pause"), _("Pause"), gtk.STOCK_MEDIA_PAUSE, lambda b: self.player.pause()),
             (_("Stop"), _("Stop"), gtk.STOCK_MEDIA_STOP, lambda b: self.player.stop()),
-            (_("Quit"), _("Quit"), gtk.STOCK_QUIT, lambda b: gtk.main_quit()),
-            )
-
-        for text, tooltip, stock, callback in tb_list:
+            ):
             b=gtk.ToolButton(stock)
+            b.set_tooltip_text(tooltip)
             b.connect("clicked", callback)
             tb.insert(b, -1)
         tb.show_all()
@@ -83,15 +101,11 @@ class VideoPlayer:
 
     def main(self, fname):
         self.vlc.player.set_media(instance.media_new(fname))
-        self.popup()
-        gtk.main()
-
-    def popup(self):
-        w=gtk.Window()
+        w = gtk.Window()
         w.add(self.vlc)
         w.show_all()
         w.connect("destroy", gtk.main_quit)
-        return w
+        gtk.main()
 
 class MultiVideoPlayer:
     """Example multi-video player.
@@ -109,12 +123,12 @@ class MultiVideoPlayer:
 
         # Create VLC widgets
         for fname in filenames:
-            v=DecoratedVLCWidget()
+            v = DecoratedVLCWidget()
             v.player.set_media(instance.media_new(fname))
             videos.add(v)
 
         # Create global toolbar
-        tb=gtk.Toolbar()
+        tb = gtk.Toolbar()
         tb.set_style(gtk.TOOLBAR_ICONS)
 
         def execute(b, methodname):
@@ -125,12 +139,12 @@ class MultiVideoPlayer:
             return True
 
         for text, tooltip, stock, callback, arg in (
-            (_("Play"), _("Play"), gtk.STOCK_MEDIA_PLAY, execute, "play"),
-            (_("Pause"), _("Pause"), gtk.STOCK_MEDIA_PAUSE, execute, "pause"),
-            (_("Stop"), _("Stop"), gtk.STOCK_MEDIA_STOP, execute, "stop"),
-            (_("Quit"), _("Quit"), gtk.STOCK_QUIT, lambda b, d: gtk.main_quit(), None),
+            (_("Play"), _("Global play"), gtk.STOCK_MEDIA_PLAY, execute, "play"),
+            (_("Pause"), _("Global pause"), gtk.STOCK_MEDIA_PAUSE, execute, "pause"),
+            (_("Stop"), _("Global stop"), gtk.STOCK_MEDIA_STOP, execute, "stop"),
             ):
-            b=gtk.ToolButton(stock)
+            b = gtk.ToolButton(stock)
+            b.set_tooltip_text(tooltip)
             b.connect("clicked", callback, arg)
             tb.insert(b, -1)
 
