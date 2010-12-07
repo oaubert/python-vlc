@@ -39,129 +39,149 @@ def libvlc_hex_version():
         return 0
 
 
-# Example callback, useful for debugging
 def debug_callback(event, *args, **kwds):
-    l = ["event %s" % (event.type,)]
+    '''Example callback, useful for debugging.
+    '''
+    l = ['event %s' % (event.type,)]
     if args:
-       l.extend(map(str, args))
+        l.extend(map(str, args))
     if kwds:
-       l.extend(sorted( "%s=%s" % t for t in kwds.iteritems() ))
-    print "Debug callback (%s)" % ", ".join(l)
+        l.extend(sorted('%s=%s' % t for t in kwds.items()))
+    print('Debug callback (%s)' % ', '.join(l))
 
 if __name__ == '__main__':
+
     try:
         from msvcrt import getch
     except ImportError:
-        def getch():
-            import tty
-            import termios
-            fd=sys.stdin.fileno()
-            old_settings=termios.tcgetattr(fd)
+        import termios
+        import tty
+
+        def getch():  # getchar(), getc(stdin)  #PYCHOK flake
+            fd = sys.stdin.fileno()
+            old = termios.tcgetattr(fd)
             try:
                 tty.setraw(fd)
-                ch=sys.stdin.read(1)
+                ch = sys.stdin.read(1)
             finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                termios.tcsetattr(fd, termios.TCSADRAIN, old)
             return ch
 
     def end_callback(event):
-        print "End of media stream (event %s)" % event.type
+        print('End of media stream (event %s)' % event.type)
         sys.exit(0)
 
     echo_position = False
     def pos_callback(event, player):
         if echo_position:
-            print "%s to %.2f%% (%.2f%%)\r" % (event.type,
-                   event.u.new_position * 100,
-                   player.get_position() * 100)
+            print('%s to %.2f%% (%.2f%%)' % (event.type,
+                                             event.u.new_position * 100,
+                                             player.get_position() * 100))
 
     def print_version():
-        """Print libvlc version.
-        """
+        """Print libvlc version"""
         try:
-            print "LibVLC version", libvlc_get_version()
+            print('Build date: %s (%#x)' % (build_date, hex_version()))
+            print('LibVLC version: %s (%#x)' % (libvlc_get_version(), libvlc_hex_version()))
+            print('LibVLC compiler: %s' % libvlc_get_compiler())
+            if plugin_path:
+                print('Plugin path: %s' % plugin_path)
         except:
-            print "Error:", sys.exc_info()[1]
+            print('Error: %s' % sys.exc_info()[1])
 
-    if sys.argv[1:]:
+    if sys.argv[1:] and sys.argv[1] not in ('-h', '--help'):
+
+        movie = os.path.expanduser(sys.argv[1])
+        if not os.access(movie, os.R_OK):
+            print('Error: %s file not readable' % movie)
+            sys.exit(1)
+
         instance = Instance()
         try:
-            # load marq option
-            media = instance.media_new(sys.argv[1], "sub-filter=marq")
+            media = instance.media_new(movie, 'sub-filter=marq')  # load marqee option
         except NameError:
-            print "NameError:", sys.exc_info()[1], "(VLC release too old?)"
+            x = 
+            print('NameError: %s (%s vs LibVLC %s)' % (sys.exc_info()[1],
+                                                       __version__, 
+                                                       libvlc_get_version()))
             sys.exit(1)
         player = instance.media_player_new()
         player.set_media(media)
         player.play()
 
-         # Some marquee examples.  Marquee requires 'sub-filter=marq' in the
-         # media_new() call above.  See also the Media.add_options method.
-         # <http://www.videolan.org/doc/play-howto/en/ch04.html>
+        # Some marquee examples.  Marquee requires 'sub-filter=marq' in the
+        # media_new() call above.  See also the Media.add_options method
+        # and <http://www.videolan.org/doc/play-howto/en/ch04.html>
         player.video_set_marquee_int(VideoMarqueeOption.Enable, 1)
         player.video_set_marquee_int(VideoMarqueeOption.Size, 24)  # pixels
         player.video_set_marquee_int(VideoMarqueeOption.Position, Position.Bottom)
-        if False:  # only one marquee can be specified
-            player.video_set_marquee_int(VideoMarqueeOption.Timeout, 5000)  # millisec, 0=forever
+        if True:  # only one marquee can be specified
+            player.video_set_marquee_int(VideoMarqueeOption.Timeout, 5000)  # millisec, 0==forever
             t = media.get_mrl()  # movie
-        else: # update marquee text periodically
-            player.video_set_marquee_int(VideoMarqueeOption.Timeout, 0)  # millisec, 0=forever
+        else:  # update marquee text periodically
+            player.video_set_marquee_int(VideoMarqueeOption.Timeout, 0)  # millisec, 0==forever
             player.video_set_marquee_int(VideoMarqueeOption.Refresh, 1000)  # millisec (or sec?)
+            ##t = '$L / $D or $P at $T'
             t = '%Y-%m-%d  %H:%M:%S'
         player.video_set_marquee_string(VideoMarqueeOption.Text, t)
 
-         # Some event manager examples.  Note, the callback can be any Python
-         # callable and does not need to be decorated.  Optionally, specify
-         # any number of positional and/or keyword arguments to be passed
-         # to the callback (in addition to the first one, an Event instance).
+        # Some event manager examples.  Note, the callback can be any Python
+        # callable and does not need to be decorated.  Optionally, specify
+        # any number of positional and/or keyword arguments to be passed
+        # to the callback (in addition to the first one, an Event instance).
         event_manager = player.event_manager()
-        event_manager.event_attach(EventType.MediaPlayerEndReached, end_callback)
+        event_manager.event_attach(EventType.MediaPlayerEndReached,      end_callback)
         event_manager.event_attach(EventType.MediaPlayerPositionChanged, pos_callback, player)
 
+        def mspf():
+            """Milliseconds per frame."""
+            return int(1000 // (player.get_fps() or 25))
+
         def print_info():
-            """Print information about the media."""
+            """Print information about the media"""
             try:
                 print_version()
                 media = player.get_media()
-                print "State:", player.get_state()
-                print "Media:", media.get_mrl()
-                print "Track:", player.video_get_track(), "/", player.video_get_track_count()
-                print "Current time:", player.get_time(), "/", media.get_duration()
-                print "Position:", player.get_position()
-                print "FPS:", player.get_fps()
-                print "Rate:", player.get_rate()
-                print "Video size: (%d, %d)" % player.video_get_size(0)
-                print "Scale:", player.video_get_scale()
-                print "Aspect ratio:", player.video_get_aspect_ratio()
+                print('State: %s' % player.get_state())
+                print('Media: %s' % media.get_mrl())
+                print('Track: %s/%s' % (player.video_get_track(), player.video_get_track_count()))
+                print('Current time: %s/%s' % (player.get_time(), media.get_duration()))
+                print('Position: %s' % player.get_position())
+                print('FPS: %s (%d ms)' % (player.get_fps(), mspf()))
+                print('Rate: %s' % player.get_rate())
+                print('Video size: %r' % player.video_get_size(0))  # num=0
+                print('Scale: %s' % player.video_get_scale())
+                print('Aspect ratio: %s' % player.video_get_aspect_ratio())
+               #print('Window:' % player.get_hwnd()
             except Exception:
-                print "Error:", sys.exc_info()[1]
+                print('Error: %s', sys.exc_info()[1])
 
-        def forward():
-            """Go forward 1s"""
+        def sec_forward():
+            """Go forward one sec"""
             player.set_time(player.get_time() + 1000)
 
-        def backward():
-            """Go backward 1s"""
+        def sec_backward():
+            """Go backward one sec"""
             player.set_time(player.get_time() - 1000)
 
-        def one_frame_forward():
+        def frame_forward():
             """Go forward one frame"""
-            player.set_time(player.get_time() + long(1000 / (player.get_fps() or 25)))
+            player.set_time(player.get_time() + mspf())
 
-        def one_frame_backward():
+        def frame_backward():
             """Go backward one frame"""
-            player.set_time(player.get_time() - long(1000 / (player.get_fps() or 25)))
+            player.set_time(player.get_time() - mspf())
 
         def print_help():
-            """Print help
-            """
-            print "Single-character commands:"
-            for k, m in keybindings.iteritems():
-                print "  %s: %s" % (k, (m.__doc__ or m.__name__).splitlines()[0].rstrip("."))
-            print " 1-9: go to the given fraction of the movie"
+            """Print help"""
+            print('Single-character commands:')
+            for k, m in sorted(keybindings.items()):
+                m = (m.__doc__ or m.__name__).splitlines()[0]
+                print('  %s: %s.' % (k, m.rstrip('.')))
+            print('0-9: go to that fraction of the movie')
 
         def quit_app():
-            """Exit."""
+            """Stop and exit"""
             sys.exit(0)
 
         def toggle_echo_position():
@@ -169,34 +189,31 @@ if __name__ == '__main__':
             global echo_position
             echo_position = not echo_position
 
-        keybindings={
+        keybindings = {
             ' ': player.pause,
-            '+': forward,
-            '-': backward,
-            '.': one_frame_forward,
-            ',': one_frame_backward,
-            '?': print_help,
+            '+': sec_forward,
+            '-': sec_backward,
+            '.': frame_forward,
+            ',': frame_backward,
             'f': player.toggle_fullscreen,
             'i': print_info,
             'p': toggle_echo_position,
             'q': quit_app,
+            '?': print_help,
             }
 
-        print "Press q to quit, ? to get help."
-        print
+        print('Press q to quit, ? to get help.%s' % os.linesep)
         while True:
-            k = getch()
-            print ">", k
+            k = getch().decode('utf8')  # Python 3+
+            print('> %s', k)
             if k in keybindings:
                 keybindings[k]()
             elif k.isdigit():
-                # Numeric value. Jump to a fraction of the movie.
+                 # jump to fraction of the movie.
                 player.set_position(float('0.'+k))
+
     else:
-        print "Syntax: %s <movie_filename>" % sys.argv[0]
-        print "Once launched, type ? to get help."
+        print('Usage: %s <movie_filename>', sys.argv[0])
+        print('Once launched, type ? for help.')
+        print('')
         print_version()
-
-
-
-
