@@ -113,30 +113,68 @@ elif sys.platform.startswith('darwin'):
 else:
     raise NotImplementedError('%s: %s not supported' % (sys.argv[0], sys.platform))
 
-#
-# Generated enum types.
-#
+class VLCException(Exception):
+    """Exception raised by libvlc methods.
+    """
+    pass
 
-# GENERATED_ENUMS
+try:
+    _Ints = (int, long)
+except NameError:  # no long in Python 3+
+    _Ints =  int
 
-#
-# End of generated enum types.
-#
+_Seqs = (list, tuple)
 
+_Cfunctions = {}  # from LibVLC __version__
+
+def _Cfunction(name, flags, *types):
+    """(INTERNAL) New ctypes function binding.
+    """
+    if hasattr(dll, name):
+        p = ctypes.CFUNCTYPE(*types)
+        f = p((name, dll), flags)
+        _Cfunctions[name] = f
+        return f
+    raise NameError('no function %r' % (name,))
+
+def _Cobject(cls, ctype):
+    """(INTERNAL) New instance from ctypes.
+    """
+    o = object.__new__(cls)
+    o._as_parameter_ = ctype
+    return o
+
+def _Constructor(cls, ptr):
+    """(INTERNAL) New wrapper from ctypes.
+    """
+    if ptr is None:
+        raise VLCException('(INTERNAL) ctypes class.')
+    if ptr == 0:
+        return None
+    return _Cobject(cls, ctypes.c_void_p(ptr))
+
+class _Ctype(object):
+    """(INTERNAL) Base class for ctypes.
+    """
+    @staticmethod
+    def from_param(this):  # not self
+        """(INTERNAL) ctypes parameter conversion method.
+        """
+        return this._as_parameter_
+    
 class ListPOINTER(object):
-    '''Just like a POINTER but accept a list of ctype as an argument.
-    '''
+    """Just like a POINTER but accept a list of ctype as an argument.
+    """
     def __init__(self, etype):
         self.etype = etype
 
     def from_param(self, param):
-        if isinstance(param, (list, tuple)):
+        if isinstance(param, _Seqs):
             return (self.etype * len(param))(*param)
 
-class LibVLCException(Exception):
-    """Python exception raised by libvlc methods.
-    """
-    pass
+ # Generated enum types #
+# GENERATED_ENUMS go here  # see generate.py
+ # End of generated enum types #
 
 # From libvlc_structures.h
 
