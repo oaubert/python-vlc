@@ -1,3 +1,4 @@
+
 class Instance:
     """Create a new Instance instance.
 
@@ -6,51 +7,59 @@ class Instance:
       - a list of strings as first parameters
       - the parameters given as the constructor parameters (must be strings)
     """
-    def __new__(cls, *p):
-        if p and p[0] == 0:
-            return None
-        elif p and isinstance(p[0], (int, long)):
-            # instance creation from ctypes
-            o=object.__new__(cls)
-            o._as_parameter_=ctypes.c_void_p(p[0])
-            return o
-        elif len(p) == 1 and isinstance(p[0], basestring):
-            # Only 1 string parameter: should be a parameter line
-            p=p[0].split(' ')
-        elif len(p) == 1 and isinstance(p[0], (tuple, list)):
-            p=p[0]
+    def __new__(cls, *args):
+        if args:
+            i = args[0]
+            if i == 0:
+                return None
+            if isinstance(i, _Ints):
+                return _Cobject(cls, ctypes.c_void_p(i))
+            if len(args) == 1:
+                if isinstance(i, basestring):
+                    args = i.strip().split()
+                elif isinstance(i, _Seqs):
+                    args = i
+                else:
+                    raise VLCException('Instance %r' % (args,))
 
-        if not p and detected_plugin_path is not None:
-            # No parameters passed. Under win32 and MacOS, specify
-            # the detected_plugin_path if present.
-            p=[ 'vlc', '--plugin-path='+ detected_plugin_path ]
-        return libvlc_new(len(p), p)
+        if not args and plugin_path is not None:
+             # no parameters passed, for win32 and MacOS,
+             # specify the plugin_path if detected earlier
+            args = ['vlc', '--plugin-path=' + plugin_path]
+        return libvlc_new(len(args), args)
 
     def media_player_new(self, uri=None):
         """Create a new MediaPlayer instance.
 
         @param uri: an optional URI to play in the player.
         """
-        p=libvlc_media_player_new(self)
+        p = libvlc_media_player_new(self)
         if uri:
             p.set_media(self.media_new(uri))
-        p._instance=self
+        p._instance = self
         return p
 
     def media_list_player_new(self):
         """Create a new MediaListPlayer instance.
         """
-        p=libvlc_media_list_player_new(self)
-        p._instance=self
+        p = libvlc_media_list_player_new(self)
+        p._instance = self
         return p
 
     def media_new(self, mrl, *options):
         """Create a new Media instance.
 
         Options can be specified as supplementary string parameters, e.g.
-        m=i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')
+
+        C{m = i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')}
+
+        Alternatively, the options can be added to the media using the Media.add_options method:
+
+        C{m.add_options('foo.avi', 'sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')}
+
+        @param options: optional media option=value strings
         """
-        m=libvlc_media_new_location(self, mrl)
+        m = libvlc_media_new_location(self, mrl)
         for o in options:
             libvlc_media_add_option(m, o)
         return m
@@ -58,72 +67,76 @@ class Instance:
     def audio_output_enumerate_devices(self):
         """Enumerate the defined audio output devices.
 
-        The result is a list of dict (name, description)
+        @return: list of dicts {name:, description:, devices:}
         """
-        l = []
-        head = ao = libvlc_audio_output_list_get(self)
-        while ao:
-            l.append( { 'name': ao.contents.name,
-                        'description': ao.contents.description,
-                        'devices': [ { 'id': libvlc_audio_output_device_id(self, ao.contents.name, i),
-                                       'longname': libvlc_audio_output_device_longname(self, ao.contents.name, i) }
-                                     for i in range(libvlc_audio_output_device_count(self, ao.contents.name) ) ] } )
-            ao = ao.contents.next
-        libvlc_audio_output_list_release(head)
-        return l
+        r = []
+        head = libvlc_audio_output_list_get(self)
+        if head:
+            i = head
+            while i:
+                i = i.contents
+                d = [{'id':       libvlc_audio_output_device_id      (self, i.name, d), 
+                      'longname': libvlc_audio_output_device_longname(self, i.name, d)} 
+                   for d in range(libvlc_audio_output_device_count   (self, i.name))]
+                r.append({'name': i.name, 'description': i.description, 'devices': d})
+                i = i.next
+            libvlc_audio_output_list_release(head)
+        return r
 
 class Media:
     """Create a new Media instance.
     """
 
-    def add_options(self, *list_of_options):
+    def add_options(self, *options):
         """Add a list of options to the media.
 
         Options must be written without the double-dash, e.g.:
-        m.add_options('sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')
 
-        Note that you also can directly pass these options in the Instance.media_new method:
-        m=instance.media_new( 'foo.avi', 'sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')
+        C{m.add_options('sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')}
+
+        Alternatively, the options can directly be passed in the Instance.media_new method:
+
+        C{m = instance.media_new('foo.avi', 'sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')}
+
+        @param options: optional media option=value strings
         """
-        for o in list_of_options:
+        for o in options:
             self.add_option(o)
 
-class MediaPlayer:
+class MediaPlayer:  #PYCHOK expected (comment is lost)
     """Create a new MediaPlayer instance.
 
     It may take as parameter either:
       - a string (media URI). In this case, a vlc.Instance will be created.
       - a vlc.Instance
     """
-    def __new__(cls, *p):
-        if p and p[0] == 0:
-            return None
-        elif p and isinstance(p[0], (int, long)):
-            # instance creation from ctypes
-            o=object.__new__(cls)
-            o._as_parameter_=ctypes.c_void_p(p[0])
-            return o
+    def __new__(cls, *args):
+        if args:
+            i = args[0]
+            if i == 0:
+                return None
+            if isinstance(i, _Ints):
+                return _Cobject(cls, ctypes.c_void_p(i))
+            if isinstance(i, Instance):
+                return i.media_player_new()
 
-        if p and isinstance(p[0], Instance):
-            return p[0].media_player_new()
-        else:
-            i=Instance()
-            o=i.media_player_new()
-            if p:
-                o.set_media(i.media_new(p[0]))
-            return o
+        i = Instance()
+        o = i.media_player_new()
+        if args:
+            o.set_media(i.media_new(*args))  # args[0]
+        return o
 
     def get_instance(self):
-        """Return the associated vlc.Instance.
+        """Return the associated Instance.
         """
-        return self._instance
+        return self._instance  #PYCHOK expected
 
     def set_mrl(self, mrl, *options):
         """Set the MRL to play.
 
         @param mrl: The MRL
-        @param options: a list of options
-        @return The Media object
+        @param options: optional media option=value strings
+        @return: the Media object
         """
         m = self.get_instance().media_new(mrl, *options)
         self.set_media(m)
@@ -141,7 +154,8 @@ class MediaPlayer:
 
     def video_get_chapter_description(self, title):
         """Get the description of available chapters for specific title.
-        @param i_title selected title (int)
+
+        @param title: selected title (int)
         """
         return track_description_list(libvlc_video_get_chapter_description(self, title))
 
@@ -158,14 +172,14 @@ class MediaPlayer:
     def video_get_width(self, num=0):
         """Get the width of a video in pixels.
 
-        @param num: video number (default 0)
+        @param num: video number (default 0).
         """
         return self.video_get_size(num)[0]
 
     def video_get_height(self, num=0):
         """Get the height of a video in pixels.
 
-        @param num: video number (default 0)
+        @param num: video number (default 0).
         """
         return self.video_get_size(num)[1]
 
@@ -222,25 +236,20 @@ class Log:
         return [ str(m) for m in self ]
 
 class EventManager:
-    """Create an event manager and handler.
+    """Create an event manager with callback handler.
 
-       This class interposes the registration and handling of
-       event notifications in order to (a) allow any number of
-       positional and/or keyword arguments to the callback (in
-       addition to the Event instance), (b) preserve the Python
-       argument objects and (c) remove the need for decorating
-       each callback with decorator '@callbackmethod'.
+    This class interposes the registration and handling of
+    event notifications in order to (a) remove the need for
+    decorating each callback functions with the decorator
+    '@callbackmethod', (b) allow any number of positional
+    and/or keyword arguments to the callback (in addition
+    to the Event instance) and (c) to preserve the Python
+    objects such that the callback and argument objects
+    remain alive (i.e. are not garbage collected) until
+    B{after} the notification has been unregistered.
 
-       Calls from ctypes to Python callbacks are handled by
-       function _callback_handler.
-
-       A side benefit of this scheme is that the callback and
-       all argument objects remain alive (i.e. are not garbage
-       collected) until *after* the event notification has
-       been unregistered.
-
-       NOTE: only a single notification can be registered for
-       each event type in an EventManager instance.
+    @note: Only a single notification can be registered
+    for each event type in an EventManager instance.
     """
     def __new__(cls, ptr=None):
         if ptr is None:

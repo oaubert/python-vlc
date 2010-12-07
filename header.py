@@ -1,8 +1,8 @@
 #! /usr/bin/python
 
-#
 # Python ctypes bindings for VLC
-# Copyright (C) 2009 the VideoLAN team
+#
+# Copyright (C) 2009-2010 the VideoLAN team
 # $Id: $
 #
 # Authors: Olivier Aubert <olivier.aubert at liris.cnrs.fr>
@@ -20,16 +20,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
-#
 
-"""This module provides bindings for the
-U{libvlc<http://wiki.videolan.org/ExternalAPI>}.
+"""This module provides bindings for the LibVLC public API, see
+U{http://wiki.videolan.org/LibVLC}.
 
-You can find documentation at U{http://www.advene.org/download/python-ctypes/}.
+You can find the documentation and a README file with some examples
+at U{http://www.advene.org/download/python-ctypes/}.
 
-Basically, the most important class is L{Instance}, which is used to
-create a libvlc Instance. From this instance, you can then create
+Basically, the most important class is L{Instance}, which is used
+to create a libvlc instance.  From this instance, you then create
 L{MediaPlayer} and L{MediaListPlayer} instances.
+
+Alternatively, you may create instances of the L{MediaPlayer} and
+L{MediaListPlayer} class directly and an instance of L{Instance}
+will be implicitly created.  The latter can be obtained using the
+C{get_instance} method of L{MediaPlayer} and L{MediaListPlayer}.
 """
 
 import ctypes
