@@ -71,6 +71,7 @@ else:  # Python 3+
 _blacklist = {
     'libvlc_set_exit_handler':    '',  # not in 1.1.5?
     'libvlc_video_set_callbacks': '',
+    'libvlc_video_set_format_callbacks': '',
 }
 
 # some constants
@@ -703,6 +704,7 @@ class PythonGenerator(_Generator):
         'unsigned*': 'ctypes.POINTER(ctypes.c_uint)',  # _video_get_size
         'void':      'None',
         'void*':     'ctypes.c_void_p',
+        'void**':    'ListPOINTER(ctypes.c_void_p)',
 
         'WINDOWHANDLE': 'ctypes.c_ulong',
     }
