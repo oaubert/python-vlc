@@ -78,6 +78,7 @@ _blacklist = {
 _NA_     = 'N/A'
 _NL_     = '\n'  # os.linesep
 _OUT_    = '[OUT]'
+_PNTR_   = 'pointer to get the '  # KLUDGE: see @param ... [OUT]
 _INDENT_ = '    '
 
 # special keywords in header.py
@@ -250,7 +251,10 @@ class Func(_Source):
                           .splitlines():
             if '@param' in t:
                 if _OUT_ in t:
-                    t = at_param_re.findall(t)[0][0]
+                    if _PNTR_ in t:  # KLUDGE: name plus purpose
+                        t = t.replace(_OUT_, '').replace(_PNTR_, '')
+                    else:  # keep just the name
+                        t = at_param_re.findall(t)[0][0]
                     o.append(t.replace('@param', '').strip())
                     c = ['']  # drop continuation line(s)
                 else:
