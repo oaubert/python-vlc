@@ -308,7 +308,7 @@ class Par(object):
     # be hardcoded this way, but works all right for now.
     def flags(self, out=(), default=None):
         """Return parameter flags tuple.
-        
+
         Return the parameter flags tuple for the given parameter
         type and name and a list of parameter names documented as
         [OUT].
@@ -887,7 +887,7 @@ class _Enum(ctypes.c_ulong):
             # arg names, excluding output args
             # and rename first arg to 'self'
             args = ', '.join(['self'] + f.args(1))  #PYCHOK flake
-            
+
             # xformed doc string without first @param
             docs = self.epylink(f.epydocs(1, 8), striprefix)  #PYCHOK flake
 

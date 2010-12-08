@@ -57,7 +57,7 @@ if sys.platform.startswith('linux'):
 
 elif sys.platform.startswith('win'):
     import ctypes.util as u
-    p = u.find_library('libvlc.dll') 
+    p = u.find_library('libvlc.dll')
     if p is None:
         try:  # some registry settings
             import _winreg as w  # leaner than win32api, win32con
@@ -158,7 +158,7 @@ class _Ctype(object):
         """(INTERNAL) ctypes parameter conversion method.
         """
         return this._as_parameter_
-    
+
 class ListPOINTER(object):
     """Just like a POINTER but accept a list of ctype as an argument.
     """

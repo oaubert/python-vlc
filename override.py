@@ -75,8 +75,8 @@ class Instance:
             i = head
             while i:
                 i = i.contents
-                d = [{'id':       libvlc_audio_output_device_id      (self, i.name, d), 
-                      'longname': libvlc_audio_output_device_longname(self, i.name, d)} 
+                d = [{'id':       libvlc_audio_output_device_id      (self, i.name, d),
+                      'longname': libvlc_audio_output_device_longname(self, i.name, d)}
                    for d in range(libvlc_audio_output_device_count   (self, i.name))]
                 r.append({'name': i.name, 'description': i.description, 'devices': d})
                 i = i.next
@@ -200,17 +200,17 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         Coordinates are expressed in terms of the decoded video resolution,
         B{not} in terms of pixels on the screen/viewport.  To get the
         latter, you must query your windowing system directly.
- 
+
         Either coordinate may be negative or larger than the corresponding
         size of the video, if the cursor is outside the rendering area.
- 
+
         @warning: The coordinates may be out-of-date if the pointer is not
         located on the video rendering area.  LibVLC does not track the
         mouse pointer if the latter is outside the video widget.
- 
+
         @note: LibVLC does not support multiple mouse pointers (but does
         support multiple input devices sharing the same pointer).
- 
+
         @param num: video number (default 0).
         """
         r = libvlc_video_get_cursor(self, num)
