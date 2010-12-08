@@ -49,7 +49,7 @@ C{LibVlc-footer.java} and C{LibVlc-header.java}.
 __all__     = ('Parser',
                'PythonGenerator', 'JavaGenerator',
                'process')
-__version__ =  '20.10.12.05'
+__version__ =  '20.10.12.07'
 
 _debug = False
 
@@ -735,6 +735,10 @@ class PythonGenerator(_Generator):
         self.type2class['libvlc_event_e'] = 'EventType'
          # doc links to functions, methods and types
         self.links = {'libvlc_event_e': 'EventType'}
+         # link enum value names to enum type/class
+##      for t in self.parser.enums:
+##          for v in t.vals:
+##              self.links[v.enum] = t.name
          # prefixes to strip from method names
          # when wrapping them into class methods
         self.prefixes = {}
@@ -784,6 +788,9 @@ class PythonGenerator(_Generator):
     f = _Cfunctions.get('%(name)s', None) or \\
         _Cfunction('%(name)s', (%(flags)s),
                     %(types)s)
+    if not __debug__:  # i.e. python -O or -OO
+        global %(name)s
+        %(name)s = f
     return f(%(args)s)
 """ % locals())
 
