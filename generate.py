@@ -316,8 +316,8 @@ class Par(object):
         if self.name in out:
             f = Flag.Out  # @param [OUT]
         else:
-            f = {'int*':                Flag.Out,
-                 'unsigned*':           Flag.Out,
+            f = {'int*':      Flag.Out,
+                 'unsigned*': Flag.Out,
                 }.get(self.type, Flag.In)  # default
         if default is None:
             return f,  # 1-tuple
