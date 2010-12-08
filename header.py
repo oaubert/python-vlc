@@ -42,10 +42,7 @@ import os
 import sys
 
 # Used by EventManager in override.py
-try:
-    from inspect import getargspec
-except ImportError:
-    getargspec = None
+from inspect import getargspec
 
 build_date  = ''  # build time stamp and __version__, see generate.py
 

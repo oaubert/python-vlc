@@ -284,8 +284,7 @@ class EventManager:
     @note: Only a single notification can be registered
     for each event type in an EventManager instance.
     """
-    _callback_handler_ = None
-    _callbacks_ = {}
+    _callbacks = {}
 
     def __new__(cls, ptr=None):
         if ptr is None:
@@ -312,7 +311,7 @@ class EventManager:
         if not hasattr(callback, '__call__'):  # callable()
             raise VLCException("%s required: %r" % ('callable', callback))
          # check that the callback expects arguments
-        if getargspec and not any(getargspec(callback)[:2]):  # list(...)
+        if not any(getargspec(callback)[:2]):  # list(...)
             raise VLCException("%s required: %r" % ('argument', callback))
 
         if self._callback_handler is None:
@@ -326,7 +325,7 @@ class EventManager:
                 first parameter, hence this closure.
                 """
                 try: # retrieve Python callback and arguments
-                    call, args, kwds = self._callbacks_[k]
+                    call, args, kwds = self._callbacks[k]
                      # deref event.contents to simplify callback code
                     call(event.contents, *args, **kwds)
                 except KeyError:  # detached?
@@ -349,6 +348,6 @@ class EventManager:
             raise VLCException("%s required: %r" % ('EventType', eventtype))
 
         k = eventtype.value
-        if k in self._callbacks_:
-            del self._callbacks_[k] # remove, regardless of libvlc return value
-            libvlc_event_detach(self, eventtype, self._callback_handler_, k)
+        if k in self._callbacks:
+            del self._callbacks[k] # remove, regardless of libvlc return value
+            libvlc_event_detach(self, eventtype, self._callback_handler, k)
