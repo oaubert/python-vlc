@@ -24,7 +24,7 @@ setup(name='python-vlc',
       long_description = """VLC bindings for python.
 
 This module provides ctypes-based bindings for the native libvlc API
-(see http://wiki.videolan.org/ExternalAPI) of the VLC video player.
+(see http://wiki.videolan.org/LibVLC) of the VLC video player.
 
 It is automatically generated from the include files.
 """
