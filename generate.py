@@ -252,9 +252,9 @@ class Func(_Source):
                           .splitlines():
             if '@param' in t:
                 if _OUT_ in t:
-                     # KLUDGE: remove @param, some comment and [OUT]
+                    # KLUDGE: remove @param, some comment and [OUT]
                     t = t.replace('@param', '').replace(_PNTR_, '').replace(_OUT_, '')
-                     # keep parameter name and doc string
+                    # keep parameter name and doc string
                     o.append(' '.join(t.split()))
                     c = ['']  # drop continuation line(s)
                 else:
@@ -278,7 +278,7 @@ class Func(_Source):
             self.heads = tuple(h)
         if o:  # just the [OUT] parameter names
             self.out = tuple(t.split()[0] for t in o)
-             # ctypes returns [OUT] parameters as tuple
+            # ctypes returns [OUT] parameters as tuple
             r = ['@return: %s' % ', '.join(o)]
         if p:
             self.params = tuple(map(endot, p))
@@ -406,7 +406,7 @@ class Parser(object):
             if not name:  # anonymous
                 name = 'libvlc_enum_t'
 
-             # more doc string cleanup
+            # more doc string cleanup
             docs = endot(docs).capitalize()
 
             yield Enum(name, typ, vals, docs,
@@ -439,8 +439,8 @@ class Parser(object):
                     errorf('%d parameter(s) missing in function %s comment: %s',
                             (len(pars) - len(n)), f.name, docs.replace(_NL_, ' ') or _NA_)
                     n.extend('param%d' % i for i in range(len(n), len(pars)))  #PYCHOK false?
-                 # FIXME: this assumes that the order of the parameters is
-                 # the same in the parameter list and in the doc string
+                # FIXME: this assumes that the order of the parameters is
+                # the same in the parameter list and in the doc string
                 for i, p in enumerate(pars):
                     p.name = n[i]
 
@@ -460,7 +460,7 @@ class Parser(object):
         f = opener(self.h_file)
         for t in f:
             n += 1
-             # collect doc lines
+            # collect doc lines
             if t.startswith('/**'):
                 d =     [t[3:].rstrip()]
             elif t.startswith(' * '):  # FIXME: keep empty lines
@@ -485,7 +485,7 @@ class Parser(object):
                         a = [t]
 
                 if m:
-                     # clean up doc string
+                    # clean up doc string
                     d = _NL_.join(d).strip()
                     if d.endswith('*/'):
                         d = d[:-2].rstrip()
@@ -519,7 +519,7 @@ class Parser(object):
                 n  = n[1:].lstrip()
                 t += '*'
 ##          if n == 'const*':
-##               # K&R: [const] char* const*
+##              # K&R: [const] char* const*
 ##              n = ''
         else:  # K&R: only [const] type
             n = ''
@@ -538,7 +538,7 @@ class _Generator(object):
     type2class   = {}    # must be overloaded
 
     def __init__(self, parser=None):
-        ##self.type2class = self.type2class.copy()
+      ##self.type2class = self.type2class.copy()
         self.parser = parser
         self.convert_enums()
 
@@ -735,16 +735,16 @@ class PythonGenerator(_Generator):
         @param parser: a L{Parser} instance.
         """
         _Generator.__init__(self, parser)
-         # one special enum type class
+        # one special enum type class
         self.type2class['libvlc_event_e'] = 'EventType'
-         # doc links to functions, methods and types
+        # doc links to functions, methods and types
         self.links = {'libvlc_event_e': 'EventType'}
-         # link enum value names to enum type/class
+        # link enum value names to enum type/class
 ##      for t in self.parser.enums:
 ##          for v in t.vals:
 ##              self.links[v.enum] = t.name
-         # prefixes to strip from method names
-         # when wrapping them into class methods
+        # prefixes to strip from method names
+        # when wrapping them into class methods
         self.prefixes = {}
         for t, c in self.type2class.items():
             t = t.rstrip('*')
@@ -756,7 +756,7 @@ class PythonGenerator(_Generator):
                      .rstrip(')')
                 if c[:1].isupper():
                     self.links[t] = c
-         # xform docs to epydoc lines
+        # xform docs to epydoc lines
         for f in self.parser.funcs:
             f.xform()
             self.links[f.name] = f.name
@@ -771,19 +771,19 @@ class PythonGenerator(_Generator):
         for f in self.parser.funcs:
             name = f.name  #PYCHOK flake
 
-             # arg names, excluding output args
+            # arg names, excluding output args
             args = ', '.join(f.args())  #PYCHOK flake
 
-             # tuples of arg flags
+            # tuples of arg flags
             flags = ', '.join(str(p.flags(f.out)) for p in f.pars)  #PYCHOK false?
             if flags:
                 flags += ','
 
-             # return value and arg classes
+            # return value and arg classes
             types = ', '.join([self.class4(f.type)] +  #PYCHOK flake
                               [self.class4(p.type) for p in f.pars])
 
-             # xformed doc string with first @param
+            # xformed doc string with first @param
             docs = self.epylink(f.epydocs(0, 4))  #PYCHOK flake
             self.outputf("""def %(name)s(%(args)s):
     '''%(docs)s
@@ -878,7 +878,7 @@ class _Enum(ctypes.c_ulong):
             f.wrapped += 1
             name = f.name
 
-             # method name is function name less prefix
+            # method name is function name less prefix
             meth = striprefix(name)
             if meth in methods.get(cls, []):
                 continue  # overridden
@@ -943,7 +943,7 @@ class _Enum(ctypes.c_ulong):
         for k, v in codes.items():
             q = v.lstrip()[:3]
             if q in ('"""', "'''"):
-                 # use class comment as doc string
+                # use class comment as doc string
                 _, docstrs[k], v = v.split(q, 2)
                 codes[k] = v
             # FIXME: not robust wrt. internal methods
