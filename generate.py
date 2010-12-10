@@ -976,13 +976,12 @@ class JavaGenerator(_Generator):
     type2class = {
         'libvlc_audio_output_t*':      'LibVlcAudioOutput',
         'libvlc_callback_t':           'LibVlcCallback',
-        'libvlc_event_type_t':         'libvlc_event_type_t',  # FIXME?
+        'libvlc_event_type_t':         'LibvlcEventType',
         'libvlc_event_manager_t*':     'LibVlcEventManager',
-        'libvlc_exception_t*':         'libvlc_log_message_t',  # FIXME?
         'libvlc_instance_t*':          'LibVlcInstance',
         'libvlc_log_t*':               'LibVlcLog',
         'libvlc_log_iterator_t*':      'LibVlcLogIterator',
-        'libvlc_log_message_t*':       'libvlc_log_message_t',  # FIXME?
+        'libvlc_log_message_t*':       'LibvlcLogMessage',
         'libvlc_media_t*':             'LibVlcMedia',
         'libvlc_media_discoverer_t*':  'LibVlcMediaDiscoverer',
         'libvlc_media_library_t*':     'LibVlcMediaLibrary',
