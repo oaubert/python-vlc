@@ -50,7 +50,7 @@ C{LibVlc-footer.java} and C{LibVlc-header.java}.
 __all__     = ('Parser',
                'PythonGenerator', 'JavaGenerator',
                'process')
-__version__ =  '20.10.12.07'
+__version__ =  '20.10.12.08'
 
 _debug = False
 
@@ -252,11 +252,10 @@ class Func(_Source):
                           .splitlines():
             if '@param' in t:
                 if _OUT_ in t:
-                    if _PNTR_ in t:  # KLUDGE: name plus purpose
-                        t = t.replace(_OUT_, '').replace(_PNTR_, '')
-                    else:  # keep just the name
-                        t = at_param_re.findall(t)[0][0]
-                    o.append(t.replace('@param', '').strip())
+                     # KLUDGE: remove @param, some comment and [OUT]
+                    t = t.replace('@param', '').replace(_PNTR_, '').replace(_OUT_, '')
+                     # keep parameter name and doc string
+                    o.append(' '.join(t.split()))
                     c = ['']  # drop continuation line(s)
                 else:
                     p.append(at_param_re.sub('\\1:\\2', t))
@@ -277,12 +276,12 @@ class Func(_Source):
         if h:
             h[-1] = endot(h[-1])
             self.heads = tuple(h)
-        if o:
-            self.out = tuple(o)
+        if o:  # just the [OUT] parameter names
+            self.out = tuple(t.split()[0] for t in o)
+             # ctypes returns [OUT] parameters as tuple
+            r = ['@return: %s' % ', '.join(o)]
         if p:
             self.params = tuple(map(endot, p))
-        if self.out:  # ctypes returns output parameter as a tuple
-            r = ['@return: %s' % ', '.join(self.out)]
         t = r + v + b
         if t:
             self.tails = tuple(map(endot, t))
@@ -754,7 +753,6 @@ class PythonGenerator(_Generator):
                 self.prefixes[c] = t[:-1]
             elif c.startswith('ctypes.POINTER('):
                 c = c.replace('ctypes.POINTER(', '') \
-                     .replace('ctypes.POINTER(', '') \
                      .rstrip(')')
                 if c[:1].isupper():
                     self.links[t] = c
