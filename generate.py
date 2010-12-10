@@ -371,7 +371,7 @@ class Parser(object):
             f.check()
 
     def __dump(self, attr):
-        print('%s==== %s ==== %s'  (_NL_, attr, self.version))
+        print('%s==== %s ==== %s' % (_NL_, attr, self.version))
         for a in getattr(self, attr, ()):
             a.dump()
 
