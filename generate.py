@@ -50,7 +50,7 @@ C{LibVlc-footer.java} and C{LibVlc-header.java}.
 __all__     = ('Parser',
                'PythonGenerator', 'JavaGenerator',
                'process')
-__version__ =  '20.10.12.08'
+__version__ =  '20.10.12.10'
 
 _debug = False
 
@@ -616,10 +616,10 @@ class _Generator(object):
                 v, t = _NA_, self.parser.version
                 if t:
                     v, t = t, ' ' + t
-                self.outputf('__version__ = "%s"', v)
-                self.outputf('%s"%s%s"', _BUILD_DATE_, time.ctime(), t)
+                self.output('__version__ = "%s"' % (v,))
+                self.output('%s"%s%s"' % (_BUILD_DATE_, time.ctime(), t))
             else:
-                self.outputf(t, nt=0)
+                self.output(t, nt=0)
         f.close()
 
     def outclose(self):
@@ -643,14 +643,14 @@ class _Generator(object):
             self.outpath = os.path.join(self.outdir, name)
             self.file = opener(self.outpath, 'w')
 
-    def outputf(self, fmt, *args, **kwds):  # nt=1
+    def output(self, text, nl=0, nt=1):
         """Write to current output file.
         """
-        if args:
-            self.file.write(fmt % args)
-        else:
-            self.file.write(fmt)
-        self.file.write(_NL_ * kwds.get('nt', 1))
+        if nl:  # leading newlines
+            self.file.write(_NL_ * nl)
+        self.file.write(text)
+        if nt:  # trailing newlines
+            self.file.write(_NL_ * nt)
 
     def unwrapped(self):
         """Report the unwrapped and blacklisted functions.
@@ -661,8 +661,8 @@ class _Generator(object):
         for f, t in ((b, 'blacklisted'),
                      (u, 'not wrapped as methods')):
             if f:
-                self.outputf('%s%s %d function(s) %s:', _NL_, c, len(f), t)
-                self.outputf(_NL_.join('%s  %s' % (c, f) for f in sorted(f)))  #PYCHOK false?
+                self.output('%s %d function(s) %s:' % (c, len(f), t), nl=1)
+                self.output(_NL_.join('%s  %s' % (c, f) for f in sorted(f)))  #PYCHOK false?
 
 
 class PythonGenerator(_Generator):
@@ -765,7 +765,7 @@ class PythonGenerator(_Generator):
     def generate_ctypes(self):
         """Generate a ctypes decorator for all functions.
         """
-        self.outputf("""
+        self.output("""
  # LibVLC __version__ functions #
 """)
         for f in self.parser.funcs:
@@ -785,7 +785,7 @@ class PythonGenerator(_Generator):
 
             # xformed doc string with first @param
             docs = self.epylink(f.epydocs(0, 4))  #PYCHOK flake
-            self.outputf("""def %(name)s(%(args)s):
+            self.output("""def %(name)s(%(args)s):
     '''%(docs)s
     '''
     f = _Cfunctions.get('%(name)s', None) or \\
@@ -800,7 +800,7 @@ class PythonGenerator(_Generator):
     def generate_enums(self):
         """Generate classes for all enum types.
         """
-        self.outputf("""
+        self.output("""
 class _Enum(ctypes.c_ulong):
     '''(INTERNAL) Base class
     '''
@@ -823,20 +823,20 @@ class _Enum(ctypes.c_ulong):
         for e in self.parser.enums:
 
             cls = self.class4(e.name)
-            self.outputf("""class %s(_Enum):
+            self.output("""class %s(_Enum):
     '''%s
     '''
-    _enum_names_ = {""", cls, e.epydocs() or _NA_)
+    _enum_names_ = {""" % (cls, e.epydocs() or _NA_))
 
             for v in e.vals:
-                self.outputf("        %s: '%s',", v.value, v.name)
-            self.outputf('    }')
+                self.output("        %s: '%s'," % (v.value, v.name))
+            self.output('    }')
 
             # align on '=' signs
             w = -max(len(v.name) for v in e.vals)
             t = ['%s.%*s = %s(%s)' % (cls, w,v.name, cls, v.value) for v in e.vals]
 
-            self.outputf(_NL_.join(sorted(t)), nt=2)
+            self.output(_NL_.join(sorted(t)), nt=2)
 
     def generate_wrappers(self):
         """Generate class wrappers for all appropriate functions.
@@ -859,20 +859,20 @@ class _Enum(ctypes.c_ulong):
         for c, f in sorted(t, key=operator.itemgetter(0)):
             if cls != c:
                 cls = c
-                self.outputf("""class %s(_Ctype):
+                self.output("""class %s(_Ctype):
     '''%s
-    '''""", cls, docstrs.get(cls, '') or _NA_)
+    '''""" % (cls, docstrs.get(cls, '') or _NA_))
 
                 c = codes.get(cls, '')
                 if not 'def __new__' in c:
-                    self.outputf("""
+                    self.output("""
     def __new__(cls, ptr=None):
         '''(INTERNAL) ctypes wrapper constructor.
         '''
         return _Constructor(cls, ptr)""")
 
                 if c:
-                    self.outputf(c)
+                    self.output(c)
                 x = self.prefixes.get(cls, 'libvlc_')
 
             f.wrapped += 1
@@ -890,7 +890,7 @@ class _Enum(ctypes.c_ulong):
             # xformed doc string without first @param
             docs = self.epylink(f.epydocs(1, 8), striprefix)  #PYCHOK flake
 
-            self.outputf("""    def %(meth)s(%(args)s):
+            self.output("""    def %(meth)s(%(args)s):
         '''%(docs)s
         '''
         return %(name)s(%(args)s)
@@ -899,18 +899,18 @@ class _Enum(ctypes.c_ulong):
             # check for some standard methods
             if meth == 'count':
                 # has a count method, generate __len__
-                self.outputf("""    def __len__(self):
+                self.output("""    def __len__(self):
         return %s(self)
-""", name)
+""" % (name,))
             elif meth.endswith('item_at_index'):
                 # indexable (and thus iterable)
-                self.outputf("""    def __getitem__(self, i):
+                self.output("""    def __getitem__(self, i):
         return %s(self, i)
 
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
-""", name)
+""" % (name,))
 
     def parse_override(self, override):
         """Parse the override definitions file.
@@ -1026,18 +1026,18 @@ class JavaGenerator(_Generator):
             self.outopen(j + '.java')
 
             self.insert_code('boilerplate.java')
-            self.outputf("""package org.videolan.jvlc.internal;
+            self.output("""package org.videolan.jvlc.internal;
 
 public enum %s
-{""", j)
+{""" % (j,))
             # FIXME: write comment
             for v in e.vals:
-                self.outputf('        %s (%s),', v.name, v.value)
-            self.outputf("""
+                self.output('        %s (%s),' % (v.name, v.value))
+            self.output("""
         private final int _value;
         %s(int value) { this._value = value; }
         public int value() { return this._value; }
-}""", j)
+}""" % (j,))
             self.outclose()
 
     def generate_header(self):
@@ -1045,10 +1045,10 @@ public enum %s
         """
         for c, j in sorted(self.type2class.items()):
             if c.endswith('*') and j.startswith('LibVlc'):
-                self.outputf("""
+                self.output("""
     public class %s extends PointerType
     {
-    }""", j)
+    }""" % (j,))
 
     def generate_libvlc(self):
         """Generate LibVlc.java Java/JNA glue code.
@@ -1061,8 +1061,8 @@ public enum %s
         self.generate_header()
         for f in self.parser.funcs:
             f.wrapped = 1  # for now
-            p =   ', '.join('%s %s' % (self.class4(p.type), p.name) for p in f.pars)
-            self.outputf('%s %s(%s);', self.class4(f.type), f.name, p, nt=2)
+            p =    ', '.join('%s %s' % (self.class4(p.type), p.name) for p in f.pars)
+            self.output('%s %s(%s);' % (self.class4(f.type), f.name, p), nt=2)
 
         self.insert_code('LibVlc-footer.java')
 
