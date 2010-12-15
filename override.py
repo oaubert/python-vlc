@@ -284,6 +284,7 @@ class EventManager:
     @note: Only a single notification can be registered
     for each event type in an EventManager instance.
     """
+    _callback_handler = None
     _callbacks = {}
 
     def __new__(cls, ptr=None):
