@@ -6,6 +6,7 @@
 # $Id: $
 #
 # Authors: Olivier Aubert <olivier.aubert at liris.cnrs.fr>
+#          Jean Brouwers <MrJean1 at gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,7 +46,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Wed Dec  8 18:45:01 2010"
+build_date  = "Mon Dec 20 10:59:02 2010"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -716,6 +717,7 @@ class EventManager(_Ctype):
     
     '''
 
+    _callback_handler = None
     _callbacks = {}
 
     def __new__(cls, ptr=None):
