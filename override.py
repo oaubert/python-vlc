@@ -83,6 +83,24 @@ class Instance:
             libvlc_audio_output_list_release(head)
         return r
 
+    def module_description_list_get(self, capability ):
+        """Returns a list of modules matching a capability.
+
+        """
+        return module_description_list(libvlc_module_description_list_get(self, capability))
+
+    def audio_filter_list_get(self):
+        """Returns a list of audio filters that are available.
+
+        """
+        return module_description_list(libvlc_audio_filter_list_get(self))
+
+    def video_filter_list_get(self):
+        """Returns a list of video filters that are available.
+
+        """
+        return module_description_list(libvlc_video_filter_list_get(self))
+
 class Media:
     """Create a new Media instance.
     """

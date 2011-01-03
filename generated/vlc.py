@@ -46,7 +46,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Mon Dec 20 10:59:02 2010"
+build_date  = "Mon Jan  3 12:57:14 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -697,6 +697,31 @@ class Event(ctypes.Structure):
         ('u',      EventUnion     ),
     ]
 
+class ModuleDescription(ctypes.Structure):
+    def __str__(self):
+        return '%s %s (%s)' % (self.__class__.__name__, self.shortname, self.name)
+
+ModuleDescription._fields_ = [  # recursive struct
+    ('name', ctypes.c_char_p),
+    ('shortname', ctypes.c_char_p),
+    ('longname', ctypes.c_char_p),
+    ('help', ctypes.c_char_p),
+    ('next', ctypes.POINTER(ModuleDescription)),
+    ]
+
+def module_description_list(head):
+    """Convert a ModuleDescription linked list to a Python list (and release the former).
+    """
+    r = []
+    if head:
+        item = head
+        while item:
+            item = item.contents
+            r.append((item.name, item.shortname, item.longname, item.help))
+            item = item.next
+        libvlc_module_description_list_release(head)
+    return r
+
  # End of header.py #
 
 class EventManager(_Ctype):
@@ -871,6 +896,24 @@ class Instance(_Ctype):
                 i = i.next
             libvlc_audio_output_list_release(head)
         return r
+
+    def module_description_list_get(self, capability ):
+        """Returns a list of modules matching a capability.
+
+        """
+        return module_description_list(libvlc_module_description_list_get(self, capability))
+
+    def audio_filter_list_get(self):
+        """Returns a list of audio filters that are available.
+
+        """
+        return module_description_list(libvlc_audio_filter_list_get(self))
+
+    def video_filter_list_get(self):
+        """Returns a list of video filters that are available.
+
+        """
+        return module_description_list(libvlc_video_filter_list_get(self))
 
 
     def release(self):
@@ -2956,6 +2999,44 @@ def libvlc_log_iterator_next(p_iter, p_buffer):
         global libvlc_log_iterator_next
         libvlc_log_iterator_next = f
     return f(p_iter, p_buffer)
+
+def libvlc_module_description_list_release(p_list):
+    '''Release a list of module descriptions.
+    @param p_list: the list to be released.
+    '''
+    f = _Cfunctions.get('libvlc_module_description_list_release', None) or \
+        _Cfunction('libvlc_module_description_list_release', ((1,),),
+                    None, ctypes.POINTER(ModuleDescription))
+    if not __debug__:  # i.e. python -O or -OO
+        global libvlc_module_description_list_release
+        libvlc_module_description_list_release = f
+    return f(p_list)
+
+def libvlc_audio_filter_list_get(p_instance):
+    '''Returns a list of audio filters that are available.
+    @param p_instance: libvlc instance.
+    @return: a list of module descriptions. It should be freed with L{libvlc_module_description_list_release}(). In case of an error, NULL is returned. See L{ModuleDescription} See L{libvlc_module_description_list_release}.
+    '''
+    f = _Cfunctions.get('libvlc_audio_filter_list_get', None) or \
+        _Cfunction('libvlc_audio_filter_list_get', ((1,),),
+                    ctypes.POINTER(ModuleDescription), Instance)
+    if not __debug__:  # i.e. python -O or -OO
+        global libvlc_audio_filter_list_get
+        libvlc_audio_filter_list_get = f
+    return f(p_instance)
+
+def libvlc_video_filter_list_get(p_instance):
+    '''Returns a list of video filters that are available.
+    @param p_instance: libvlc instance.
+    @return: a list of module descriptions. It should be freed with L{libvlc_module_description_list_release}(). In case of an error, NULL is returned. See L{ModuleDescription} See L{libvlc_module_description_list_release}.
+    '''
+    f = _Cfunctions.get('libvlc_video_filter_list_get', None) or \
+        _Cfunction('libvlc_video_filter_list_get', ((1,),),
+                    ctypes.POINTER(ModuleDescription), Instance)
+    if not __debug__:  # i.e. python -O or -OO
+        global libvlc_video_filter_list_get
+        libvlc_video_filter_list_get = f
+    return f(p_instance)
 
 def libvlc_media_new_location(p_instance, psz_mrl):
     '''Create a media with a certain given media resource location,
@@ -5791,7 +5872,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_video_set_callbacks
 #  libvlc_video_set_format_callbacks
 
-# 11 function(s) not wrapped as methods:
+# 12 function(s) not wrapped as methods:
 #  libvlc_audio_output_list_release
 #  libvlc_clearerr
 #  libvlc_errmsg
@@ -5800,6 +5881,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_get_changeset
 #  libvlc_get_compiler
 #  libvlc_get_version
+#  libvlc_module_description_list_release
 #  libvlc_new
 #  libvlc_new_with_builtins
 #  libvlc_track_description_release
