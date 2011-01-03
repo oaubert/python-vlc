@@ -694,6 +694,7 @@ class PythonGenerator(_Generator):
         'libvlc_rectangle_t*':         'ctypes.POINTER(Rectangle)',
         'libvlc_time_t':               'ctypes.c_longlong',
         'libvlc_track_description_t*': 'ctypes.POINTER(TrackDescription)',
+        'libvlc_module_description_t*': 'ctypes.POINTER(ModuleDescription)',
 
         '...':       'FIXME_va_list',
         'char*':     'ctypes.c_char_p',

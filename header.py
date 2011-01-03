@@ -358,5 +358,30 @@ class Event(ctypes.Structure):
         ('u',      EventUnion     ),
     ]
 
+class ModuleDescription(ctypes.Structure):
+    def __str__(self):
+        return '%s %s (%s)' % (self.__class__.__name__, self.shortname, self.name)
+
+ModuleDescription._fields_ = [  # recursive struct
+    ('name', ctypes.c_char_p),
+    ('shortname', ctypes.c_char_p),
+    ('longname', ctypes.c_char_p),
+    ('help', ctypes.c_char_p),
+    ('next', ctypes.POINTER(ModuleDescription)),
+    ]
+
+def module_description_list(head):
+    """Convert a ModuleDescription linked list to a Python list (and release the former).
+    """
+    r = []
+    if head:
+        item = head
+        while item:
+            item = item.contents
+            r.append((item.name, item.shortname, item.longname, item.help))
+            item = item.next
+        libvlc_module_description_list_release(head)
+    return r
+
  # End of header.py #
 
