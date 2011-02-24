@@ -46,7 +46,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Mon Jan  3 12:57:14 2011"
+build_date  = "Thu Feb 24 13:58:07 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -2046,7 +2046,7 @@ class MediaPlayer(_Ctype):
         @param height: pixel height.
         @param pitch: line pitch (in bytes).
         @version: LibVLC 1.1.1 or later.
-        @bug: All pixel planes are expected to have the same pitch. To use the YCbCr color space with chrominance subsampling, consider using libvlc_video_set_format_callback() instead.
+        @bug: All pixel planes are expected to have the same pitch. To use the YCbCr color space with chrominance subsampling, consider using libvlc_video_set_format_callbacks() instead.
         '''
         return libvlc_video_set_format(self, chroma, width, height, pitch)
 
@@ -4128,7 +4128,7 @@ def libvlc_video_set_format(mp, chroma, width, height, pitch):
     @param height: pixel height.
     @param pitch: line pitch (in bytes).
     @version: LibVLC 1.1.1 or later.
-    @bug: All pixel planes are expected to have the same pitch. To use the YCbCr color space with chrominance subsampling, consider using libvlc_video_set_format_callback() instead.
+    @bug: All pixel planes are expected to have the same pitch. To use the YCbCr color space with chrominance subsampling, consider using libvlc_video_set_format_callbacks() instead.
     '''
     f = _Cfunctions.get('libvlc_video_set_format', None) or \
         _Cfunction('libvlc_video_set_format', ((1,), (1,), (1,), (1,), (1,),),
@@ -5961,9 +5961,10 @@ if __name__ == '__main__':
     echo_position = False
     def pos_callback(event, player):
         if echo_position:
-            print('%s to %.2f%% (%.2f%%)' % (event.type,
-                                             event.u.new_position * 100,
-                                             player.get_position() * 100))
+            sys.stdout.write('\r%s to %.2f%% (%.2f%%)' % (event.type,
+                                                          event.u.new_position * 100,
+                                                          player.get_position() * 100))
+            sys.stdout.flush()
 
     def print_version():
         """Print libvlc version"""
@@ -6035,7 +6036,7 @@ if __name__ == '__main__':
                 print('Position: %s' % player.get_position())
                 print('FPS: %s (%d ms)' % (player.get_fps(), mspf()))
                 print('Rate: %s' % player.get_rate())
-                print('Video size: %r' % player.video_get_size(0))  # num=0
+                print('Video size: %s' % str(player.video_get_size(0)))  # num=0
                 print('Scale: %s' % player.video_get_scale())
                 print('Aspect ratio: %s' % player.video_get_aspect_ratio())
                #print('Window:' % player.get_hwnd()
@@ -6091,7 +6092,7 @@ if __name__ == '__main__':
         print('Press q to quit, ? to get help.%s' % os.linesep)
         while True:
             k = getch().decode('utf8')  # Python 3+
-            print('> %s', k)
+            print('> %s' % k)
             if k in keybindings:
                 keybindings[k]()
             elif k.isdigit():
@@ -6099,7 +6100,7 @@ if __name__ == '__main__':
                 player.set_position(float('0.'+k))
 
     else:
-        print('Usage: %s <movie_filename>', sys.argv[0])
+        print('Usage: %s <movie_filename>' % sys.argv[0])
         print('Once launched, type ? for help.')
         print('')
         print_version()
