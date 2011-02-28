@@ -1157,7 +1157,6 @@ Parse VLC include files and generate bindings code for Python or Java.""")
         p.check()
     elif opts.debug:
         g.dump_dicts()
-
     elif not _nerrors:
         g.save(opts.output)
 

@@ -353,7 +353,7 @@ class EventManager:
             self._callbacks = {}
 
         k = eventtype.value
-        r = libvlc_event_attach(self, eventtype, self._callback_handler, k)
+        r = libvlc_event_attach(self, k, self._callback_handler, k)
         if not r:
             self._callbacks[k] = (callback, args, kwds)
         return r

@@ -46,7 +46,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Thu Feb 24 13:58:07 2011"
+build_date  = "Mon Feb 28 16:05:11 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -793,7 +793,7 @@ class EventManager(_Ctype):
             self._callbacks = {}
 
         k = eventtype.value
-        r = libvlc_event_attach(self, eventtype, self._callback_handler, k)
+        r = libvlc_event_attach(self, k, self._callback_handler, k)
         if not r:
             self._callbacks[k] = (callback, args, kwds)
         return r
