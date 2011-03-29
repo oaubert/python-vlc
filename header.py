@@ -236,7 +236,7 @@ class MediaStats(ctypes.Structure):
     ]
 
     def __str__(self):
-        l = [' %s:\t%s' % (n, getattr(self, n)) for n in self._fields_]
+        l = [' %s:\t%s' % (n, getattr(self, n)) for n, t in self._fields_]
         return '\n'.join([self.__class__.__name__] + l)
 
     def __repr__(self):
@@ -254,7 +254,7 @@ class MediaTrackInfo(ctypes.Structure):
     ]
 
     def __str__(self):
-        l = [" %s:\t%s" % (n, getattr(self, n)) for n in self._fields_]
+        l = [" %s:\t%s" % (n, getattr(self, n)) for n, t in self._fields_]
         return "\n".join([self.__class__.__name__] + l)
 
     def __repr__(self):
