@@ -46,7 +46,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Mon Feb 28 16:05:11 2011"
+build_date  = "Tue Mar 29 12:44:43 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -575,7 +575,7 @@ class MediaStats(ctypes.Structure):
     ]
 
     def __str__(self):
-        l = [' %s:\t%s' % (n, getattr(self, n)) for n in self._fields_]
+        l = [' %s:\t%s' % (n, getattr(self, n)) for n, t in self._fields_]
         return '\n'.join([self.__class__.__name__] + l)
 
     def __repr__(self):
@@ -593,7 +593,7 @@ class MediaTrackInfo(ctypes.Structure):
     ]
 
     def __str__(self):
-        l = [" %s:\t%s" % (n, getattr(self, n)) for n in self._fields_]
+        l = [" %s:\t%s" % (n, getattr(self, n)) for n, t in self._fields_]
         return "\n".join([self.__class__.__name__] + l)
 
     def __repr__(self):
@@ -1532,14 +1532,14 @@ class Media(_Ctype):
         '''
         return libvlc_media_get_user_data(self)
 
-    def get_tracks_info(self, tracks):
+    def get_tracks_info(self):
         '''Get media descriptor's elementary streams description
         Note, you need to call L{parse}() or play the media at least once
         before calling this function.
         Not doing this will result in an empty array.
-        @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) return the number of Elementary Streams.
+        @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) [OUT] return the number of Elementary Streams.
         '''
-        return libvlc_media_get_tracks_info(self, tracks)
+        return libvlc_media_get_tracks_info(self)
 
     def player_new_from_media(self):
         '''Create a Media Player object from a Media.
@@ -3394,21 +3394,21 @@ def libvlc_media_get_user_data(p_md):
         libvlc_media_get_user_data = f
     return f(p_md)
 
-def libvlc_media_get_tracks_info(p_md, tracks):
+def libvlc_media_get_tracks_info(p_md):
     '''Get media descriptor's elementary streams description
     Note, you need to call L{libvlc_media_parse}() or play the media at least once
     before calling this function.
     Not doing this will result in an empty array.
     @param p_md: media descriptor object.
-    @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) return the number of Elementary Streams.
+    @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) [OUT] return the number of Elementary Streams.
     '''
     f = _Cfunctions.get('libvlc_media_get_tracks_info', None) or \
-        _Cfunction('libvlc_media_get_tracks_info', ((1,), (1,),),
-                    ctypes.c_int, Media, ctypes.POINTER(ctypes.POINTER(MediaTrackInfo)))
+        _Cfunction('libvlc_media_get_tracks_info', ((1,), (2,),),
+                    ctypes.c_int, Media, ctypes.POINTER(ctypes.c_void_p))
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_get_tracks_info
         libvlc_media_get_tracks_info = f
-    return f(p_md, tracks)
+    return f(p_md)
 
 def libvlc_media_discoverer_new_from_name(p_inst, psz_name):
     '''Discover media service by name.
