@@ -318,6 +318,7 @@ class Par(object):
         else:
             f = {'int*':      Flag.Out,
                  'unsigned*': Flag.Out,
+                 'libvlc_media_track_info_t**': Flag.Out,
                 }.get(self.type, Flag.In)  # default
         if default is None:
             return f,  # 1-tuple
@@ -690,7 +691,7 @@ class PythonGenerator(_Generator):
         'libvlc_media_list_view_t*':   'MediaListView',
         'libvlc_media_player_t*':      'MediaPlayer',
         'libvlc_media_stats_t*':       'ctypes.POINTER(MediaStats)',
-        'libvlc_media_track_info_t**': 'ctypes.POINTER(ctypes.POINTER(MediaTrackInfo))',
+        'libvlc_media_track_info_t**': 'ctypes.POINTER(ctypes.c_void_p)',
         'libvlc_rectangle_t*':         'ctypes.POINTER(Rectangle)',
         'libvlc_time_t':               'ctypes.c_longlong',
         'libvlc_track_description_t*': 'ctypes.POINTER(TrackDescription)',
