@@ -34,6 +34,8 @@ $Id$
 """
 
 import gtk
+gtk.gdk.threads_init()
+
 import sys
 import vlc
 
