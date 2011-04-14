@@ -46,7 +46,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Tue Mar 29 12:44:43 2011"
+build_date  = "Thu Apr 14 18:33:30 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -809,7 +809,7 @@ class EventManager(_Ctype):
         k = eventtype.value
         if k in self._callbacks:
             del self._callbacks[k] # remove, regardless of libvlc return value
-            libvlc_event_detach(self, eventtype, self._callback_handler, k)
+            libvlc_event_detach(self, k, self._callback_handler, k)
 
 class Instance(_Ctype):
     '''Create a new Instance instance.

@@ -369,4 +369,4 @@ class EventManager:
         k = eventtype.value
         if k in self._callbacks:
             del self._callbacks[k] # remove, regardless of libvlc return value
-            libvlc_event_detach(self, eventtype, self._callback_handler, k)
+            libvlc_event_detach(self, k, self._callback_handler, k)
