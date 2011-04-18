@@ -6,6 +6,21 @@ def callbackmethod(callback):
     """Now obsolete @callbackmethod decorator."""
     return callback
 
+# libvlc_free is not present in some versions of libvlc. If it is not
+# in the library, then emulate it by calling libc.free
+if not hasattr(dll, 'libvlc_free'):
+    # need to find the free function in the C runtime. This is
+    # platform specific.
+    if sys.platform.startswith('linux'):
+        libc = ctypes.CDLL(find_library('c'))
+        libvlc_free = libc.free
+    else:
+        raise NotImplementedError('%s: %s without libvlc_free not supported' % (sys.argv[0], sys.platform))
+
+    # ensure argtypes is right, because default type of int won't work
+    # on 64-bit systems
+    libvlc_free.argtypes = [ ctypes.c_void_p ]
+
 # Version functions
 def _dot2int(v):
     '''(INTERNAL) Convert 'i.i.i[.i]' str to int.

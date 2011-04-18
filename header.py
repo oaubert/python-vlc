@@ -39,6 +39,7 @@ C{get_instance} method of L{MediaPlayer} and L{MediaListPlayer}.
 """
 
 import ctypes
+from ctypes.util import find_library
 import os
 import sys
 
