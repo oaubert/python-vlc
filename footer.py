@@ -11,11 +11,16 @@ def callbackmethod(callback):
 if not hasattr(dll, 'libvlc_free'):
     # need to find the free function in the C runtime. This is
     # platform specific.
-    if sys.platform.startswith('linux'):
-        libc = ctypes.CDLL(find_library('c'))
-        libvlc_free = libc.free
+    # For Linux and MacOSX
+    libc_path = find_library('c')
+    if libc_path:
+        libc = ctypes.CDLL(libc_path)
+        libvlc_free = libc.free        
     else:
-        raise NotImplementedError('%s: %s without libvlc_free not supported' % (sys.argv[0], sys.platform))
+        # On win32, it is impossible to guess the proper lib to call
+        # (msvcrt, mingw...). Just raise an exception.
+        def libvlc_free(p):
+            raise NotImplementedError('%s: %s without libvlc_free not supported' % (sys.argv[0], sys.platform))
 
     # ensure argtypes is right, because default type of int won't work
     # on 64-bit systems
