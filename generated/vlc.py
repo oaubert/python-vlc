@@ -39,6 +39,7 @@ C{get_instance} method of L{MediaPlayer} and L{MediaListPlayer}.
 """
 
 import ctypes
+from ctypes.util import find_library
 import os
 import sys
 
@@ -46,7 +47,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Thu Apr 14 18:33:30 2011"
+build_date  = "Fri Apr 29 10:39:54 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -1935,6 +1936,19 @@ class MediaPlayer(_Ctype):
         else:
             raise VLCException('invalid video number (%s)' % (num,))
 
+    def set_hwnd(self, drawable):
+        """Set a Win32/Win64 API window handle (HWND).
+
+        Specify where the media player should render its video
+        output. If LibVLC was built without Win32/Win64 API output
+        support, then this has no effects.
+           
+        @param drawable: windows handle of the drawable.
+        """
+        if not isinstance(drawable, ctypes.c_void_p):
+            drawable = ctypes.c_void_p(int(drawable))
+        libvlc_media_player_set_hwnd(self, drawable)
+            
     def video_get_width(self, num=0):
         """Get the width of a video in pixels.
 
@@ -2116,14 +2130,6 @@ class MediaPlayer(_Ctype):
         @return: an X window ID, or 0 if none where set.
         '''
         return libvlc_media_player_get_xwindow(self)
-
-    def set_hwnd(self, drawable):
-        '''Set a Win32/Win64 API window handle (HWND) where the media player should
-        render its video output. If LibVLC was built without Win32/Win64 API output
-        support, then this has no effects.
-        @param drawable: windows handle of the drawable.
-        '''
-        return libvlc_media_player_set_hwnd(self, drawable)
 
     def get_hwnd(self):
         '''Get the Windows API window handle (HWND) previously set with
@@ -5892,6 +5898,26 @@ def libvlc_vlm_get_event_manager(p_instance):
 def callbackmethod(callback):
     """Now obsolete @callbackmethod decorator."""
     return callback
+
+# libvlc_free is not present in some versions of libvlc. If it is not
+# in the library, then emulate it by calling libc.free
+if not hasattr(dll, 'libvlc_free'):
+    # need to find the free function in the C runtime. This is
+    # platform specific.
+    # For Linux and MacOSX
+    libc_path = find_library('c')
+    if libc_path:
+        libc = ctypes.CDLL(libc_path)
+        libvlc_free = libc.free        
+    else:
+        # On win32, it is impossible to guess the proper lib to call
+        # (msvcrt, mingw...). Just raise an exception.
+        def libvlc_free(p):
+            raise NotImplementedError('%s: %s without libvlc_free not supported' % (sys.argv[0], sys.platform))
+
+    # ensure argtypes is right, because default type of int won't work
+    # on 64-bit systems
+    libvlc_free.argtypes = [ ctypes.c_void_p ]
 
 # Version functions
 def _dot2int(v):

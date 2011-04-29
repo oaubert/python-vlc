@@ -198,6 +198,19 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         else:
             raise VLCException('invalid video number (%s)' % (num,))
 
+    def set_hwnd(self, drawable):
+        """Set a Win32/Win64 API window handle (HWND).
+
+        Specify where the media player should render its video
+        output. If LibVLC was built without Win32/Win64 API output
+        support, then this has no effects.
+           
+        @param drawable: windows handle of the drawable.
+        """
+        if not isinstance(drawable, ctypes.c_void_p):
+            drawable = ctypes.c_void_p(int(drawable))
+        libvlc_media_player_set_hwnd(self, drawable)
+            
     def video_get_width(self, num=0):
         """Get the width of a video in pixels.
 
