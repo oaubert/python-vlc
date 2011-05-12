@@ -52,14 +52,14 @@ build_date  = ''  # build time stamp and __version__, see generate.py
 plugin_path = None
 
 if sys.platform.startswith('linux'):
+    p = find_library('vlc')
     try:
-        dll = ctypes.CDLL('libvlc.so')
+        dll = ctypes.CDLL(p)
     except OSError:  # may fail
         dll = ctypes.CDLL('libvlc.so.5')
 
 elif sys.platform.startswith('win'):
-    import ctypes.util as u
-    p = u.find_library('libvlc.dll')
+    p = find_library('libvlc.dll')
     if p is None:
         try:  # some registry settings
             import _winreg as w  # leaner than win32api, win32con

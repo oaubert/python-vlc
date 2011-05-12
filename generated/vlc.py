@@ -47,20 +47,20 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Apr 29 10:39:54 2011"
+build_date  = "Thu May 12 09:38:58 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
 
 if sys.platform.startswith('linux'):
+    p = find_library('vlc')
     try:
-        dll = ctypes.CDLL('libvlc.so')
+        dll = ctypes.CDLL(p)
     except OSError:  # may fail
         dll = ctypes.CDLL('libvlc.so.5')
 
 elif sys.platform.startswith('win'):
-    import ctypes.util as u
-    p = u.find_library('libvlc.dll')
+    p = find_library('libvlc.dll')
     if p is None:
         try:  # some registry settings
             import _winreg as w  # leaner than win32api, win32con
