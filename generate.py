@@ -50,7 +50,7 @@ C{LibVlc-footer.java} and C{LibVlc-header.java}.
 __all__     = ('Parser',
                'PythonGenerator', 'JavaGenerator',
                'process')
-__version__ =  '20.10.12.10'
+__version__ =  '20.11.05.15'
 
 _debug = False
 
@@ -73,6 +73,8 @@ _blacklist = {
     'libvlc_set_exit_handler':    '',  # not in 1.1.5?
     'libvlc_video_set_callbacks': '',
     'libvlc_video_set_format_callbacks': '',
+    'libvlc_audio_set_callbacks': '',
+    'libvlc_audio_set_format_callbacks': '',
 }
 
 # some constants

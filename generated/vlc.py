@@ -47,7 +47,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Thu May 12 09:38:58 2011"
+build_date  = "Sun May 15 16:42:15 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -1538,7 +1538,8 @@ class Media(_Ctype):
         Note, you need to call L{parse}() or play the media at least once
         before calling this function.
         Not doing this will result in an empty array.
-        @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) [OUT] return the number of Elementary Streams.
+        @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller).
+        @return: the number of Elementary Streams.
         '''
         return libvlc_media_get_tracks_info(self)
 
@@ -2139,6 +2140,17 @@ class MediaPlayer(_Ctype):
         '''
         return libvlc_media_player_get_hwnd(self)
 
+    def audio_set_format(self, format, rate, channels):
+        '''Set decoded audio format.
+        This only works in combination with libvlc_audio_set_callbacks(),
+        and is mutually exclusive with libvlc_audio_set_format_callbacks().
+        @param fourcc: a four-characters string identifying the sample format (e.g. "S16N" or "FL32").
+        @param rate: sample rate (expressed in Hz).
+        @param channels: channels count.
+        @version: LibVLC 1.2.0 or later.
+        '''
+        return libvlc_audio_set_format(self, format, rate, channels)
+
     def get_length(self):
         '''Get the current movie length (in ms).
         @return: the movie length (in ms), or -1 if there is no media.
@@ -2695,21 +2707,6 @@ def libvlc_new(argc, argv):
         libvlc_new = f
     return f(argc, argv)
 
-def libvlc_new_with_builtins(argc, argv, builtins):
-    '''Create and initialize a libvlc instance.
-    @param argc: the number of arguments.
-    @param argv: command-line-type arguments.
-    @param builtins: a NULL terminated array of See vlc_plugin.
-    @return: the libvlc instance or NULL in case of error @begincode  vlc_declare_plugin(mp4); vlc_declare_plugin(dummy); const void **builtins =  vlc_plugin(mp4), vlc_plugin(dummy), NULL ; L{Instance} *vlc = L{libvlc_new_with_builtins}(argc, argv, builtins);  @endcode.
-    '''
-    f = _Cfunctions.get('libvlc_new_with_builtins', None) or \
-        _Cfunction('libvlc_new_with_builtins', ((1,), (1,), (1,),),
-                    Instance, ctypes.c_int, ListPOINTER(ctypes.c_char_p), ListPOINTER(ctypes.c_void_p))
-    if not __debug__:  # i.e. python -O or -OO
-        global libvlc_new_with_builtins
-        libvlc_new_with_builtins = f
-    return f(argc, argv, builtins)
-
 def libvlc_release(p_instance):
     '''Decrement the reference count of a libvlc instance, and destroy it
     if it reaches zero.
@@ -3043,6 +3040,22 @@ def libvlc_video_filter_list_get(p_instance):
         global libvlc_video_filter_list_get
         libvlc_video_filter_list_get = f
     return f(p_instance)
+
+def libvlc_clock():
+    '''Return the current time as defined by LibVLC. The unit is the microsecond.
+    Time increases monotonically (regardless of time zone changes and RTC
+    adjustements).
+    The origin is arbitrary but consistent across the whole system
+    (e.g. the system uptim, the time since the system was booted).
+    @note: On systems that support it, the POSIX monotonic clock is used.
+    '''
+    f = _Cfunctions.get('libvlc_clock', None) or \
+        _Cfunction('libvlc_clock', (),
+                    ctypes.c_int64)
+    if not __debug__:  # i.e. python -O or -OO
+        global libvlc_clock
+        libvlc_clock = f
+    return f()
 
 def libvlc_media_new_location(p_instance, psz_mrl):
     '''Create a media with a certain given media resource location,
@@ -3406,7 +3419,8 @@ def libvlc_media_get_tracks_info(p_md):
     before calling this function.
     Not doing this will result in an empty array.
     @param p_md: media descriptor object.
-    @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) [OUT] return the number of Elementary Streams.
+    @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller).
+    @return: the number of Elementary Streams.
     '''
     f = _Cfunctions.get('libvlc_media_get_tracks_info', None) or \
         _Cfunction('libvlc_media_get_tracks_info', ((1,), (2,),),
@@ -4282,6 +4296,24 @@ def libvlc_media_player_get_hwnd(p_mi):
         global libvlc_media_player_get_hwnd
         libvlc_media_player_get_hwnd = f
     return f(p_mi)
+
+def libvlc_audio_set_format(mp, format, rate, channels):
+    '''Set decoded audio format.
+    This only works in combination with libvlc_audio_set_callbacks(),
+    and is mutually exclusive with libvlc_audio_set_format_callbacks().
+    @param mp: the media player.
+    @param fourcc: a four-characters string identifying the sample format (e.g. "S16N" or "FL32").
+    @param rate: sample rate (expressed in Hz).
+    @param channels: channels count.
+    @version: LibVLC 1.2.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_audio_set_format', None) or \
+        _Cfunction('libvlc_audio_set_format', ((1,), (1,), (1,), (1,),),
+                    None, MediaPlayer, ctypes.c_char_p, ctypes.c_uint, ctypes.c_uint)
+    if not __debug__:  # i.e. python -O or -OO
+        global libvlc_audio_set_format
+        libvlc_audio_set_format = f
+    return f(mp, format, rate, channels)
 
 def libvlc_media_player_get_length(p_mi):
     '''Get the current movie length (in ms).
@@ -5873,7 +5905,9 @@ def libvlc_vlm_get_event_manager(p_instance):
     return f(p_instance)
 
 
-# 3 function(s) blacklisted:
+# 5 function(s) blacklisted:
+#  libvlc_audio_set_callbacks
+#  libvlc_audio_set_format_callbacks
 #  libvlc_set_exit_handler
 #  libvlc_video_set_callbacks
 #  libvlc_video_set_format_callbacks
@@ -5881,6 +5915,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 # 12 function(s) not wrapped as methods:
 #  libvlc_audio_output_list_release
 #  libvlc_clearerr
+#  libvlc_clock
 #  libvlc_errmsg
 #  libvlc_event_type_name
 #  libvlc_free
@@ -5889,7 +5924,6 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_get_version
 #  libvlc_module_description_list_release
 #  libvlc_new
-#  libvlc_new_with_builtins
 #  libvlc_track_description_release
 
 # Start of footer.py #
