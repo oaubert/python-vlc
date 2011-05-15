@@ -122,6 +122,18 @@ try:
 except NameError:  # no long in Python 3+
     _Ints =  int
 
+# Default instance. It is used to instanciate classes directly in the
+# OO-wrapper.
+_default_instance = None
+
+def get_default_instance():
+    """Return the default VLC.Instance.
+    """
+    global _default_instance
+    if _default_instance is None:
+        _default_instance = Instance()
+    return _default_instance
+
 _Seqs = (list, tuple)
 
 _Cfunctions = {}  # from LibVLC __version__

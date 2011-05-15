@@ -62,6 +62,7 @@ class Instance:
         m = libvlc_media_new_location(self, mrl)
         for o in options:
             libvlc_media_add_option(m, o)
+        m._instance = self
         return m
 
     def audio_output_enumerate_devices(self):
@@ -103,7 +104,26 @@ class Instance:
 
 class Media:
     """Create a new Media instance.
+    
+    Usage: Media(MRL, *options)
+
+    See vlc.Instance.media_new documentation for details.
     """
+    def __new__(cls, *args):
+        if args:
+            i = args[0]
+            if i == 0:
+                return None
+            if isinstance(i, _Ints):
+                return _Cobject(cls, ctypes.c_void_p(i))
+            if isinstance(i, Instance):
+                return i.media_new()
+
+        o = get_default_instance().media_new(*args)
+        return o
+
+    def get_instance(self):
+        return getattr(self, '_instance', None)
 
     def add_options(self, *options):
         """Add a list of options to the media.
@@ -138,7 +158,7 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
             if isinstance(i, Instance):
                 return i.media_player_new()
 
-        i = Instance()
+        i = get_default_instance()
         o = i.media_player_new()
         if args:
             o.set_media(i.media_new(*args))  # args[0]
@@ -269,7 +289,7 @@ class MediaListPlayer:
         if args and isinstance(args[0], Instance):
             i = args[0]
         else:
-            i = Instance()
+            i = get_default_instance()
         return i.media_list_player_new()
 
     def get_instance(self):

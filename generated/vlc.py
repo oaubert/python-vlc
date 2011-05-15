@@ -47,7 +47,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Sun May 15 17:22:02 2011"
+build_date  = "Sun May 15 17:44:33 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -122,6 +122,18 @@ try:
     _Ints = (int, long)
 except NameError:  # no long in Python 3+
     _Ints =  int
+
+# Default instance. It is used to instanciate classes directly in the
+# OO-wrapper.
+_default_instance = None
+
+def get_default_instance():
+    """Return the default VLC.Instance.
+    """
+    global _default_instance
+    if _default_instance is None:
+        _default_instance = Instance()
+    return _default_instance
 
 _Seqs = (list, tuple)
 
@@ -893,6 +905,7 @@ class Instance(_Ctype):
         m = libvlc_media_new_location(self, mrl)
         for o in options:
             libvlc_media_add_option(m, o)
+        m._instance = self
         return m
 
     def audio_output_enumerate_devices(self):
@@ -1371,13 +1384,27 @@ class LogIterator(_Ctype):
 class Media(_Ctype):
     '''Create a new Media instance.
     
+    Usage: Media(MRL, *options)
+
+    See vlc.Instance.media_new documentation for details.
+    
     '''
 
-    def __new__(cls, ptr=None):
-        '''(INTERNAL) ctypes wrapper constructor.
-        '''
-        return _Constructor(cls, ptr)
+    def __new__(cls, *args):
+        if args:
+            i = args[0]
+            if i == 0:
+                return None
+            if isinstance(i, _Ints):
+                return _Cobject(cls, ctypes.c_void_p(i))
+            if isinstance(i, Instance):
+                return i.media_new()
 
+        o = get_default_instance().media_new(*args)
+        return o
+
+    def get_instance(self):
+        return getattr(self, '_instance', None)
 
     def add_options(self, *options):
         """Add a list of options to the media.
@@ -1776,7 +1803,7 @@ class MediaListPlayer(_Ctype):
         if args and isinstance(args[0], Instance):
             i = args[0]
         else:
-            i = Instance()
+            i = get_default_instance()
         return i.media_list_player_new()
 
     def get_instance(self):
@@ -1893,7 +1920,7 @@ class MediaPlayer(_Ctype):
             if isinstance(i, Instance):
                 return i.media_player_new()
 
-        i = Instance()
+        i = get_default_instance()
         o = i.media_player_new()
         if args:
             o.set_media(i.media_new(*args))  # args[0]
