@@ -65,6 +65,19 @@ class Instance:
         m._instance = self
         return m
 
+    def media_list_new(self, mrls=None):
+        """Create a new MediaList instance.
+        @param mrls: optional list of MRL strings
+        """
+        l = libvlc_media_list_new(self)
+        # We should take the lock, but since we did not leak the
+        # reference, nobody else can access it.
+        if mrls:
+            for m in mrls:
+                l.add_media(m)
+        l._instance = self
+        return l
+
     def audio_output_enumerate_devices(self):
         """Enumerate the defined audio output devices.
 
@@ -117,7 +130,7 @@ class Media:
             if isinstance(i, _Ints):
                 return _Cobject(cls, ctypes.c_void_p(i))
             if isinstance(i, Instance):
-                return i.media_new()
+                return i.media_new(*args[1:])
 
         o = get_default_instance().media_new(*args)
         return o
@@ -140,6 +153,46 @@ class Media:
         """
         for o in options:
             self.add_option(o)
+
+class MediaList:
+    """Create a new MediaList instance.
+    
+    Usage: MediaList(list_of_MRLs)
+
+    See vlc.Instance.media_list_new documentation for details.
+    """
+    def __new__(cls, *args):
+        if args:
+            i = args[0]
+            if i == 0:
+                return None
+            if isinstance(i, _Ints):
+                return _Cobject(cls, ctypes.c_void_p(i))
+            if isinstance(i, Instance):
+                return i.media_list_new(*args[1:])
+
+        o = get_default_instance().media_list_new(*args)
+        return o
+
+    def get_instance(self):
+        return getattr(self, '_instance', None)
+    
+    def add_media(self, mrl):
+        """Add media instance to media list.
+        
+        The L{lock} should be held upon entering this function.
+        @param p_md: a media instance or a MRL.
+        @return: 0 on success, -1 if the media list is read-only.
+        """
+        if isinstance(mrl, basestring):
+            mrl = (self.get_instance() or get_default_instance()).media_new(mrl)
+        return libvlc_media_list_add_media(self, mrl)
+
+    def __len__(self):
+        return self.count()
+
+    def __getitem__(self, i):
+        return self.item_at_index(i)
 
 class MediaPlayer:  #PYCHOK expected (comment is lost)
     """Create a new MediaPlayer instance.

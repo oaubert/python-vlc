@@ -74,6 +74,12 @@ class TestVLCAPI(unittest.TestCase):
         m = vlc.Media(mrl)
         self.assertEqual(m.get_mrl(), mrl)
 
+    def test_wrapper_medialist(self):
+        mrl1 = '/tmp/foo.avi'
+        mrl2 = '/tmp/bar.avi'
+        l = vlc.MediaList( [mrl1, mrl2] )
+        self.assertEqual(l[1].get_mrl(), mrl2)
+
     def test_libvlc_player(self):
         mrl='/tmp/foo.avi'
         i=vlc.Instance()

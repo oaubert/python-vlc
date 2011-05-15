@@ -47,7 +47,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Sun May 15 17:44:33 2011"
+build_date  = "Sun May 15 18:04:05 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -908,6 +908,19 @@ class Instance(_Ctype):
         m._instance = self
         return m
 
+    def media_list_new(self, mrls=None):
+        """Create a new MediaList instance.
+        @param mrls: optional list of MRL strings
+        """
+        l = libvlc_media_list_new(self)
+        # We should take the lock, but since we did not leak the
+        # reference, nobody else can access it.
+        if mrls:
+            for m in mrls:
+                l.add_media(m)
+        l._instance = self
+        return l
+
     def audio_output_enumerate_devices(self):
         """Enumerate the defined audio output devices.
 
@@ -1059,12 +1072,6 @@ class Instance(_Ctype):
         @return: a new object or NULL on error.
         '''
         return libvlc_media_library_new(self)
-
-    def media_list_new(self):
-        '''Create an empty media list.
-        @return: empty media list, or NULL on error.
-        '''
-        return libvlc_media_list_new(self)
 
     def audio_output_list_get(self):
         '''Get the list of available audio outputs.
@@ -1398,7 +1405,7 @@ class Media(_Ctype):
             if isinstance(i, _Ints):
                 return _Cobject(cls, ctypes.c_void_p(i))
             if isinstance(i, Instance):
-                return i.media_new()
+                return i.media_new(*args[1:])
 
         o = get_default_instance().media_new(*args)
         return o
@@ -1665,13 +1672,48 @@ class MediaLibrary(_Ctype):
         return libvlc_media_library_media_list(self)
 
 class MediaList(_Ctype):
-    '''N/A
+    '''Create a new MediaList instance.
+    
+    Usage: MediaList(list_of_MRLs)
+
+    See vlc.Instance.media_list_new documentation for details.
+    
     '''
 
-    def __new__(cls, ptr=None):
-        '''(INTERNAL) ctypes wrapper constructor.
-        '''
-        return _Constructor(cls, ptr)
+    def __new__(cls, *args):
+        if args:
+            i = args[0]
+            if i == 0:
+                return None
+            if isinstance(i, _Ints):
+                return _Cobject(cls, ctypes.c_void_p(i))
+            if isinstance(i, Instance):
+                return i.media_list_new(*args[1:])
+
+        o = get_default_instance().media_list_new(*args)
+        return o
+
+    def get_instance(self):
+        return getattr(self, '_instance', None)
+    
+    def add_media(self, mrl):
+        """Add media instance to media list.
+        
+        The L{lock} should be held upon entering this function.
+        @param p_md: a media instance or a MRL.
+        @return: 0 on success, -1 if the media list is read-only.
+        """
+        if isinstance(mrl, basestring):
+            mrl = (self.get_instance() or get_default_instance()).media_new(mrl)
+        return libvlc_media_list_add_media(self, mrl)
+
+    def __len__(self):
+        return self.count()
+
+    def __getitem__(self, i):
+        return self.item_at_index(i)
+
+
     def release(self):
         '''Release media list created with L{new}().
         '''
@@ -1697,14 +1739,6 @@ class MediaList(_Ctype):
         @return: media instance.
         '''
         return libvlc_media_list_media(self)
-
-    def add_media(self, p_md):
-        '''Add media instance to media list
-        The L{lock} should be held upon entering this function.
-        @param p_md: a media instance.
-        @return: 0 on success, -1 if the media list is read-only.
-        '''
-        return libvlc_media_list_add_media(self, p_md)
 
     def insert_media(self, p_md, i_pos):
         '''Insert media instance in media list on a position
