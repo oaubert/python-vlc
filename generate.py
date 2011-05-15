@@ -88,7 +88,7 @@ _GENERATED_ENUMS_ = '# GENERATED_ENUMS'
 
 # keywords in header files
 _VLC_FORWARD_     = 'VLC_FORWARD'
-_VLC_PUBLIC_API_  = 'VLC_PUBLIC_API'
+_VLC_PUBLIC_API_  = 'LIBVLC_API'
 
 # Precompiled regexps
 api_re       = re.compile(_VLC_PUBLIC_API_ + '\s+(\S+\s+.+?)\s*\(\s*(.+?)\s*\)')
