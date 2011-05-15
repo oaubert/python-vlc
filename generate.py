@@ -77,6 +77,20 @@ _blacklist = {
     'libvlc_audio_set_format_callbacks': '',
 }
 
+# Set of functions that return a string that the caller is
+# expected to free.
+free_string_funcs = set((
+        'libvlc_media_discoverer_localized_name',
+        'libvlc_media_get_mrl',
+        'libvlc_media_get_meta',
+        'libvlc_video_get_aspect_ratio',
+        'libvlc_video_get_crop_geometry',
+        'libvlc_video_get_marquee_string',
+        'libvlc_audio_output_device_longname',
+        'libvlc_audio_output_device_id',
+        'libvlc_vlm_show_media',
+    ))
+
 # some constants
 _NA_     = 'N/A'
 _NL_     = '\n'  # os.linesep
@@ -783,9 +797,23 @@ class PythonGenerator(_Generator):
             if flags:
                 flags += ','
 
-            # return value and arg classes
-            types = ', '.join([self.class4(f.type)] +  #PYCHOK flake
-                              [self.class4(p.type) for p in f.pars])
+            # arg classes
+            types = [self.class4(p.type) for p in f.pars]
+
+            # result type
+            rtype = self.class4(f.type)
+
+            if name in free_string_funcs:
+                # some functions that return strings need special treatment
+                if rtype != 'ctypes.c_char_p':
+                    raise TypeError('Function %s expected to return char* not %s' % (name, f.type))
+                errcheck = 'string_result'
+                types = ['ctypes.c_void_p'] + types
+            else:
+                errcheck = 'None'
+                types.insert(0, rtype)
+
+            types = ', '.join(types)
 
             # xformed doc string with first @param
             docs = self.epylink(f.epydocs(0, 4))  #PYCHOK flake
@@ -793,7 +821,7 @@ class PythonGenerator(_Generator):
     '''%(docs)s
     '''
     f = _Cfunctions.get('%(name)s', None) or \\
-        _Cfunction('%(name)s', (%(flags)s),
+        _Cfunction('%(name)s', (%(flags)s), %(errcheck)s,
                     %(types)s)
     if not __debug__:  # i.e. python -O or -OO
         global %(name)s

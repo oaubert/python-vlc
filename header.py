@@ -126,12 +126,14 @@ _Seqs = (list, tuple)
 
 _Cfunctions = {}  # from LibVLC __version__
 
-def _Cfunction(name, flags, *types):
+def _Cfunction(name, flags, errcheck, *types):
     """(INTERNAL) New ctypes function binding.
     """
     if hasattr(dll, name):
         p = ctypes.CFUNCTYPE(*types)
         f = p((name, dll), flags)
+        if errcheck is not None:
+            f.errcheck = errcheck
         _Cfunctions[name] = f
         return f
     raise NameError('no function %r' % (name,))
@@ -170,6 +172,20 @@ class ListPOINTER(object):
     def from_param(self, param):
         if isinstance(param, _Seqs):
             return (self.etype * len(param))(*param)
+
+# errcheck functions for some native functions.
+def string_result(result, func, arguments):
+    """Errcheck function. Returns a string and frees the original pointer.
+
+    It assumes the result is a char *.
+    """
+    if result:
+        # make a python string copy
+        s = ctypes.string_at(result)
+        # free original string ptr
+        libvlc_free(result)
+        return s
+    return None
 
  # Generated enum types #
 # GENERATED_ENUMS go here  # see generate.py
