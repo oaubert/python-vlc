@@ -47,7 +47,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Sun May 15 18:04:05 2011"
+build_date  = "Wed May 18 14:50:18 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -6019,12 +6019,13 @@ if not hasattr(dll, 'libvlc_free'):
     libc_path = find_library('c')
     if libc_path:
         libc = ctypes.CDLL(libc_path)
-        libvlc_free = libc.free        
+        libvlc_free = libc.free
     else:
         # On win32, it is impossible to guess the proper lib to call
-        # (msvcrt, mingw...). Just raise an exception.
+        # (msvcrt, mingw...). Just ignore the call: it will memleak,
+        # but not prevent to run the application.
         def libvlc_free(p):
-            raise NotImplementedError('%s: %s without libvlc_free not supported' % (sys.argv[0], sys.platform))
+            pass
 
     # ensure argtypes is right, because default type of int won't work
     # on 64-bit systems
