@@ -47,7 +47,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Wed May 18 14:50:18 2011"
+build_date  = "Wed May 18 15:32:47 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -158,7 +158,7 @@ def _Cobject(cls, ctype):
     o._as_parameter_ = ctype
     return o
 
-def _Constructor(cls, ptr):
+def _Constructor(cls, ptr=None):
     """(INTERNAL) New wrapper from ctypes.
     """
     if ptr is None:
@@ -199,6 +199,13 @@ def string_result(result, func, arguments):
         libvlc_free(result)
         return s
     return None
+
+def class_result(classname):
+    """Errcheck function. Returns a function that creates the specified class.
+    """
+    def wrap_errcheck(result, func, arguments):
+        return classname(result)
+    return wrap_errcheck
 
  # Generated enum types #
 
@@ -779,7 +786,7 @@ class EventManager(_Ctype):
             raise VLCException("(INTERNAL) ctypes class.")
         if ptr == 0:
             return None
-        return _Cobject(cls, ptr)  # ctypes.c_void_p(ptr)
+        return _Constructor(cls, ptr)
 
     def event_attach(self, eventtype, callback, *args, **kwds):
         """Register an event notification.
@@ -856,7 +863,7 @@ class Instance(_Ctype):
             if i == 0:
                 return None
             if isinstance(i, _Ints):
-                return _Cobject(cls, ctypes.c_void_p(i))
+                return _Constructor(cls, i)
             if len(args) == 1:
                 if isinstance(i, basestring):
                     args = i.strip().split()
@@ -1403,7 +1410,7 @@ class Media(_Ctype):
             if i == 0:
                 return None
             if isinstance(i, _Ints):
-                return _Cobject(cls, ctypes.c_void_p(i))
+                return _Constructor(cls, i)
             if isinstance(i, Instance):
                 return i.media_new(*args[1:])
 
@@ -1686,7 +1693,7 @@ class MediaList(_Ctype):
             if i == 0:
                 return None
             if isinstance(i, _Ints):
-                return _Cobject(cls, ctypes.c_void_p(i))
+                return _Constructor(cls, i)
             if isinstance(i, Instance):
                 return i.media_list_new(*args[1:])
 
@@ -1830,7 +1837,7 @@ class MediaListPlayer(_Ctype):
             if i == 0:
                 return None
             if isinstance(i, _Ints):
-                return _Cobject(cls, ctypes.c_void_p(i))
+                return _Constructor(cls, i)
             if isinstance(i, _Seqs):
                 args = i
 
@@ -1950,7 +1957,7 @@ class MediaPlayer(_Ctype):
             if i == 0:
                 return None
             if isinstance(i, _Ints):
-                return _Cobject(cls, ctypes.c_void_p(i))
+                return _Constructor(cls, i)
             if isinstance(i, Instance):
                 return i.media_player_new()
 
@@ -2777,8 +2784,8 @@ def libvlc_new(argc, argv):
     @version Arguments are meant to be passed from the command line to LibVLC, just like VLC media player does. The list of valid arguments depends on the LibVLC version, the operating system and platform, and set of available LibVLC plugins. Invalid or unsupported arguments will cause the function to fail (i.e. return NULL). Also, some arguments may alter the behaviour or otherwise interfere with other LibVLC functions. @warning There is absolutely no warranty or promise of forward, backward and cross-platform compatibility with regards to L{libvlc_new}() arguments. We recommend that you do not use them, other than when debugging.
     '''
     f = _Cfunctions.get('libvlc_new', None) or \
-        _Cfunction('libvlc_new', ((1,), (1,),), None,
-                    Instance, ctypes.c_int, ListPOINTER(ctypes.c_char_p))
+        _Cfunction('libvlc_new', ((1,), (1,),), class_result(Instance),
+                    ctypes.c_void_p, ctypes.c_int, ListPOINTER(ctypes.c_char_p))
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_new
         libvlc_new = f
@@ -2981,8 +2988,8 @@ def libvlc_log_open(p_instance):
     @return: log message instance or NULL on error.
     '''
     f = _Cfunctions.get('libvlc_log_open', None) or \
-        _Cfunction('libvlc_log_open', ((1,),), None,
-                    Log, Instance)
+        _Cfunction('libvlc_log_open', ((1,),), class_result(Log),
+                    ctypes.c_void_p, Instance)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_log_open
         libvlc_log_open = f
@@ -3033,8 +3040,8 @@ def libvlc_log_get_iterator(p_log):
     @return: log iterator object or NULL on error.
     '''
     f = _Cfunctions.get('libvlc_log_get_iterator', None) or \
-        _Cfunction('libvlc_log_get_iterator', ((1,),), None,
-                    LogIterator, Log)
+        _Cfunction('libvlc_log_get_iterator', ((1,),), class_result(LogIterator),
+                    ctypes.c_void_p, Log)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_log_get_iterator
         libvlc_log_get_iterator = f
@@ -3147,8 +3154,8 @@ def libvlc_media_new_location(p_instance, psz_mrl):
     @return: the newly created media or NULL on error.
     '''
     f = _Cfunctions.get('libvlc_media_new_location', None) or \
-        _Cfunction('libvlc_media_new_location', ((1,), (1,),), None,
-                    Media, Instance, ctypes.c_char_p)
+        _Cfunction('libvlc_media_new_location', ((1,), (1,),), class_result(Media),
+                    ctypes.c_void_p, Instance, ctypes.c_char_p)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_new_location
         libvlc_media_new_location = f
@@ -3162,8 +3169,8 @@ def libvlc_media_new_path(p_instance, path):
     @return: the newly created media or NULL on error.
     '''
     f = _Cfunctions.get('libvlc_media_new_path', None) or \
-        _Cfunction('libvlc_media_new_path', ((1,), (1,),), None,
-                    Media, Instance, ctypes.c_char_p)
+        _Cfunction('libvlc_media_new_path', ((1,), (1,),), class_result(Media),
+                    ctypes.c_void_p, Instance, ctypes.c_char_p)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_new_path
         libvlc_media_new_path = f
@@ -3189,8 +3196,8 @@ def libvlc_media_new_fd(p_instance, fd):
     @version: LibVLC 1.1.5 and later.
     '''
     f = _Cfunctions.get('libvlc_media_new_fd', None) or \
-        _Cfunction('libvlc_media_new_fd', ((1,), (1,),), None,
-                    Media, Instance, ctypes.c_int)
+        _Cfunction('libvlc_media_new_fd', ((1,), (1,),), class_result(Media),
+                    ctypes.c_void_p, Instance, ctypes.c_int)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_new_fd
         libvlc_media_new_fd = f
@@ -3204,8 +3211,8 @@ def libvlc_media_new_as_node(p_instance, psz_name):
     @return: the new empty media or NULL on error.
     '''
     f = _Cfunctions.get('libvlc_media_new_as_node', None) or \
-        _Cfunction('libvlc_media_new_as_node', ((1,), (1,),), None,
-                    Media, Instance, ctypes.c_char_p)
+        _Cfunction('libvlc_media_new_as_node', ((1,), (1,),), class_result(Media),
+                    ctypes.c_void_p, Instance, ctypes.c_char_p)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_new_as_node
         libvlc_media_new_as_node = f
@@ -3294,8 +3301,8 @@ def libvlc_media_duplicate(p_md):
     @param p_md: a media descriptor object.
     '''
     f = _Cfunctions.get('libvlc_media_duplicate', None) or \
-        _Cfunction('libvlc_media_duplicate', ((1,),), None,
-                    Media, Media)
+        _Cfunction('libvlc_media_duplicate', ((1,),), class_result(Media),
+                    ctypes.c_void_p, Media)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_duplicate
         libvlc_media_duplicate = f
@@ -3389,8 +3396,8 @@ def libvlc_media_event_manager(p_md):
     @return: event manager object.
     '''
     f = _Cfunctions.get('libvlc_media_event_manager', None) or \
-        _Cfunction('libvlc_media_event_manager', ((1,),), None,
-                    EventManager, Media)
+        _Cfunction('libvlc_media_event_manager', ((1,),), class_result(EventManager),
+                    ctypes.c_void_p, Media)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_event_manager
         libvlc_media_event_manager = f
@@ -3514,8 +3521,8 @@ def libvlc_media_discoverer_new_from_name(p_inst, psz_name):
     @return: media discover object or NULL in case of error.
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_new_from_name', None) or \
-        _Cfunction('libvlc_media_discoverer_new_from_name', ((1,), (1,),), None,
-                    MediaDiscoverer, Instance, ctypes.c_char_p)
+        _Cfunction('libvlc_media_discoverer_new_from_name', ((1,), (1,),), class_result(MediaDiscoverer),
+                    ctypes.c_void_p, Instance, ctypes.c_char_p)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_discoverer_new_from_name
         libvlc_media_discoverer_new_from_name = f
@@ -3553,8 +3560,8 @@ def libvlc_media_discoverer_media_list(p_mdis):
     @return: list of media items.
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_media_list', None) or \
-        _Cfunction('libvlc_media_discoverer_media_list', ((1,),), None,
-                    MediaList, MediaDiscoverer)
+        _Cfunction('libvlc_media_discoverer_media_list', ((1,),), class_result(MediaList),
+                    ctypes.c_void_p, MediaDiscoverer)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_discoverer_media_list
         libvlc_media_discoverer_media_list = f
@@ -3566,8 +3573,8 @@ def libvlc_media_discoverer_event_manager(p_mdis):
     @return: event manager object.
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_event_manager', None) or \
-        _Cfunction('libvlc_media_discoverer_event_manager', ((1,),), None,
-                    EventManager, MediaDiscoverer)
+        _Cfunction('libvlc_media_discoverer_event_manager', ((1,),), class_result(EventManager),
+                    ctypes.c_void_p, MediaDiscoverer)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_discoverer_event_manager
         libvlc_media_discoverer_event_manager = f
@@ -3592,8 +3599,8 @@ def libvlc_media_library_new(p_instance):
     @return: a new object or NULL on error.
     '''
     f = _Cfunctions.get('libvlc_media_library_new', None) or \
-        _Cfunction('libvlc_media_library_new', ((1,),), None,
-                    MediaLibrary, Instance)
+        _Cfunction('libvlc_media_library_new', ((1,),), class_result(MediaLibrary),
+                    ctypes.c_void_p, Instance)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_library_new
         libvlc_media_library_new = f
@@ -3646,8 +3653,8 @@ def libvlc_media_library_media_list(p_mlib):
     @return: media list subitems.
     '''
     f = _Cfunctions.get('libvlc_media_library_media_list', None) or \
-        _Cfunction('libvlc_media_library_media_list', ((1,),), None,
-                    MediaList, MediaLibrary)
+        _Cfunction('libvlc_media_library_media_list', ((1,),), class_result(MediaList),
+                    ctypes.c_void_p, MediaLibrary)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_library_media_list
         libvlc_media_library_media_list = f
@@ -3659,8 +3666,8 @@ def libvlc_media_list_new(p_instance):
     @return: empty media list, or NULL on error.
     '''
     f = _Cfunctions.get('libvlc_media_list_new', None) or \
-        _Cfunction('libvlc_media_list_new', ((1,),), None,
-                    MediaList, Instance)
+        _Cfunction('libvlc_media_list_new', ((1,),), class_result(MediaList),
+                    ctypes.c_void_p, Instance)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_list_new
         libvlc_media_list_new = f
@@ -3713,8 +3720,8 @@ def libvlc_media_list_media(p_ml):
     @return: media instance.
     '''
     f = _Cfunctions.get('libvlc_media_list_media', None) or \
-        _Cfunction('libvlc_media_list_media', ((1,),), None,
-                    Media, MediaList)
+        _Cfunction('libvlc_media_list_media', ((1,),), class_result(Media),
+                    ctypes.c_void_p, MediaList)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_list_media
         libvlc_media_list_media = f
@@ -3788,8 +3795,8 @@ def libvlc_media_list_item_at_index(p_ml, i_pos):
     @return: media instance at position i_pos, or NULL if not found. In case of success, L{libvlc_media_retain}() is called to increase the refcount on the media.
     '''
     f = _Cfunctions.get('libvlc_media_list_item_at_index', None) or \
-        _Cfunction('libvlc_media_list_item_at_index', ((1,), (1,),), None,
-                    Media, MediaList, ctypes.c_int)
+        _Cfunction('libvlc_media_list_item_at_index', ((1,), (1,),), class_result(Media),
+                    ctypes.c_void_p, MediaList, ctypes.c_int)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_list_item_at_index
         libvlc_media_list_item_at_index = f
@@ -3856,8 +3863,8 @@ def libvlc_media_list_event_manager(p_ml):
     @return: libvlc_event_manager.
     '''
     f = _Cfunctions.get('libvlc_media_list_event_manager', None) or \
-        _Cfunction('libvlc_media_list_event_manager', ((1,),), None,
-                    EventManager, MediaList)
+        _Cfunction('libvlc_media_list_event_manager', ((1,),), class_result(EventManager),
+                    ctypes.c_void_p, MediaList)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_list_event_manager
         libvlc_media_list_event_manager = f
@@ -3869,8 +3876,8 @@ def libvlc_media_list_player_new(p_instance):
     @return: media list player instance or NULL on error.
     '''
     f = _Cfunctions.get('libvlc_media_list_player_new', None) or \
-        _Cfunction('libvlc_media_list_player_new', ((1,),), None,
-                    MediaListPlayer, Instance)
+        _Cfunction('libvlc_media_list_player_new', ((1,),), class_result(MediaListPlayer),
+                    ctypes.c_void_p, Instance)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_list_player_new
         libvlc_media_list_player_new = f
@@ -3894,8 +3901,8 @@ def libvlc_media_list_player_event_manager(p_mlp):
     @return: the event manager.
     '''
     f = _Cfunctions.get('libvlc_media_list_player_event_manager', None) or \
-        _Cfunction('libvlc_media_list_player_event_manager', ((1,),), None,
-                    EventManager, MediaListPlayer)
+        _Cfunction('libvlc_media_list_player_event_manager', ((1,),), class_result(EventManager),
+                    ctypes.c_void_p, MediaListPlayer)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_list_player_event_manager
         libvlc_media_list_player_event_manager = f
@@ -4062,8 +4069,8 @@ def libvlc_media_player_new(p_libvlc_instance):
     @return: a new media player object, or NULL on error.
     '''
     f = _Cfunctions.get('libvlc_media_player_new', None) or \
-        _Cfunction('libvlc_media_player_new', ((1,),), None,
-                    MediaPlayer, Instance)
+        _Cfunction('libvlc_media_player_new', ((1,),), class_result(MediaPlayer),
+                    ctypes.c_void_p, Instance)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_player_new
         libvlc_media_player_new = f
@@ -4075,8 +4082,8 @@ def libvlc_media_player_new_from_media(p_md):
     @return: a new media player object, or NULL on error.
     '''
     f = _Cfunctions.get('libvlc_media_player_new_from_media', None) or \
-        _Cfunction('libvlc_media_player_new_from_media', ((1,),), None,
-                    MediaPlayer, Media)
+        _Cfunction('libvlc_media_player_new_from_media', ((1,),), class_result(MediaPlayer),
+                    ctypes.c_void_p, Media)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_player_new_from_media
         libvlc_media_player_new_from_media = f
@@ -4131,8 +4138,8 @@ def libvlc_media_player_get_media(p_mi):
     @return: the media associated with p_mi, or NULL if no media is associated.
     '''
     f = _Cfunctions.get('libvlc_media_player_get_media', None) or \
-        _Cfunction('libvlc_media_player_get_media', ((1,),), None,
-                    Media, MediaPlayer)
+        _Cfunction('libvlc_media_player_get_media', ((1,),), class_result(Media),
+                    ctypes.c_void_p, MediaPlayer)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_player_get_media
         libvlc_media_player_get_media = f
@@ -4144,8 +4151,8 @@ def libvlc_media_player_event_manager(p_mi):
     @return: the event manager associated with p_mi.
     '''
     f = _Cfunctions.get('libvlc_media_player_event_manager', None) or \
-        _Cfunction('libvlc_media_player_event_manager', ((1,),), None,
-                    EventManager, MediaPlayer)
+        _Cfunction('libvlc_media_player_event_manager', ((1,),), class_result(EventManager),
+                    ctypes.c_void_p, MediaPlayer)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_media_player_event_manager
         libvlc_media_player_event_manager = f
@@ -5974,8 +5981,8 @@ def libvlc_vlm_get_event_manager(p_instance):
     @return: libvlc_event_manager.
     '''
     f = _Cfunctions.get('libvlc_vlm_get_event_manager', None) or \
-        _Cfunction('libvlc_vlm_get_event_manager', ((1,),), None,
-                    EventManager, Instance)
+        _Cfunction('libvlc_vlm_get_event_manager', ((1,),), class_result(EventManager),
+                    ctypes.c_void_p, Instance)
     if not __debug__:  # i.e. python -O or -OO
         global libvlc_vlm_get_event_manager
         libvlc_vlm_get_event_manager = f

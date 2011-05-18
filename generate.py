@@ -809,6 +809,14 @@ class PythonGenerator(_Generator):
                     raise TypeError('Function %s expected to return char* not %s' % (name, f.type))
                 errcheck = 'string_result'
                 types = ['ctypes.c_void_p'] + types
+            elif rtype in self.defined_classes:
+                # if the result is a pointer to one of the defined
+                # classes then we tell ctypes that the return type is
+                # ctypes.c_void_p so that 64-bit pointers are handled
+                # correctly, and then create a Python object of the
+                # result
+                errcheck = 'class_result(%s)' % rtype
+                types = [ 'ctypes.c_void_p'] + types
             else:
                 errcheck = 'None'
                 types.insert(0, rtype)

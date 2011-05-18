@@ -157,7 +157,7 @@ def _Cobject(cls, ctype):
     o._as_parameter_ = ctype
     return o
 
-def _Constructor(cls, ptr):
+def _Constructor(cls, ptr=None):
     """(INTERNAL) New wrapper from ctypes.
     """
     if ptr is None:
@@ -198,6 +198,13 @@ def string_result(result, func, arguments):
         libvlc_free(result)
         return s
     return None
+
+def class_result(classname):
+    """Errcheck function. Returns a function that creates the specified class.
+    """
+    def wrap_errcheck(result, func, arguments):
+        return classname(result)
+    return wrap_errcheck
 
  # Generated enum types #
 # GENERATED_ENUMS go here  # see generate.py

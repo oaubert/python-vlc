@@ -13,7 +13,7 @@ class Instance:
             if i == 0:
                 return None
             if isinstance(i, _Ints):
-                return _Cobject(cls, ctypes.c_void_p(i))
+                return _Constructor(cls, i)
             if len(args) == 1:
                 if isinstance(i, basestring):
                     args = i.strip().split()
@@ -128,7 +128,7 @@ class Media:
             if i == 0:
                 return None
             if isinstance(i, _Ints):
-                return _Cobject(cls, ctypes.c_void_p(i))
+                return _Constructor(cls, i)
             if isinstance(i, Instance):
                 return i.media_new(*args[1:])
 
@@ -167,7 +167,7 @@ class MediaList:
             if i == 0:
                 return None
             if isinstance(i, _Ints):
-                return _Cobject(cls, ctypes.c_void_p(i))
+                return _Constructor(cls, i)
             if isinstance(i, Instance):
                 return i.media_list_new(*args[1:])
 
@@ -207,7 +207,7 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
             if i == 0:
                 return None
             if isinstance(i, _Ints):
-                return _Cobject(cls, ctypes.c_void_p(i))
+                return _Constructor(cls, i)
             if isinstance(i, Instance):
                 return i.media_player_new()
 
@@ -335,7 +335,7 @@ class MediaListPlayer:
             if i == 0:
                 return None
             if isinstance(i, _Ints):
-                return _Cobject(cls, ctypes.c_void_p(i))
+                return _Constructor(cls, i)
             if isinstance(i, _Seqs):
                 args = i
 
@@ -396,7 +396,7 @@ class EventManager:
             raise VLCException("(INTERNAL) ctypes class.")
         if ptr == 0:
             return None
-        return _Cobject(cls, ptr)  # ctypes.c_void_p(ptr)
+        return _Constructor(cls, ptr)
 
     def event_attach(self, eventtype, callback, *args, **kwds):
         """Register an event notification.
