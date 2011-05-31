@@ -48,6 +48,10 @@ from inspect import getargspec
 
 build_date  = ''  # build time stamp and __version__, see generate.py
 
+# Internal guard to prevent internal classes to be directly
+# instanciated.
+_internal_guard = object()
+
  # Used on win32 and MacOS in override.py
 plugin_path = None
 
@@ -157,12 +161,12 @@ def _Cobject(cls, ctype):
     o._as_parameter_ = ctype
     return o
 
-def _Constructor(cls, ptr=None):
+def _Constructor(cls, ptr=_internal_guard):
     """(INTERNAL) New wrapper from ctypes.
     """
-    if ptr is None:
-        raise VLCException('(INTERNAL) ctypes class.')
-    if ptr == 0:
+    if ptr == _internal_guard:
+        raise VLCException("(INTERNAL) ctypes class. You should get references for this class through methods of the LibVLC API.")
+    if ptr is None or ptr == 0:
         return None
     return _Cobject(cls, ctypes.c_void_p(ptr))
 

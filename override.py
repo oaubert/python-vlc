@@ -8,19 +8,18 @@ class Instance:
       - the parameters given as the constructor parameters (must be strings)
     """
     def __new__(cls, *args):
-        if args:
+        if len(args) == 1:
+            # Only 1 arg. It is either a C pointer, or an arg string,
+            # or a tuple.
             i = args[0]
-            if i == 0:
-                return None
             if isinstance(i, _Ints):
                 return _Constructor(cls, i)
-            if len(args) == 1:
-                if isinstance(i, basestring):
-                    args = i.strip().split()
-                elif isinstance(i, _Seqs):
-                    args = i
-                else:
-                    raise VLCException('Instance %r' % (args,))
+            elif isinstance(i, basestring):
+                args = i.strip().split()
+            elif isinstance(i, _Seqs):
+                args = i
+            else:
+                raise VLCException('Instance %r' % (args,))
 
         if not args and plugin_path is not None:
              # no parameters passed, for win32 and MacOS,
@@ -125,8 +124,6 @@ class Media:
     def __new__(cls, *args):
         if args:
             i = args[0]
-            if i == 0:
-                return None
             if isinstance(i, _Ints):
                 return _Constructor(cls, i)
             if isinstance(i, Instance):
@@ -164,8 +161,6 @@ class MediaList:
     def __new__(cls, *args):
         if args:
             i = args[0]
-            if i == 0:
-                return None
             if isinstance(i, _Ints):
                 return _Constructor(cls, i)
             if isinstance(i, Instance):
@@ -198,23 +193,22 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
     """Create a new MediaPlayer instance.
 
     It may take as parameter either:
-      - a string (media URI). In this case, a vlc.Instance will be created.
-      - a vlc.Instance
+      - a string (media URI), options... In this case, a vlc.Instance will be created.
+      - a vlc.Instance, a string (media URI), options...
     """
     def __new__(cls, *args):
-        if args:
-            i = args[0]
-            if i == 0:
-                return None
-            if isinstance(i, _Ints):
-                return _Constructor(cls, i)
-            if isinstance(i, Instance):
-                return i.media_player_new()
+        if len(args) == 1 and isinstance(args[0], _Ints):
+            return _Constructor(cls, args[0])
+        
+        if args and isinstance(args[0], Instance):
+            instance = args[0]
+            args = args[1:]
+        else:
+            instance = get_default_instance()
 
-        i = get_default_instance()
-        o = i.media_player_new()
+        o = instance.media_player_new()
         if args:
-            o.set_media(i.media_new(*args))  # args[0]
+            o.set_media(instance.media_new(*args))
         return o
 
     def get_instance(self):
@@ -329,20 +323,16 @@ class MediaListPlayer:
       - a vlc.Instance
       - nothing
     """
-    def __new__(cls, *args):
-        if len(args) == 1:
-            i = args[0]
-            if i == 0:
-                return None
-            if isinstance(i, _Ints):
-                return _Constructor(cls, i)
-            if isinstance(i, _Seqs):
-                args = i
-
-        if args and isinstance(args[0], Instance):
-            i = args[0]
-        else:
+    def __new__(cls, arg=None):
+        if arg is None:
             i = get_default_instance()
+        elif isinstance(arg, Instance):
+            i = arg
+        elif isinstance(arg, _Ints):
+            return _Constructor(cls, arg)
+        else:
+            raise TypeError('MediaListPlayer %r' % (arg,))
+
         return i.media_list_player_new()
 
     def get_instance(self):
@@ -391,11 +381,9 @@ class EventManager:
     _callback_handler = None
     _callbacks = {}
 
-    def __new__(cls, ptr=None):
-        if ptr is None:
-            raise VLCException("(INTERNAL) ctypes class.")
-        if ptr == 0:
-            return None
+    def __new__(cls, ptr=_internal_guard):
+        if ptr == _internal_guard:
+            raise VLCException("(INTERNAL) ctypes class.\nYou should get a reference to EventManager through the MediaPlayer.event_manager() method.")
         return _Constructor(cls, ptr)
 
     def event_attach(self, eventtype, callback, *args, **kwds):

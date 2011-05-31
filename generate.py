@@ -906,7 +906,7 @@ class _Enum(ctypes.c_ulong):
                 c = codes.get(cls, '')
                 if not 'def __new__' in c:
                     self.output("""
-    def __new__(cls, ptr=None):
+    def __new__(cls, ptr=_internal_guard):
         '''(INTERNAL) ctypes wrapper constructor.
         '''
         return _Constructor(cls, ptr)""")
