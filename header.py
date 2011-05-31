@@ -173,6 +173,8 @@ class _Ctype(object):
     def from_param(this):  # not self
         """(INTERNAL) ctypes parameter conversion method.
         """
+        if this is None:
+            return None
         return this._as_parameter_
 
 class ListPOINTER(object):
@@ -203,6 +205,8 @@ def class_result(classname):
     """Errcheck function. Returns a function that creates the specified class.
     """
     def wrap_errcheck(result, func, arguments):
+        if result is None:
+            return None
         return classname(result)
     return wrap_errcheck
 

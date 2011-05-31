@@ -86,6 +86,12 @@ class TestVLCAPI(unittest.TestCase):
         p=i.media_player_new(mrl)
         self.assertEqual(p.get_media().get_mrl(), mrl)
 
+    def test_libvlc_none_object(self):
+        i=vlc.Instance()
+        p=i.media_player_new()
+        p.set_media(None)
+        self.assertEqual(p.get_media(), None)
+
     def test_libvlc_player_state(self):
         mrl='/tmp/foo.avi'
         i=vlc.Instance()

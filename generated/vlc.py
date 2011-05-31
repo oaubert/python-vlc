@@ -47,7 +47,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Wed May 18 15:32:47 2011"
+build_date  = "Tue May 31 15:49:06 2011"
 
  # Used on win32 and MacOS in override.py
 plugin_path = None
@@ -174,6 +174,8 @@ class _Ctype(object):
     def from_param(this):  # not self
         """(INTERNAL) ctypes parameter conversion method.
         """
+        if this is None:
+            return None
         return this._as_parameter_
 
 class ListPOINTER(object):
@@ -204,6 +206,8 @@ def class_result(classname):
     """Errcheck function. Returns a function that creates the specified class.
     """
     def wrap_errcheck(result, func, arguments):
+        if result is None:
+            return None
         return classname(result)
     return wrap_errcheck
 
