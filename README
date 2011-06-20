@@ -50,16 +50,16 @@ c:\Program Files\VideoLAN\VLC ).
 >>> i.audio_get_volume()
 50
 >>> p=i.media_player_new()
->>> m=i.media_new('/tmp/foo.avi')
+>>> m=i.media_new('file:///tmp/foo.avi')
 >>> m.get_mrl()
-'/tmp/foo.avi'
+'file:///tmp/foo.avi'
 >>> p.set_media(m)
 >>> p.play()
 
 or shorter:
 
 >>> import vlc
->>> p=vlc.MediaPlayer('/tmp/foo.avi')
+>>> p=vlc.MediaPlayer('file:///tmp/foo.avi')
 >>> p.play()
 
 In this latter case, a default vlc.Instance will be instanciated and
