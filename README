@@ -1,4 +1,4 @@
-* Python ctypes-based and java bindings
+* Python ctypes-based bindings for libvlc
 
 The bindings use ctypes to directly call the libvlc dynamic lib, and
 the code is generated from the include files defining the public API.
@@ -7,8 +7,10 @@ the code is generated from the include files defining the public API.
 
 To generate the vlc.py module and its documentation, use
 make
+or use the generated/vlc.py file.
 
-Documentation building needs epydoc.
+Documentation building needs epydoc. An online build is available at 
+http://advene.org/download/python-ctypes/
 
 ** Layout
 
@@ -29,7 +31,6 @@ On win32, the simplest way is to put the vlc.py file in the same
 directory as the libvlc.dll file (standard location:
 c:\Program Files\VideoLAN\VLC ).
 
-
 - Using raw access:
 
 >>> import vlc
@@ -48,13 +49,19 @@ c:\Program Files\VideoLAN\VLC ).
 >>> i=vlc.Instance('--no-audio', '--fullscreen')
 >>> i.audio_get_volume()
 50
+>>> p=i.media_player_new()
 >>> m=i.media_new('/tmp/foo.avi')
 >>> m.get_mrl()
 '/tmp/foo.avi'
->>> p=i.media_player_new(m)
+>>> p.set_media(m)
 >>> p.play()
 
 or shorter:
+
 >>> import vlc
 >>> p=vlc.MediaPlayer('/tmp/foo.avi')
 >>> p.play()
+
+In this latter case, a default vlc.Instance will be instanciated and
+stored in vlc._default_instance. It will be used to instanciate the
+various classes (Media, MediaList, MediaPlayer, etc).
