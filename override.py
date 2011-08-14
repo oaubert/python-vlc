@@ -183,12 +183,6 @@ class MediaList:
             mrl = (self.get_instance() or get_default_instance()).media_new(mrl)
         return libvlc_media_list_add_media(self, mrl)
 
-    def __len__(self):
-        return self.count()
-
-    def __getitem__(self, i):
-        return self.item_at_index(i)
-
 class MediaPlayer:  #PYCHOK expected (comment is lost)
     """Create a new MediaPlayer instance.
 
