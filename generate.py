@@ -841,7 +841,7 @@ class PythonGenerator(_Generator):
         """Generate classes for all enum types.
         """
         self.output("""
-class _Enum(ctypes.c_ulong):
+class _Enum(ctypes.c_uint):
     '''(INTERNAL) Base class
     '''
     _enum_names_ = {}
