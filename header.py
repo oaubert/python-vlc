@@ -52,69 +52,70 @@ build_date  = ''  # build time stamp and __version__, see generate.py
 # instanciated.
 _internal_guard = object()
 
- # Used on win32 and MacOS in override.py
-plugin_path = None
+def find_lib():
+    dll = None
+    plugin_path = None
+    if sys.platform.startswith('linux'):
+        p = find_library('vlc')
+        try:
+            dll = ctypes.CDLL(p)
+        except OSError:  # may fail
+            dll = ctypes.CDLL('libvlc.so.5')
+    elif sys.platform.startswith('win'):
+        p = find_library('libvlc.dll')
+        if p is None:
+            try:  # some registry settings
+                import _winreg as w  # leaner than win32api, win32con
+                for r in w.HKEY_LOCAL_MACHINE, w.HKEY_CURRENT_USER:
+                    try:
+                        r = w.OpenKey(r, 'Software\\VideoLAN\\VLC')
+                        plugin_path, _ = w.QueryValueEx(r, 'InstallDir')
+                        w.CloseKey(r)
+                        break
+                    except w.error:
+                        pass
+            except ImportError:  # no PyWin32
+                pass
+            if plugin_path is None:
+                 # try some standard locations.
+                for p in ('Program Files\\VideoLan\\', 'VideoLan\\',
+                          'Program Files\\',           ''):
+                    p = 'C:\\' + p + 'VLC\\libvlc.dll'
+                    if os.path.exists(p):
+                        plugin_path = os.path.dirname(p)
+                        break
+            if plugin_path is not None:  # try loading
+                p = os.getcwd()
+                os.chdir(plugin_path)
+                 # if chdir failed, this will raise an exception
+                dll = ctypes.CDLL('libvlc.dll')
+                 # restore cwd after dll has been loaded
+                os.chdir(p)
+            else:  # may fail
+                dll = ctypes.CDLL('libvlc.dll')
+        else:
+            plugin_path = os.path.dirname(p)
+            dll = ctypes.CDLL(p)
 
-if sys.platform.startswith('linux'):
-    p = find_library('vlc')
-    try:
-        dll = ctypes.CDLL(p)
-    except OSError:  # may fail
-        dll = ctypes.CDLL('libvlc.so.5')
+    elif sys.platform.startswith('darwin'):
+        # FIXME: should find a means to configure path
+        d = '/Applications/VLC.app/Contents/MacOS/'
+        p = d + 'lib/libvlc.dylib'
+        if os.path.exists(p):
+            dll = ctypes.CDLL(p)
+            d += 'modules'
+            if os.path.isdir(d):
+                plugin_path = d
+        else:  # hope, some PATH is set...
+            dll = ctypes.CDLL('libvlc.dylib')
 
-elif sys.platform.startswith('win'):
-    p = find_library('libvlc.dll')
-    if p is None:
-        try:  # some registry settings
-            import _winreg as w  # leaner than win32api, win32con
-            for r in w.HKEY_LOCAL_MACHINE, w.HKEY_CURRENT_USER:
-                try:
-                    r = w.OpenKey(r, 'Software\\VideoLAN\\VLC')
-                    plugin_path, _ = w.QueryValueEx(r, 'InstallDir')
-                    w.CloseKey(r)
-                    break
-                except w.error:
-                    pass
-            del r, w
-        except ImportError:  # no PyWin32
-            pass
-        if plugin_path is None:
-             # try some standard locations.
-            for p in ('Program Files\\VideoLan\\', 'VideoLan\\',
-                      'Program Files\\',           ''):
-                p = 'C:\\' + p + 'VLC\\libvlc.dll'
-                if os.path.exists(p):
-                    plugin_path = os.path.dirname(p)
-                    break
-        if plugin_path is not None:  # try loading
-            p = os.getcwd()
-            os.chdir(plugin_path)
-             # if chdir failed, this will raise an exception
-            dll = ctypes.CDLL('libvlc.dll')
-             # restore cwd after dll has been loaded
-            os.chdir(p)
-        else:  # may fail
-            dll = ctypes.CDLL('libvlc.dll')
     else:
-        plugin_path = os.path.dirname(p)
-        dll = ctypes.CDLL(p)
-    del p, u
+        raise NotImplementedError('%s: %s not supported' % (sys.argv[0], sys.platform))
 
-elif sys.platform.startswith('darwin'):
-    # FIXME: should find a means to configure path
-    d = '/Applications/VLC.app/Contents/MacOS/'
-    p = d + 'lib/libvlc.dylib'
-    if os.path.exists(p):
-        dll = ctypes.CDLL(p)
-        d += 'modules'
-        if os.path.isdir(d):
-            plugin_path = d
-    else:  # hope, some PATH is set...
-        dll = ctypes.CDLL('libvlc.dylib')
-    del d, p
+    return (dll, plugin_path)
 
-else:
-    raise NotImplementedError('%s: %s not supported' % (sys.argv[0], sys.platform))
+# plugin_path used on win32 and MacOS in override.py
+dll, plugin_path  = find_lib()
 
 class VLCException(Exception):
     """Exception raised by libvlc methods.
