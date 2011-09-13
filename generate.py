@@ -75,6 +75,7 @@ _blacklist = {
     'libvlc_video_set_format_callbacks': '',
     'libvlc_audio_set_callbacks': '',
     'libvlc_audio_set_format_callbacks': '',
+    'libvlc_audio_set_volume_callback': '',
 }
 
 # Set of functions that return a string that the caller is
