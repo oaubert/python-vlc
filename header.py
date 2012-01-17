@@ -171,6 +171,18 @@ def _Constructor(cls, ptr=_internal_guard):
         return None
     return _Cobject(cls, ctypes.c_void_p(ptr))
 
+class _Cstruct(ctypes.Structure):
+    """(INTERNAL) Base class for ctypes structures.
+    """
+    _fields_ = []  # list of 2-tuples ('name', ctyptes.<type>)
+
+    def __str__(self):
+        l = [' %s:\t%s' % (n, getattr(self, n)) for n, _ in self._fields_]
+        return '\n'.join([self.__class__.__name__] + l)
+
+    def __repr__(self):
+        return '%s.%s' % (self.__class__.__module__, self)
+
 class _Ctype(object):
     """(INTERNAL) Base class for ctypes.
     """
@@ -221,21 +233,18 @@ def class_result(classname):
 
  # From libvlc_structures.h
 
-class AudioOutput(ctypes.Structure):
+class AudioOutput(_Cstruct):
 
     def __str__(self):
         return '%s(%s:%s)' % (self.__class__.__name__, self.name, self.description)
 
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
-
 AudioOutput._fields_ = [  # recursive struct
-        ('name',        ctypes.c_char_p),
-        ('description', ctypes.c_char_p),
-        ('next',        ctypes.POINTER(AudioOutput)),
+    ('name',        ctypes.c_char_p),
+    ('description', ctypes.c_char_p),
+    ('next',        ctypes.POINTER(AudioOutput)),
     ]
 
-class LogMessage(ctypes.Structure):
+class LogMessage(_Cstruct):
     _fields_ = [
         ('size',     ctypes.c_uint  ),
         ('severity', ctypes.c_int   ),
@@ -252,16 +261,13 @@ class LogMessage(ctypes.Structure):
     def __str__(self):
         return '%s(%d:%s): %s' % (self.__class__.__name__, self.severity, self.type, self.message)
 
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
-
-class MediaEvent(ctypes.Structure):
+class MediaEvent(_Cstruct):
     _fields_ = [
         ('media_name',    ctypes.c_char_p),
         ('instance_name', ctypes.c_char_p),
     ]
 
-class MediaStats(ctypes.Structure):
+class MediaStats(_Cstruct):
     _fields_ = [
         ('read_bytes',          ctypes.c_int  ),
         ('input_bitrate',       ctypes.c_float),
@@ -280,14 +286,7 @@ class MediaStats(ctypes.Structure):
         ('send_bitrate',        ctypes.c_float),
     ]
 
-    def __str__(self):
-        l = [' %s:\t%s' % (n, getattr(self, n)) for n, t in self._fields_]
-        return '\n'.join([self.__class__.__name__] + l)
-
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
-
-class MediaTrackInfo(ctypes.Structure):
+class MediaTrackInfo(_Cstruct):
     _fields_ = [
         ('codec',              ctypes.c_uint32),
         ('id',                 ctypes.c_int   ),
@@ -298,14 +297,7 @@ class MediaTrackInfo(ctypes.Structure):
         ('rate_or_width',      ctypes.c_uint  ),
     ]
 
-    def __str__(self):
-        l = [" %s:\t%s" % (n, getattr(self, n)) for n, t in self._fields_]
-        return "\n".join([self.__class__.__name__] + l)
-
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
-
-class PlaylistItem(ctypes.Structure):
+class PlaylistItem(_Cstruct):
     _fields_ = [
         ('id',   ctypes.c_int   ),
         ('uri',  ctypes.c_char_p),
@@ -314,9 +306,6 @@ class PlaylistItem(ctypes.Structure):
 
     def __str__(self):
         return '%s #%d %s (uri %s)' % (self.__class__.__name__, self.id, self.name, self.uri)
-
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
 
 class Position(object):
     """Enum-like, immutable window position constants.
@@ -341,7 +330,7 @@ class Position(object):
     def __setattr__(self, *unused):  #PYCHOK expected
         raise TypeError('immutable constants')
 
-class Rectangle(ctypes.Structure):
+class Rectangle(_Cstruct):
     _fields_ = [
         ('top',    ctypes.c_int),
         ('left',   ctypes.c_int),
@@ -349,18 +338,15 @@ class Rectangle(ctypes.Structure):
         ('right',  ctypes.c_int),
     ]
 
-class TrackDescription(ctypes.Structure):
+class TrackDescription(_Cstruct):
 
     def __str__(self):
         return '%s(%d:%s)' % (self.__class__.__name__, self.id, self.name)
 
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
-
 TrackDescription._fields_ = [  # recursive struct
-        ('id',   ctypes.c_int   ),
-        ('name', ctypes.c_char_p),
-        ('next', ctypes.POINTER(TrackDescription)),
+    ('id',   ctypes.c_int   ),
+    ('name', ctypes.c_char_p),
+    ('next', ctypes.POINTER(TrackDescription)),
     ]
 
 def track_description_list(head):
@@ -373,7 +359,11 @@ def track_description_list(head):
             item = item.contents
             r.append((item.id, item.name))
             item = item.next
-        libvlc_track_description_release(head)
+        try:
+            libvlc_track_description_release(head)
+        except NameError:
+            libvlc_track_description_list_release(head)
+
     return r
 
 class EventUnion(ctypes.Union):
@@ -396,23 +386,24 @@ class EventUnion(ctypes.Union):
         ('media_event',  MediaEvent       ),
     ]
 
-class Event(ctypes.Structure):
+class Event(_Cstruct):
     _fields_ = [
         ('type',   EventType      ),
         ('object', ctypes.c_void_p),
         ('u',      EventUnion     ),
     ]
 
-class ModuleDescription(ctypes.Structure):
+class ModuleDescription(_Cstruct):
+
     def __str__(self):
         return '%s %s (%s)' % (self.__class__.__name__, self.shortname, self.name)
 
 ModuleDescription._fields_ = [  # recursive struct
-    ('name', ctypes.c_char_p),
+    ('name',      ctypes.c_char_p),
     ('shortname', ctypes.c_char_p),
-    ('longname', ctypes.c_char_p),
-    ('help', ctypes.c_char_p),
-    ('next', ctypes.POINTER(ModuleDescription)),
+    ('longname',  ctypes.c_char_p),
+    ('help',      ctypes.c_char_p),
+    ('next',      ctypes.POINTER(ModuleDescription)),
     ]
 
 def module_description_list(head):
