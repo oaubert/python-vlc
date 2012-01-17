@@ -126,6 +126,7 @@ try:
     _Ints = (int, long)
 except NameError:  # no long in Python 3+
     _Ints =  int
+_Seqs = (list, tuple)
 
 # Default instance. It is used to instanciate classes directly in the
 # OO-wrapper.
@@ -139,19 +140,24 @@ def get_default_instance():
         _default_instance = Instance()
     return _default_instance
 
-_Seqs = (list, tuple)
-
 _Cfunctions = {}  # from LibVLC __version__
+_Globals = globals()  # sys.modules[__name__].__dict__
 
 def _Cfunction(name, flags, errcheck, *types):
     """(INTERNAL) New ctypes function binding.
     """
-    if hasattr(dll, name):
+    if hasattr(dll, name) and name in _Globals:
         p = ctypes.CFUNCTYPE(*types)
         f = p((name, dll), flags)
         if errcheck is not None:
             f.errcheck = errcheck
-        _Cfunctions[name] = f
+        # replace the Python function
+        # in this module, but only when
+        # running as python -O or -OO
+        if __debug__:
+            _Cfunctions[name] = f
+        else:
+            _Globals[name] = f
         return f
     raise NameError('no function %r' % (name,))
 
