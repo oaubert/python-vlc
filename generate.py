@@ -136,7 +136,7 @@ def errorf(fmt, *args):
     """
     global _nerrors
     _nerrors += 1
-    print('Error: ' + fmt % args)
+    sys.stderr.write('Error: ' + (fmt % args) + "\n")
 
 _nerrors = 0
 
@@ -149,7 +149,7 @@ def errors(fmt, e=0):
         errorf(fmt + '... exit(%s)', n, x)
         sys.exit(x)
     elif _debug:
-        print(fmt % (_NL_ + 'No'))
+        sys.stderr.write(fmt % (_NL_ + 'No') + "\n")
 
 class _Source(object):
     """Base class for elements parsed from source.
@@ -183,7 +183,7 @@ class Enum(_Source):
             errorf('expected enum type: %s %s', self.type, self.name)
 
     def dump(self):  # for debug
-        print('%s (%s): %s' % (self.name, self.type, self.source))
+        sys.stderr.write('%s (%s): %s\n' % (self.name, self.type, self.source))
         for v in self.vals:
             v.dump()
 
@@ -237,10 +237,10 @@ class Func(_Source):
                     self.nparams, self.name, len(self.pars))
             if _debug:
                 self.dump()
-                print(self.docs)
+                sys.stderr.write(self.docs + "\n")
 
     def dump(self):  # for debug
-        print('%s (%s): %s' %  (self.name, self.type, self.source))
+        sys.stderr.write('%s (%s): %s\n' %  (self.name, self.type, self.source))
         for p in self.pars:
             p.dump(self.out)
 
@@ -321,7 +321,7 @@ class Par(object):
                  Flag.InOut:  'InOut',
                  Flag.InZero: 'InZero',
                 }.get(self.flags()[0], 'FIXME_Flag')
-        print('%s%s (%s) %s' % (_INDENT_, self.name, self.type, t))
+        sys.stderr.write('%s%s (%s) %s\n' % (_INDENT_, self.name, self.type, t))
 
     # Parameter passing flags for types.  This shouldn't
     # be hardcoded this way, but works all right for now.
@@ -360,7 +360,7 @@ class Val(object):
         self.value = value
 
     def dump(self):  # for debug
-        print('%s%s = %s' % (_INDENT_, self.name, self.value))
+        sys.stderr.write('%s%s = %s\n' % (_INDENT_, self.name, self.value))
 
 class Parser(object):
     """Parser of C header files.
@@ -391,7 +391,7 @@ class Parser(object):
             f.check()
 
     def __dump(self, attr):
-        print('%s==== %s ==== %s' % (_NL_, attr, self.version))
+        sys.stderr.write('%s==== %s ==== %s\n' % (_NL_, attr, self.version))
         for a in getattr(self, attr, ()):
             a.dump()
 
@@ -511,9 +511,9 @@ class Parser(object):
                         d = d[:-2].rstrip()
 
                     if _debug:
-                        print('%s==== source ==== %s:%d' % (_NL_, self.h_file, n))
-                        print(t)
-                        print('"""%s%s"""' % (d, _NL_))
+                        sys.stderr.write('%s==== source ==== %s:%d\n' % (_NL_, self.h_file, n))
+                        sys.stderr.write(t + "\n")
+                        sys.stderr.write('"""%s%s"""\n' % (d, _NL_))
 
                     yield m.groups() + (d, n)
                     d = []
@@ -602,7 +602,7 @@ class _Generator(object):
             d = getattr(self, n, None)
             if d:
                 n = ['%s==== %s ==== %s' % (_NL_, n, self.parser.version)]
-                print(s.join(n + sorted('%s: %s' % t for t in d.items())))
+                sys.stderr.write(s.join(n + sorted('%s: %s\n' % t for t in d.items())))
 
     def epylink(self, docs, striprefix=None):
         """Link function, method and type names in doc string.
@@ -717,6 +717,7 @@ class PythonGenerator(_Generator):
         'libvlc_module_description_t*': 'ctypes.POINTER(ModuleDescription)',
 
         '...':       'FIXME_va_list',
+        'va_list':   'FIXME_va_list',
         'char*':     'ctypes.c_char_p',
         'char**':    'ListPOINTER(ctypes.c_char_p)',
         'float':     'ctypes.c_float',
@@ -1123,7 +1124,7 @@ public enum %s
             d = dir or os.curdir
         self.outdir = d
 
-        print('Generating Java code in %s...' % os.path.join(d, ''))
+        sys.stderr.write('Generating Java code in %s...\n' % os.path.join(d, ''))
 
         self.generate_enums()
         self.generate_libvlc()
