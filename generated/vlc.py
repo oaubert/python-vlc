@@ -47,7 +47,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Tue Sep 13 17:50:18 2011"
+build_date  = "Tue Jan 17 12:16:13 2012"
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.
@@ -172,6 +172,18 @@ def _Constructor(cls, ptr=_internal_guard):
         return None
     return _Cobject(cls, ctypes.c_void_p(ptr))
 
+class _Cstruct(ctypes.Structure):
+    """(INTERNAL) Base class for ctypes structures.
+    """
+    _fields_ = []  # list of 2-tuples ('name', ctyptes.<type>)
+
+    def __str__(self):
+        l = [' %s:\t%s' % (n, getattr(self, n)) for n, _ in self._fields_]
+        return '\n'.join([self.__class__.__name__] + l)
+
+    def __repr__(self):
+        return '%s.%s' % (self.__class__.__module__, self)
+
 class _Ctype(object):
     """(INTERNAL) Base class for ctypes.
     """
@@ -265,6 +277,7 @@ class EventType(_Enum):
         271: 'MediaPlayerTitleChanged',
         272: 'MediaPlayerSnapshotTaken',
         273: 'MediaPlayerLengthChanged',
+        274: 'MediaPlayerVout',
         0x200: 'MediaListItemAdded',
         513: 'MediaListWillAddItem',
         514: 'MediaListItemDeleted',
@@ -325,6 +338,7 @@ EventType.MediaPlayerSnapshotTaken      = EventType(272)
 EventType.MediaPlayerStopped            = EventType(262)
 EventType.MediaPlayerTimeChanged        = EventType(267)
 EventType.MediaPlayerTitleChanged       = EventType(271)
+EventType.MediaPlayerVout               = EventType(274)
 EventType.MediaStateChanged             = EventType(5)
 EventType.MediaSubItemAdded             = EventType(1)
 EventType.VlmMediaAdded                 = EventType(0x600)
@@ -560,21 +574,18 @@ AudioOutputChannel.Stereo  = AudioOutputChannel(1)
 
  # From libvlc_structures.h
 
-class AudioOutput(ctypes.Structure):
+class AudioOutput(_Cstruct):
 
     def __str__(self):
         return '%s(%s:%s)' % (self.__class__.__name__, self.name, self.description)
 
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
-
 AudioOutput._fields_ = [  # recursive struct
-        ('name',        ctypes.c_char_p),
-        ('description', ctypes.c_char_p),
-        ('next',        ctypes.POINTER(AudioOutput)),
+    ('name',        ctypes.c_char_p),
+    ('description', ctypes.c_char_p),
+    ('next',        ctypes.POINTER(AudioOutput)),
     ]
 
-class LogMessage(ctypes.Structure):
+class LogMessage(_Cstruct):
     _fields_ = [
         ('size',     ctypes.c_uint  ),
         ('severity', ctypes.c_int   ),
@@ -591,16 +602,13 @@ class LogMessage(ctypes.Structure):
     def __str__(self):
         return '%s(%d:%s): %s' % (self.__class__.__name__, self.severity, self.type, self.message)
 
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
-
-class MediaEvent(ctypes.Structure):
+class MediaEvent(_Cstruct):
     _fields_ = [
         ('media_name',    ctypes.c_char_p),
         ('instance_name', ctypes.c_char_p),
     ]
 
-class MediaStats(ctypes.Structure):
+class MediaStats(_Cstruct):
     _fields_ = [
         ('read_bytes',          ctypes.c_int  ),
         ('input_bitrate',       ctypes.c_float),
@@ -619,14 +627,7 @@ class MediaStats(ctypes.Structure):
         ('send_bitrate',        ctypes.c_float),
     ]
 
-    def __str__(self):
-        l = [' %s:\t%s' % (n, getattr(self, n)) for n, t in self._fields_]
-        return '\n'.join([self.__class__.__name__] + l)
-
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
-
-class MediaTrackInfo(ctypes.Structure):
+class MediaTrackInfo(_Cstruct):
     _fields_ = [
         ('codec',              ctypes.c_uint32),
         ('id',                 ctypes.c_int   ),
@@ -637,14 +638,7 @@ class MediaTrackInfo(ctypes.Structure):
         ('rate_or_width',      ctypes.c_uint  ),
     ]
 
-    def __str__(self):
-        l = [" %s:\t%s" % (n, getattr(self, n)) for n, t in self._fields_]
-        return "\n".join([self.__class__.__name__] + l)
-
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
-
-class PlaylistItem(ctypes.Structure):
+class PlaylistItem(_Cstruct):
     _fields_ = [
         ('id',   ctypes.c_int   ),
         ('uri',  ctypes.c_char_p),
@@ -653,9 +647,6 @@ class PlaylistItem(ctypes.Structure):
 
     def __str__(self):
         return '%s #%d %s (uri %s)' % (self.__class__.__name__, self.id, self.name, self.uri)
-
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
 
 class Position(object):
     """Enum-like, immutable window position constants.
@@ -680,7 +671,7 @@ class Position(object):
     def __setattr__(self, *unused):  #PYCHOK expected
         raise TypeError('immutable constants')
 
-class Rectangle(ctypes.Structure):
+class Rectangle(_Cstruct):
     _fields_ = [
         ('top',    ctypes.c_int),
         ('left',   ctypes.c_int),
@@ -688,18 +679,15 @@ class Rectangle(ctypes.Structure):
         ('right',  ctypes.c_int),
     ]
 
-class TrackDescription(ctypes.Structure):
+class TrackDescription(_Cstruct):
 
     def __str__(self):
         return '%s(%d:%s)' % (self.__class__.__name__, self.id, self.name)
 
-    def __repr__(self):
-        return '%s.%s' % (self.__class__.__module__, self.__str__())
-
 TrackDescription._fields_ = [  # recursive struct
-        ('id',   ctypes.c_int   ),
-        ('name', ctypes.c_char_p),
-        ('next', ctypes.POINTER(TrackDescription)),
+    ('id',   ctypes.c_int   ),
+    ('name', ctypes.c_char_p),
+    ('next', ctypes.POINTER(TrackDescription)),
     ]
 
 def track_description_list(head):
@@ -712,7 +700,11 @@ def track_description_list(head):
             item = item.contents
             r.append((item.id, item.name))
             item = item.next
-        libvlc_track_description_release(head)
+        try:
+            libvlc_track_description_release(head)
+        except NameError:
+            libvlc_track_description_list_release(head)
+
     return r
 
 class EventUnion(ctypes.Union):
@@ -735,23 +727,24 @@ class EventUnion(ctypes.Union):
         ('media_event',  MediaEvent       ),
     ]
 
-class Event(ctypes.Structure):
+class Event(_Cstruct):
     _fields_ = [
         ('type',   EventType      ),
         ('object', ctypes.c_void_p),
         ('u',      EventUnion     ),
     ]
 
-class ModuleDescription(ctypes.Structure):
+class ModuleDescription(_Cstruct):
+
     def __str__(self):
         return '%s %s (%s)' % (self.__class__.__name__, self.shortname, self.name)
 
 ModuleDescription._fields_ = [  # recursive struct
-    ('name', ctypes.c_char_p),
+    ('name',      ctypes.c_char_p),
     ('shortname', ctypes.c_char_p),
-    ('longname', ctypes.c_char_p),
-    ('help', ctypes.c_char_p),
-    ('next', ctypes.POINTER(ModuleDescription)),
+    ('longname',  ctypes.c_char_p),
+    ('help',      ctypes.c_char_p),
+    ('next',      ctypes.POINTER(ModuleDescription)),
     ]
 
 def module_description_list(head):
@@ -2485,6 +2478,25 @@ class MediaPlayer(_Ctype):
         @return: the success status (boolean).
         '''
         return libvlc_video_set_subtitle_file(self, psz_subtitle)
+
+    def video_get_spu_delay(self):
+        '''Get the current subtitle delay. Positive values means subtitles are being
+        displayed later, negative values earlier.
+        @return: time (in microseconds) the display of subtitles is being delayed.
+        @version: LibVLC 1.2.0 or later.
+        '''
+        return libvlc_video_get_spu_delay(self)
+
+    def video_set_spu_delay(self, i_delay):
+        '''Set the subtitle delay. This affects the timing of when the subtitle will
+        be displayed. Positive values result in subtitles being displayed later,
+        while negative values will result in subtitles being displayed earlier.
+        The subtitle delay will be reset to zero each time the media changes.
+        @param i_delay: time (in microseconds) the display of subtitles should be delayed.
+        @return: 0 on success, -1 on error.
+        @version: LibVLC 1.2.0 or later.
+        '''
+        return libvlc_video_set_spu_delay(self, i_delay)
 
     def video_get_crop_geometry(self):
         '''Get current crop filter geometry.
@@ -4737,9 +4749,20 @@ def libvlc_media_player_navigate(p_mi, navigate):
         libvlc_media_player_navigate = f
     return f(p_mi, navigate)
 
-def libvlc_track_description_release(p_track_description):
+def libvlc_track_description_list_release(p_track_description):
     '''Release (free) L{TrackDescription}.
     @param p_track_description: the structure to release.
+    '''
+    f = _Cfunctions.get('libvlc_track_description_list_release', None) or \
+        _Cfunction('libvlc_track_description_list_release', ((1,),), None,
+                    None, ctypes.POINTER(TrackDescription))
+    if not __debug__:  # i.e. python -O or -OO
+        global libvlc_track_description_list_release
+        libvlc_track_description_list_release = f
+    return f(p_track_description)
+
+def libvlc_track_description_release(p_track_description):
+    '''\deprecated Use L{libvlc_track_description_list_release} instead.
     '''
     f = _Cfunctions.get('libvlc_track_description_release', None) or \
         _Cfunction('libvlc_track_description_release', ((1,),), None,
@@ -4993,6 +5016,39 @@ def libvlc_video_set_subtitle_file(p_mi, psz_subtitle):
         global libvlc_video_set_subtitle_file
         libvlc_video_set_subtitle_file = f
     return f(p_mi, psz_subtitle)
+
+def libvlc_video_get_spu_delay(p_mi):
+    '''Get the current subtitle delay. Positive values means subtitles are being
+    displayed later, negative values earlier.
+    @param p_mi: media player.
+    @return: time (in microseconds) the display of subtitles is being delayed.
+    @version: LibVLC 1.2.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_video_get_spu_delay', None) or \
+        _Cfunction('libvlc_video_get_spu_delay', ((1,),), None,
+                    ctypes.c_int64, MediaPlayer)
+    if not __debug__:  # i.e. python -O or -OO
+        global libvlc_video_get_spu_delay
+        libvlc_video_get_spu_delay = f
+    return f(p_mi)
+
+def libvlc_video_set_spu_delay(p_mi, i_delay):
+    '''Set the subtitle delay. This affects the timing of when the subtitle will
+    be displayed. Positive values result in subtitles being displayed later,
+    while negative values will result in subtitles being displayed earlier.
+    The subtitle delay will be reset to zero each time the media changes.
+    @param p_mi: media player.
+    @param i_delay: time (in microseconds) the display of subtitles should be delayed.
+    @return: 0 on success, -1 on error.
+    @version: LibVLC 1.2.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_video_set_spu_delay', None) or \
+        _Cfunction('libvlc_video_set_spu_delay', ((1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, ctypes.c_int64)
+    if not __debug__:  # i.e. python -O or -OO
+        global libvlc_video_set_spu_delay
+        libvlc_video_set_spu_delay = f
+    return f(p_mi, i_delay)
 
 def libvlc_video_get_title_description(p_mi):
     '''Get the description of available titles.
@@ -6011,15 +6067,17 @@ def libvlc_vlm_get_event_manager(p_instance):
     return f(p_instance)
 
 
-# 6 function(s) blacklisted:
+# 8 function(s) blacklisted:
 #  libvlc_audio_set_callbacks
 #  libvlc_audio_set_format_callbacks
 #  libvlc_audio_set_volume_callback
+#  libvlc_printerr
 #  libvlc_set_exit_handler
 #  libvlc_video_set_callbacks
 #  libvlc_video_set_format_callbacks
+#  libvlc_vprinterr
 
-# 12 function(s) not wrapped as methods:
+# 13 function(s) not wrapped as methods:
 #  libvlc_audio_output_list_release
 #  libvlc_clearerr
 #  libvlc_clock
@@ -6031,6 +6089,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_get_version
 #  libvlc_module_description_list_release
 #  libvlc_new
+#  libvlc_track_description_list_release
 #  libvlc_track_description_release
 
 # Start of footer.py #
