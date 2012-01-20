@@ -835,9 +835,6 @@ class PythonGenerator(_Generator):
     f = _Cfunctions.get('%(name)s', None) or \\
         _Cfunction('%(name)s', (%(flags)s), %(errcheck)s,
                     %(types)s)
-    if not __debug__:  # i.e. python -O or -OO
-        global %(name)s
-        %(name)s = f
     return f(%(args)s)
 """ % locals())
 
