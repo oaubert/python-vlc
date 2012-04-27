@@ -2,25 +2,26 @@
 
 # Python ctypes bindings for VLC
 #
-# Copyright (C) 2009-2010 the VideoLAN team
+# Copyright (C) 2009-2012 the VideoLAN team
 # $Id: $
 #
 # Authors: Olivier Aubert <olivier.aubert at liris.cnrs.fr>
 #          Jean Brouwers <MrJean1 at gmail.com>
+#          Geoff Salmon <geoff.salmon at gmail.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 2.1 of the
+# License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301 USA
 
 """This module provides bindings for the LibVLC public API, see
 U{http://wiki.videolan.org/LibVLC}.
@@ -47,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Tue Jan 17 12:20:48 2012"
+build_date  = "Fri Apr 27 16:47:21 2012"
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.
@@ -904,6 +905,11 @@ class Instance(_Ctype):
     def media_new(self, mrl, *options):
         """Create a new Media instance.
 
+        If mrl contains a colon (:), it will be treated as a
+        URL. Else, it will be considered as a local path. If you need
+        more control, directly use media_new_location/media_new_path
+        methods.
+
         Options can be specified as supplementary string parameters, e.g.
 
         C{m = i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')}
@@ -914,7 +920,12 @@ class Instance(_Ctype):
 
         @param options: optional media option=value strings
         """
-        m = libvlc_media_new_location(self, mrl)
+        if ':' in mrl:
+            # Assume it is a URL
+            m = libvlc_media_new_location(self, mrl)
+        else:
+            # Else it should be a local path.
+            m = libvlc_media_new_path(self, mrl)
         for o in options:
             libvlc_media_add_option(m, o)
         m._instance = self
@@ -1511,7 +1522,7 @@ class Media(_Ctype):
 
     def save_meta(self):
         '''Save the meta previously set.
-        @return: true if the write operation was successfull.
+        @return: true if the write operation was successful.
         '''
         return libvlc_media_save_meta(self)
 
@@ -2230,7 +2241,7 @@ class MediaPlayer(_Ctype):
         @param format: a four-characters string identifying the sample format (e.g. "S16N" or "FL32").
         @param rate: sample rate (expressed in Hz).
         @param channels: channels count.
-        @version: LibVLC 1.2.0 or later.
+        @version: LibVLC 2.0.0 or later.
         '''
         return libvlc_audio_set_format(self, format, rate, channels)
 
@@ -2378,7 +2389,7 @@ class MediaPlayer(_Ctype):
     def navigate(self, navigate):
         '''Navigate through DVD Menu.
         @param navigate: the Navigation mode.
-        @version: libVLC 1.2.0 or later.
+        @version: libVLC 2.0.0 or later.
         '''
         return libvlc_media_player_navigate(self, navigate)
 
@@ -2489,7 +2500,7 @@ class MediaPlayer(_Ctype):
         '''Get the current subtitle delay. Positive values means subtitles are being
         displayed later, negative values earlier.
         @return: time (in microseconds) the display of subtitles is being delayed.
-        @version: LibVLC 1.2.0 or later.
+        @version: LibVLC 2.0.0 or later.
         '''
         return libvlc_video_get_spu_delay(self)
 
@@ -2500,7 +2511,7 @@ class MediaPlayer(_Ctype):
         The subtitle delay will be reset to zero each time the media changes.
         @param i_delay: time (in microseconds) the display of subtitles should be delayed.
         @return: 0 on success, -1 on error.
-        @version: LibVLC 1.2.0 or later.
+        @version: LibVLC 2.0.0 or later.
         '''
         return libvlc_video_set_spu_delay(self, i_delay)
 
@@ -3247,7 +3258,7 @@ def libvlc_media_set_meta(p_md, e_meta, psz_value):
 def libvlc_media_save_meta(p_md):
     '''Save the meta previously set.
     @param p_md: the media desriptor.
-    @return: true if the write operation was successfull.
+    @return: true if the write operation was successful.
     '''
     f = _Cfunctions.get('libvlc_media_save_meta', None) or \
         _Cfunction('libvlc_media_save_meta', ((1,),), None,
@@ -4084,7 +4095,7 @@ def libvlc_audio_set_format(mp, format, rate, channels):
     @param format: a four-characters string identifying the sample format (e.g. "S16N" or "FL32").
     @param rate: sample rate (expressed in Hz).
     @param channels: channels count.
-    @version: LibVLC 1.2.0 or later.
+    @version: LibVLC 2.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_audio_set_format', None) or \
         _Cfunction('libvlc_audio_set_format', ((1,), (1,), (1,), (1,),), None,
@@ -4328,7 +4339,7 @@ def libvlc_media_player_navigate(p_mi, navigate):
     '''Navigate through DVD Menu.
     @param p_mi: the Media Player.
     @param navigate: the Navigation mode.
-    @version: libVLC 1.2.0 or later.
+    @version: libVLC 2.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_media_player_navigate', None) or \
         _Cfunction('libvlc_media_player_navigate', ((1,), (1,),), None,
@@ -4554,7 +4565,7 @@ def libvlc_video_get_spu_delay(p_mi):
     displayed later, negative values earlier.
     @param p_mi: media player.
     @return: time (in microseconds) the display of subtitles is being delayed.
-    @version: LibVLC 1.2.0 or later.
+    @version: LibVLC 2.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_video_get_spu_delay', None) or \
         _Cfunction('libvlc_video_get_spu_delay', ((1,),), None,
@@ -4569,7 +4580,7 @@ def libvlc_video_set_spu_delay(p_mi, i_delay):
     @param p_mi: media player.
     @param i_delay: time (in microseconds) the display of subtitles should be delayed.
     @return: 0 on success, -1 on error.
-    @version: LibVLC 1.2.0 or later.
+    @version: LibVLC 2.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_video_set_spu_delay', None) or \
         _Cfunction('libvlc_video_set_spu_delay', ((1,), (1,),), None,
