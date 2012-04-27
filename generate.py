@@ -2,11 +2,12 @@
 
 # Code generator for python ctypes bindings for VLC
 #
-# Copyright (C) 2009-2010 the VideoLAN team
+# Copyright (C) 2009-2012 the VideoLAN team
 # $Id: $
 #
 # Authors: Olivier Aubert <olivier.aubert at liris.cnrs.fr>
 #          Jean Brouwers <MrJean1 at gmail.com>
+#          Geoff Salmon <geoff.salmon at gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

@@ -3,6 +3,12 @@
 The bindings use ctypes to directly call the libvlc dynamic lib, and
 the code is generated from the include files defining the public API.
 
+** License
+
+The generated module is licensed, like libvlc, under the GNU Lesser
+General Public License 2.1 or later. The module generator itself is
+licensed under the GNU General Public License version 2 or later.
+
 ** Building
 
 To generate the vlc.py module and its documentation, use
