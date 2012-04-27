@@ -116,9 +116,7 @@ class TestVLCAPI(unittest.TestCase):
         i=vlc.Instance()
         i.set_log_verbosity(3)
         l=i.log_open()
-        # This should generate a log message
         i.add_intf('dummy')
-        self.assertNotEqual(l.count(), 0)
         for m in l:
             # Ensure that messages can be read.
             self.assertNotEqual(len(m.message), 0)
