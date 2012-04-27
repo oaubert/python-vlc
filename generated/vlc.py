@@ -48,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Apr 27 16:47:21 2012"
+build_date  = "Fri Apr 27 17:00:20 2012"
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.
@@ -905,10 +905,10 @@ class Instance(_Ctype):
     def media_new(self, mrl, *options):
         """Create a new Media instance.
 
-        If mrl contains a colon (:), it will be treated as a
-        URL. Else, it will be considered as a local path. If you need
-        more control, directly use media_new_location/media_new_path
-        methods.
+        If mrl contains a colon (:) preceded by more than 1 letter, it
+        will be treated as a URL. Else, it will be considered as a
+        local path. If you need more control, directly use
+        media_new_location/media_new_path methods.
 
         Options can be specified as supplementary string parameters, e.g.
 
@@ -920,7 +920,7 @@ class Instance(_Ctype):
 
         @param options: optional media option=value strings
         """
-        if ':' in mrl:
+        if ':' in mrl and mrl.index(':') > 1:
             # Assume it is a URL
             m = libvlc_media_new_location(self, mrl)
         else:
