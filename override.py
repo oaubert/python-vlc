@@ -48,6 +48,11 @@ class Instance:
     def media_new(self, mrl, *options):
         """Create a new Media instance.
 
+        If mrl contains a colon (:), it will be treated as a
+        URL. Else, it will be considered as a local path. If you need
+        more control, directly use media_new_location/media_new_path
+        methods.
+
         Options can be specified as supplementary string parameters, e.g.
 
         C{m = i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')}
@@ -58,7 +63,12 @@ class Instance:
 
         @param options: optional media option=value strings
         """
-        m = libvlc_media_new_location(self, mrl)
+        if ':' in mrl:
+            # Assume it is a URL
+            m = libvlc_media_new_location(self, mrl)
+        else:
+            # Else it should be a local path.
+            m = libvlc_media_new_path(self, mrl)
         for o in options:
             libvlc_media_add_option(m, o)
         m._instance = self
