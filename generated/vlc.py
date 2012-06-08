@@ -48,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Apr 27 17:00:20 2012"
+build_date  = "Fri Jun  8 09:31:07 2012"
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.
@@ -1031,6 +1031,13 @@ class Instance(_Ctype):
         '''
         return libvlc_log_open(self)
 
+    def media_discoverer_new_from_name(self, psz_name):
+        '''Discover media service by name.
+        @param psz_name: service name.
+        @return: media discover object or NULL in case of error.
+        '''
+        return libvlc_media_discoverer_new_from_name(self, psz_name)
+
     def media_new_location(self, psz_mrl):
         '''Create a media with a certain given media resource location,
         for instance a valid URL.
@@ -1079,13 +1086,6 @@ class Instance(_Ctype):
         @return: the new empty media or NULL on error.
         '''
         return libvlc_media_new_as_node(self, psz_name)
-
-    def media_discoverer_new_from_name(self, psz_name):
-        '''Discover media service by name.
-        @param psz_name: service name.
-        @return: media discover object or NULL in case of error.
-        '''
-        return libvlc_media_discoverer_new_from_name(self, psz_name)
 
     def media_library_new(self):
         '''Create an new Media Library object.
@@ -1522,7 +1522,7 @@ class Media(_Ctype):
 
     def save_meta(self):
         '''Save the meta previously set.
-        @return: true if the write operation was successful.
+        @return: true if the write operation was successfull.
         '''
         return libvlc_media_save_meta(self)
 
@@ -3088,6 +3088,67 @@ def libvlc_clock():
                     ctypes.c_int64)
     return f()
 
+def libvlc_media_discoverer_new_from_name(p_inst, psz_name):
+    '''Discover media service by name.
+    @param p_inst: libvlc instance.
+    @param psz_name: service name.
+    @return: media discover object or NULL in case of error.
+    '''
+    f = _Cfunctions.get('libvlc_media_discoverer_new_from_name', None) or \
+        _Cfunction('libvlc_media_discoverer_new_from_name', ((1,), (1,),), class_result(MediaDiscoverer),
+                    ctypes.c_void_p, Instance, ctypes.c_char_p)
+    return f(p_inst, psz_name)
+
+def libvlc_media_discoverer_release(p_mdis):
+    '''Release media discover object. If the reference count reaches 0, then
+    the object will be released.
+    @param p_mdis: media service discover object.
+    '''
+    f = _Cfunctions.get('libvlc_media_discoverer_release', None) or \
+        _Cfunction('libvlc_media_discoverer_release', ((1,),), None,
+                    None, MediaDiscoverer)
+    return f(p_mdis)
+
+def libvlc_media_discoverer_localized_name(p_mdis):
+    '''Get media service discover object its localized name.
+    @param p_mdis: media discover object.
+    @return: localized name.
+    '''
+    f = _Cfunctions.get('libvlc_media_discoverer_localized_name', None) or \
+        _Cfunction('libvlc_media_discoverer_localized_name', ((1,),), string_result,
+                    ctypes.c_void_p, MediaDiscoverer)
+    return f(p_mdis)
+
+def libvlc_media_discoverer_media_list(p_mdis):
+    '''Get media service discover media list.
+    @param p_mdis: media service discover object.
+    @return: list of media items.
+    '''
+    f = _Cfunctions.get('libvlc_media_discoverer_media_list', None) or \
+        _Cfunction('libvlc_media_discoverer_media_list', ((1,),), class_result(MediaList),
+                    ctypes.c_void_p, MediaDiscoverer)
+    return f(p_mdis)
+
+def libvlc_media_discoverer_event_manager(p_mdis):
+    '''Get event manager from media service discover object.
+    @param p_mdis: media service discover object.
+    @return: event manager object.
+    '''
+    f = _Cfunctions.get('libvlc_media_discoverer_event_manager', None) or \
+        _Cfunction('libvlc_media_discoverer_event_manager', ((1,),), class_result(EventManager),
+                    ctypes.c_void_p, MediaDiscoverer)
+    return f(p_mdis)
+
+def libvlc_media_discoverer_is_running(p_mdis):
+    '''Query if media service discover object is running.
+    @param p_mdis: media service discover object.
+    @return: true if running, false if not \libvlc_return_bool.
+    '''
+    f = _Cfunctions.get('libvlc_media_discoverer_is_running', None) or \
+        _Cfunction('libvlc_media_discoverer_is_running', ((1,),), None,
+                    ctypes.c_int, MediaDiscoverer)
+    return f(p_mdis)
+
 def libvlc_media_new_location(p_instance, psz_mrl):
     '''Create a media with a certain given media resource location,
     for instance a valid URL.
@@ -3258,7 +3319,7 @@ def libvlc_media_set_meta(p_md, e_meta, psz_value):
 def libvlc_media_save_meta(p_md):
     '''Save the meta previously set.
     @param p_md: the media desriptor.
-    @return: true if the write operation was successful.
+    @return: true if the write operation was successfull.
     '''
     f = _Cfunctions.get('libvlc_media_save_meta', None) or \
         _Cfunction('libvlc_media_save_meta', ((1,),), None,
@@ -3391,67 +3452,6 @@ def libvlc_media_get_tracks_info(p_md):
         _Cfunction('libvlc_media_get_tracks_info', ((1,), (2,),), None,
                     ctypes.c_int, Media, ctypes.POINTER(ctypes.c_void_p))
     return f(p_md)
-
-def libvlc_media_discoverer_new_from_name(p_inst, psz_name):
-    '''Discover media service by name.
-    @param p_inst: libvlc instance.
-    @param psz_name: service name.
-    @return: media discover object or NULL in case of error.
-    '''
-    f = _Cfunctions.get('libvlc_media_discoverer_new_from_name', None) or \
-        _Cfunction('libvlc_media_discoverer_new_from_name', ((1,), (1,),), class_result(MediaDiscoverer),
-                    ctypes.c_void_p, Instance, ctypes.c_char_p)
-    return f(p_inst, psz_name)
-
-def libvlc_media_discoverer_release(p_mdis):
-    '''Release media discover object. If the reference count reaches 0, then
-    the object will be released.
-    @param p_mdis: media service discover object.
-    '''
-    f = _Cfunctions.get('libvlc_media_discoverer_release', None) or \
-        _Cfunction('libvlc_media_discoverer_release', ((1,),), None,
-                    None, MediaDiscoverer)
-    return f(p_mdis)
-
-def libvlc_media_discoverer_localized_name(p_mdis):
-    '''Get media service discover object its localized name.
-    @param p_mdis: media discover object.
-    @return: localized name.
-    '''
-    f = _Cfunctions.get('libvlc_media_discoverer_localized_name', None) or \
-        _Cfunction('libvlc_media_discoverer_localized_name', ((1,),), string_result,
-                    ctypes.c_void_p, MediaDiscoverer)
-    return f(p_mdis)
-
-def libvlc_media_discoverer_media_list(p_mdis):
-    '''Get media service discover media list.
-    @param p_mdis: media service discover object.
-    @return: list of media items.
-    '''
-    f = _Cfunctions.get('libvlc_media_discoverer_media_list', None) or \
-        _Cfunction('libvlc_media_discoverer_media_list', ((1,),), class_result(MediaList),
-                    ctypes.c_void_p, MediaDiscoverer)
-    return f(p_mdis)
-
-def libvlc_media_discoverer_event_manager(p_mdis):
-    '''Get event manager from media service discover object.
-    @param p_mdis: media service discover object.
-    @return: event manager object.
-    '''
-    f = _Cfunctions.get('libvlc_media_discoverer_event_manager', None) or \
-        _Cfunction('libvlc_media_discoverer_event_manager', ((1,),), class_result(EventManager),
-                    ctypes.c_void_p, MediaDiscoverer)
-    return f(p_mdis)
-
-def libvlc_media_discoverer_is_running(p_mdis):
-    '''Query if media service discover object is running.
-    @param p_mdis: media service discover object.
-    @return: true if running, false if not \libvlc_return_bool.
-    '''
-    f = _Cfunctions.get('libvlc_media_discoverer_is_running', None) or \
-        _Cfunction('libvlc_media_discoverer_is_running', ((1,),), None,
-                    ctypes.c_int, MediaDiscoverer)
-    return f(p_mdis)
 
 def libvlc_media_library_new(p_instance):
     '''Create an new Media Library object.
@@ -5595,7 +5595,7 @@ if __name__ == '__main__':
                 print('Aspect ratio: %s' % player.video_get_aspect_ratio())
                #print('Window:' % player.get_hwnd()
             except Exception:
-                print('Error: %s', sys.exc_info()[1])
+                print('Error: %s' % sys.exc_info()[1])
 
         def sec_forward():
             """Go forward one sec"""
