@@ -234,6 +234,23 @@ def class_result(classname):
         return classname(result)
     return wrap_errcheck
 
+# FILE* ctypes wrapper, copied from
+# http://svn.python.org/projects/ctypes/trunk/ctypeslib/ctypeslib/contrib/pythonhdr.py
+class FILE(ctypes.Structure):
+    pass
+FILE_ptr = ctypes.POINTER(FILE)
+
+PyFile_FromFile = ctypes.pythonapi.PyFile_FromFile
+PyFile_FromFile.restype = ctypes.py_object
+PyFile_FromFile.argtypes = [FILE_ptr,
+                            ctypes.c_char_p,
+                            ctypes.c_char_p,
+                            ctypes.CFUNCTYPE(ctypes.c_int, FILE_ptr)]
+
+PyFile_AsFile = ctypes.pythonapi.PyFile_AsFile
+PyFile_AsFile.restype = FILE_ptr
+PyFile_AsFile.argtypes = [ctypes.py_object]
+
  # Generated enum types #
 # GENERATED_ENUMS go here  # see generate.py
  # End of generated enum types #
