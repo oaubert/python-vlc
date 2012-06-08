@@ -71,14 +71,8 @@ else:  # Python 3+
 
 # Functions not wrapped/not referenced
 _blacklist = {
-    'libvlc_set_exit_handler':    '',  # not in 1.1.5?
+    'libvlc_set_exit_handler':    '',
     'libvlc_video_set_callbacks': '',
-    'libvlc_video_set_format_callbacks': '',
-    'libvlc_audio_set_callbacks': '',
-    'libvlc_audio_set_format_callbacks': '',
-    'libvlc_audio_set_volume_callback': '',
-    'libvlc_vprinterr': '',
-    'libvlc_printerr': '',
 }
 
 # Set of functions that return a string that the caller is
@@ -116,9 +110,11 @@ at_param_re  = re.compile('(@param\s+\S+)(.+)')
 bs_param_re  = re.compile('\\param\s+(\S+)')
 class_re     = re.compile('class\s+(\S+):')
 def_re       = re.compile('^\s+def\s+(\w+)', re.MULTILINE)
+enum_type_re = re.compile('^(?:typedef\s+)?enum')
 enum_re      = re.compile('(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\S+)?;')
 enum_pair_re = re.compile('\s*=\s*')
-enum_type_re = re.compile('^(?:typedef\s+)?enum')
+callback_type_re = re.compile('^typedef\s+\w+(\s+\*)?\s+\(\s*\*')
+callback_re  = re.compile('typedef\s+(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
 forward_re   = re.compile('.+\(\s*(.+?)\s*\)(\s*\S+)')
 libvlc_re    = re.compile('\slibvlc_[a-z_]+')
 param_re     = re.compile('\s*(const\s*|unsigned\s*|struct\s*)?(\S+\s*\**)\s+(.+)')
@@ -370,6 +366,7 @@ class Parser(object):
 
     def __init__(self, h_files, version=''):
         self.enums = []
+        self.callbacks = []
         self.funcs = []
         self.version = version
 
@@ -381,6 +378,7 @@ class Parser(object):
                         break
             self.h_file = h
             self.enums.extend(self.parse_enums())
+            self.callbacks.extend(self.parse_callbacks())
             self.funcs.extend(self.parse_funcs())
 
     def check(self):
@@ -390,13 +388,25 @@ class Parser(object):
             e.check()
         for f in self.funcs:
             f.check()
+        for f in self.callbacks:
+            f.check()
 
     def dump(self, attr):
         sys.stderr.write('%s==== %s ==== %s\n' % (_NL_, attr, self.version))
         for a in getattr(self, attr, ()):
             a.dump()
 
+    def parse_callbacks(self):
+        """Parse header file for callback signature definitions.
 
+        @return: yield a Func instance for each callback signature, unless blacklisted.
+        """
+        for type_, name, pars, docs, line in self.parse_groups(callback_type_re.match, callback_re.match, ');'):
+
+            pars = [self.parse_param(p) for p in paramlist_re.split(pars)]
+
+            yield Func(name, type_.replace(' ', '') + '*', pars, docs,
+                       file_=self.h_file, line=line)
 
     def parse_enums(self):
         """Parse header file for enum type definitions.
@@ -558,6 +568,7 @@ class _Generator(object):
       ##self.type2class = self.type2class.copy()
         self.parser = parser
         self.convert_enums()
+        self.convert_callbacks()
 
     def check_types(self):
         """Make sure that all types are properly translated.
@@ -592,6 +603,17 @@ class _Generator(object):
             elif c[0].islower():
                 c = c.capitalize()
             self.type2class[e.name] = c
+
+    def convert_callbacks(self):
+        """Convert callback names to class names.
+        """
+        for f in self.parser.callbacks:
+            c = self.type_re.findall(f.name)[0][0]
+            if '_' in c:
+                c = c.title().replace('_', '')
+            elif c[0].islower():
+                c = c.capitalize()
+            self.type2class[f.name] = c
 
     def dump_dicts(self):  # for debug
         s = _NL_ + _INDENT_
@@ -629,6 +651,7 @@ class _Generator(object):
         for t in f:
             if genums and t.startswith(_GENERATED_ENUMS_):
                 self.generate_enums()
+                self.generate_callbacks()
             elif t.startswith(_BUILD_DATE_):
                 v, t = _NA_, self.parser.version
                 if t:
@@ -691,7 +714,8 @@ class PythonGenerator(_Generator):
     # type conversions are generated (cf convert_enums).
     type2class = {
         'libvlc_audio_output_t*':      'ctypes.POINTER(AudioOutput)',
-        'libvlc_callback_t':           'ctypes.c_void_p',
+        'libvlc_event_t*':              'ctypes.c_void_p',
+        #'libvlc_callback_t':           'ctypes.c_void_p',
         'libvlc_drawable_t':           'ctypes.c_uint',  # FIXME?
         'libvlc_event_type_t':         'ctypes.c_uint',
         'libvlc_event_manager_t*':     'EventManager',
@@ -715,9 +739,10 @@ class PythonGenerator(_Generator):
         'libvlc_module_description_t*': 'ctypes.POINTER(ModuleDescription)',
         'FILE*':                       'FILE_ptr',
 
-        '...':       'FIXME_va_list',
-        'va_list':   'FIXME_va_list',
+        '...':       'ctypes.c_void_p',
+        'va_list':   'ctypes.c_void_p',
         'char*':     'ctypes.c_char_p',
+        'bool':      'ctypes.c_bool',
         'char**':    'ListPOINTER(ctypes.c_char_p)',
         'float':     'ctypes.c_float',
         'int':       'ctypes.c_int',
@@ -877,6 +902,40 @@ class _Enum(ctypes.c_uint):
             t = ['%s.%*s = %s(%s)' % (cls, w,v.name, cls, v.value) for v in e.vals]
 
             self.output(_NL_.join(sorted(t)), nt=2)
+
+    def generate_callbacks(self):
+        """Generate decorators for callback functions.
+        
+        We generate both decorators (for defining functions) and
+        associated classes, to help in defining function signatures.
+        """
+        if not self.parser.callbacks:
+            return
+        # Generate classes
+        for f in self.parser.callbacks:
+            name = self.class4(f.name)  #PYCHOK flake
+            docs = self.epylink(f.docs)
+            self.output('''class %(name)s(ctypes.c_void_p):
+    """%(docs)s
+    """
+    pass''' % locals())
+
+        self.output("class CallbackDecorators(object):")
+        self.output('    "Class holding various method decorators for callback functions."')
+        for f in self.parser.callbacks:
+            name = self.class4(f.name)  #PYCHOK flake
+
+            # return value and arg classes
+            types = ', '.join([self.class4(f.type)] +  #PYCHOK flake
+                              [self.class4(p.type) for p in f.pars])
+
+            # xformed doc string with first @param
+            docs = self.epylink(f.docs)
+
+            self.output("""    %(name)s = ctypes.CFUNCTYPE(%(types)s)
+    %(name)s.__doc__ = '''%(docs)s
+    ''' """ % locals())
+        self.output("cb = CallbackDecorators")
 
     def generate_wrappers(self):
         """Generate class wrappers for all appropriate functions.
