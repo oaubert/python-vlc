@@ -175,7 +175,7 @@ if __name__ == '__main__':
                 print('Aspect ratio: %s' % player.video_get_aspect_ratio())
                #print('Window:' % player.get_hwnd()
             except Exception:
-                print('Error: %s', sys.exc_info()[1])
+                print('Error: %s' % sys.exc_info()[1])
 
         def sec_forward():
             """Go forward one sec"""
