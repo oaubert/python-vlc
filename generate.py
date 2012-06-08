@@ -413,10 +413,7 @@ class Parser(object):
                 t = t.strip()
                 if not t.startswith('/*'):
                     if '=' in t:  # has value
-                        try:
-                            n, v = enum_pair_re.split(t)
-                        except:
-                            import pdb;pdb.set_trace()
+                        n, v = enum_pair_re.split(t)
                         vals.append(Val(n, v))
                         if v.startswith('0x'):  # '0X'?
                             v = int(v, 16)
