@@ -391,16 +391,12 @@ class Parser(object):
         for f in self.funcs:
             f.check()
 
-    def __dump(self, attr):
+    def dump(self, attr):
         sys.stderr.write('%s==== %s ==== %s\n' % (_NL_, attr, self.version))
         for a in getattr(self, attr, ()):
             a.dump()
 
-    def dump_enums(self):  # for debug
-        self.__dump('enums')
 
-    def dump_funcs(self):  # for debug
-        self.__dump('funcs')
 
     def parse_enums(self):
         """Parse header file for enum type definitions.
@@ -1188,8 +1184,8 @@ Parse VLC include files and generate bindings code for Python or Java.""")
 
     p = Parser(args, opts.version)
     if opts.debug:
-        p.dump_enums()
-        p.dump_funcs()
+        for t in ('enums', 'funcs', 'callbacks'):
+            p.dump(t)
 
     if opts.java:
         g = JavaGenerator(p)
