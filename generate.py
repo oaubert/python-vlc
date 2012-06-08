@@ -702,6 +702,7 @@ class PythonGenerator(_Generator):
         'libvlc_instance_t*':          'Instance',
         'libvlc_log_t*':               'Log',
         'libvlc_log_iterator_t*':      'LogIterator',
+        'libvlc_log_subscriber_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
         'libvlc_log_message_t*':       'ctypes.POINTER(LogMessage)',
         'libvlc_media_t*':             'Media',
         'libvlc_media_discoverer_t*':  'MediaDiscoverer',
@@ -716,6 +717,7 @@ class PythonGenerator(_Generator):
         'libvlc_time_t':               'ctypes.c_longlong',
         'libvlc_track_description_t*': 'ctypes.POINTER(TrackDescription)',
         'libvlc_module_description_t*': 'ctypes.POINTER(ModuleDescription)',
+        'FILE*':                       'FILE_ptr',
 
         '...':       'FIXME_va_list',
         'va_list':   'FIXME_va_list',
