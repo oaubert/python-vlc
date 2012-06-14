@@ -180,7 +180,7 @@ class MediaList:
         """Add media instance to media list.
         
         The L{lock} should be held upon entering this function.
-        @param p_md: a media instance or a MRL.
+        @param mrl: a media instance or a MRL.
         @return: 0 on success, -1 if the media list is read-only.
         """
         if isinstance(mrl, basestring):
