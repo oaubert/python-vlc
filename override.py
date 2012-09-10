@@ -25,6 +25,8 @@ class Instance:
              # no parameters passed, for win32 and MacOS,
              # specify the plugin_path if detected earlier
             args = ['vlc', '--plugin-path=' + plugin_path]
+        if PYTHON3:
+            args = [ str_to_bytes(a) for a in args ]
         return libvlc_new(len(args), args)
 
     def media_player_new(self, uri=None):
@@ -65,12 +67,12 @@ class Instance:
         """
         if ':' in mrl and mrl.index(':') > 1:
             # Assume it is a URL
-            m = libvlc_media_new_location(self, mrl)
+            m = libvlc_media_new_location(self, str_to_bytes(mrl))
         else:
             # Else it should be a local path.
-            m = libvlc_media_new_path(self, mrl)
+            m = libvlc_media_new_path(self, str_to_bytes(mrl))
         for o in options:
-            libvlc_media_add_option(m, o)
+            libvlc_media_add_option(m, str_to_bytes(o))
         m._instance = self
         return m
 
