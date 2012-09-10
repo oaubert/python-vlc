@@ -73,6 +73,7 @@ else:  # Python 3+
 _blacklist = {
     'libvlc_set_exit_handler':    '',
     'libvlc_video_set_callbacks': '',
+    'libvlc_printerr': '',
 }
 
 # Set of functions that return a string that the caller is
