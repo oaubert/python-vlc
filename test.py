@@ -61,7 +61,7 @@ class TestVLCAPI(unittest.TestCase):
     # Basic libvlc tests
     def test_instance_creation(self):
         i=vlc.Instance()
-        self.assert_(i)
+        self.assertTrue(i)
 
     def test_libvlc_media(self):
         mrl='/tmp/foo.avi'
