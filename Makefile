@@ -11,6 +11,9 @@ doc: $(MODULE_NAME)
 test: $(MODULE_NAME)
 	PYTHONPATH=generated python test.py
 
+test3: $(MODULE_NAME)
+	PYTHONPATH=generated python3 test.py
+
 check: $(MODULE_NAME)
 	-pyflakes $<
 	-pylint $<
