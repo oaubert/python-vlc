@@ -225,7 +225,7 @@ if __name__ == '__main__':
 
         print('Press q to quit, ? to get help.%s' % os.linesep)
         while True:
-            k = getch().decode('utf8')  # Python 3+
+            k = getch()
             print('> %s' % k)
             if k in keybindings:
                 keybindings[k]()
