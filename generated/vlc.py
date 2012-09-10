@@ -48,7 +48,48 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Thu Jun 14 15:22:46 2012"
+build_date  = "Mon Sep 10 16:51:25 2012"
+
+if sys.version_info.major > 2:
+    str = str
+    unicode = str
+    bytes = bytes
+    basestring = (str, bytes)
+    PYTHON3 = True
+    def str_to_bytes(s):
+        """Translate string or bytes to bytes.
+        """
+        if isinstance(s, str):
+            return bytes(s, sys.getfilesystemencoding())
+        else:
+            return s
+
+    def bytes_to_str(b):
+        """Translate bytes to string.
+        """
+        if isinstance(b, bytes):
+            return b.decode(sys.getfilesystemencoding())
+        else:
+            return b
+else:
+    str = str
+    unicode = unicode
+    bytes = str
+    basestring = basestring
+    PYTHON3 = False
+    def str_to_bytes(s):
+        """Translate string or bytes to bytes.
+        """
+        if isinstance(s, unicode):
+            return s.encode(sys.getfilesystemencoding())
+        else:
+            return s
+
+    def bytes_to_str(b):
+        """Translate bytes to unicode string.
+        """
+        if isinstance(b, str):
+            return unicode(b, sys.getfilesystemencoding())
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.
@@ -220,7 +261,7 @@ def string_result(result, func, arguments):
     """
     if result:
         # make a python string copy
-        s = ctypes.string_at(result)
+        s = bytes_to_str(ctypes.string_at(result))
         # free original string ptr
         libvlc_free(result)
         return s
@@ -241,16 +282,32 @@ class FILE(ctypes.Structure):
     pass
 FILE_ptr = ctypes.POINTER(FILE)
 
-PyFile_FromFile = ctypes.pythonapi.PyFile_FromFile
-PyFile_FromFile.restype = ctypes.py_object
-PyFile_FromFile.argtypes = [FILE_ptr,
-                            ctypes.c_char_p,
-                            ctypes.c_char_p,
-                            ctypes.CFUNCTYPE(ctypes.c_int, FILE_ptr)]
+if PYTHON3:
+    PyFile_FromFd = ctypes.pythonapi.PyFile_FromFd
+    PyFile_FromFd.restype = ctypes.py_object
+    PyFile_FromFd.argtypes = [ctypes.c_int,
+                              ctypes.c_char_p,
+                              ctypes.c_char_p,
+                              ctypes.c_int,
+                              ctypes.c_char_p,
+                              ctypes.c_char_p,
+                              ctypes.c_char_p,
+                              ctypes.c_int ]
 
-PyFile_AsFile = ctypes.pythonapi.PyFile_AsFile
-PyFile_AsFile.restype = FILE_ptr
-PyFile_AsFile.argtypes = [ctypes.py_object]
+    PyFile_AsFd = ctypes.pythonapi.PyObject_AsFileDescriptor
+    PyFile_AsFd.restype = ctypes.c_int
+    PyFile_AsFd.argtypes = [ctypes.py_object]
+else:
+    PyFile_FromFile = ctypes.pythonapi.PyFile_FromFile
+    PyFile_FromFile.restype = ctypes.py_object
+    PyFile_FromFile.argtypes = [FILE_ptr,
+                                ctypes.c_char_p,
+                                ctypes.c_char_p,
+                                ctypes.CFUNCTYPE(ctypes.c_int, FILE_ptr)]
+
+    PyFile_AsFile = ctypes.pythonapi.PyFile_AsFile
+    PyFile_AsFile.restype = FILE_ptr
+    PyFile_AsFile.argtypes = [ctypes.py_object]
 
  # Generated enum types #
 
@@ -1155,6 +1212,8 @@ class Instance(_Ctype):
              # no parameters passed, for win32 and MacOS,
              # specify the plugin_path if detected earlier
             args = ['vlc', '--plugin-path=' + plugin_path]
+        if PYTHON3:
+            args = [ str_to_bytes(a) for a in args ]
         return libvlc_new(len(args), args)
 
     def media_player_new(self, uri=None):
@@ -1195,12 +1254,12 @@ class Instance(_Ctype):
         """
         if ':' in mrl and mrl.index(':') > 1:
             # Assume it is a URL
-            m = libvlc_media_new_location(self, mrl)
+            m = libvlc_media_new_location(self, str_to_bytes(mrl))
         else:
             # Else it should be a local path.
-            m = libvlc_media_new_path(self, mrl)
+            m = libvlc_media_new_path(self, str_to_bytes(mrl))
         for o in options:
-            libvlc_media_add_option(m, o)
+            libvlc_media_add_option(m, str_to_bytes(o))
         m._instance = self
         return m
 
@@ -1663,6 +1722,9 @@ class LogIterator(_Ctype):
             i = libvlc_log_iterator_next(self, b)
             return i.contents
         raise StopIteration
+
+    def __next__(self):
+        return self.next()
 
 
     def free(self):
@@ -3124,18 +3186,6 @@ def libvlc_vprinterr(fmt, ap):
         _Cfunction('libvlc_vprinterr', ((1,), (1,),), None,
                     ctypes.c_char_p, ctypes.c_char_p, ctypes.c_void_p)
     return f(fmt, ap)
-
-def libvlc_printerr(fmt, args):
-    '''Sets the LibVLC error status and message for the current thread.
-    Any previous error is overridden.
-    @param fmt: the format string.
-    @param args: the arguments.
-    @return: a nul terminated string in any case.
-    '''
-    f = _Cfunctions.get('libvlc_printerr', None) or \
-        _Cfunction('libvlc_printerr', ((1,), (1,),), None,
-                    ctypes.c_char_p, ctypes.c_char_p, ctypes.c_void_p)
-    return f(fmt, args)
 
 def libvlc_new(argc, argv):
     '''Create and initialize a libvlc instance.
@@ -5828,11 +5878,12 @@ def libvlc_vlm_get_event_manager(p_instance):
     return f(p_instance)
 
 
-# 2 function(s) blacklisted:
+# 3 function(s) blacklisted:
+#  libvlc_printerr
 #  libvlc_set_exit_handler
 #  libvlc_video_set_callbacks
 
-# 18 function(s) not wrapped as methods:
+# 17 function(s) not wrapped as methods:
 #  libvlc_audio_output_list_release
 #  libvlc_clearerr
 #  libvlc_clock
@@ -5847,7 +5898,6 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_log_unsubscribe
 #  libvlc_module_description_list_release
 #  libvlc_new
-#  libvlc_printerr
 #  libvlc_track_description_list_release
 #  libvlc_track_description_release
 #  libvlc_vprinterr
@@ -5908,7 +5958,7 @@ def libvlc_hex_version():
     """Return the libvlc version in hex or 0 if unavailable.
     """
     try:
-        return _dot2int(libvlc_get_version().split()[0])
+        return _dot2int(bytes_to_str(libvlc_get_version()).split()[0])
     except ValueError:
         return 0
 
@@ -5957,8 +6007,8 @@ if __name__ == '__main__':
         """Print libvlc version"""
         try:
             print('Build date: %s (%#x)' % (build_date, hex_version()))
-            print('LibVLC version: %s (%#x)' % (libvlc_get_version(), libvlc_hex_version()))
-            print('LibVLC compiler: %s' % libvlc_get_compiler())
+            print('LibVLC version: %s (%#x)' % (bytes_to_str(libvlc_get_version()), libvlc_hex_version()))
+            print('LibVLC compiler: %s' % bytes_to_str(libvlc_get_compiler()))
             if plugin_path:
                 print('Plugin path: %s' % plugin_path)
         except:
@@ -5997,7 +6047,7 @@ if __name__ == '__main__':
             player.video_set_marquee_int(VideoMarqueeOption.Refresh, 1000)  # millisec (or sec?)
             ##t = '$L / $D or $P at $T'
             t = '%Y-%m-%d  %H:%M:%S'
-        player.video_set_marquee_string(VideoMarqueeOption.Text, t)
+        player.video_set_marquee_string(VideoMarqueeOption.Text, str_to_bytes(t))
 
         # Some event manager examples.  Note, the callback can be any Python
         # callable and does not need to be decorated.  Optionally, specify
@@ -6017,7 +6067,7 @@ if __name__ == '__main__':
                 print_version()
                 media = player.get_media()
                 print('State: %s' % player.get_state())
-                print('Media: %s' % media.get_mrl())
+                print('Media: %s' % bytes_to_str(media.get_mrl()))
                 print('Track: %s/%s' % (player.video_get_track(), player.video_get_track_count()))
                 print('Current time: %s/%s' % (player.get_time(), media.get_duration()))
                 print('Position: %s' % player.get_position())
@@ -6078,7 +6128,7 @@ if __name__ == '__main__':
 
         print('Press q to quit, ? to get help.%s' % os.linesep)
         while True:
-            k = getch().decode('utf8')  # Python 3+
+            k = getch()
             print('> %s' % k)
             if k in keybindings:
                 keybindings[k]()
