@@ -27,7 +27,7 @@
 
 import unittest
 import vlc
-print "Checking ", vlc.__file__
+print("Checking ", vlc.__file__)
 
 class TestVLCAPI(unittest.TestCase):
     #def setUp(self):
