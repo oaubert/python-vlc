@@ -353,6 +353,9 @@ class LogIterator:
             return i.contents
         raise StopIteration
 
+    def __next__(self):
+        return self.next()
+
 class Log:
     """Create a new VLC log instance.
     """
