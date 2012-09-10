@@ -144,7 +144,7 @@ if __name__ == '__main__':
             player.video_set_marquee_int(VideoMarqueeOption.Refresh, 1000)  # millisec (or sec?)
             ##t = '$L / $D or $P at $T'
             t = '%Y-%m-%d  %H:%M:%S'
-        player.video_set_marquee_string(VideoMarqueeOption.Text, t)
+        player.video_set_marquee_string(VideoMarqueeOption.Text, str_to_bytes(t))
 
         # Some event manager examples.  Note, the callback can be any Python
         # callable and does not need to be decorated.  Optionally, specify
