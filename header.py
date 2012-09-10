@@ -49,6 +49,47 @@ from inspect import getargspec
 
 build_date  = ''  # build time stamp and __version__, see generate.py
 
+if sys.version_info.major > 2:
+    str = str
+    unicode = str
+    bytes = bytes
+    basestring = (str, bytes)
+    PYTHON3 = True
+    def str_to_bytes(s):
+        """Translate string or bytes to bytes.
+        """
+        if isinstance(s, str):
+            return bytes(s, sys.getfilesystemencoding())
+        else:
+            return s
+
+    def bytes_to_str(b):
+        """Translate bytes to string.
+        """
+        if isinstance(b, bytes):
+            return b.decode(sys.getfilesystemencoding())
+        else:
+            return b
+else:
+    str = str
+    unicode = unicode
+    bytes = str
+    basestring = basestring
+    PYTHON3 = False
+    def str_to_bytes(s):
+        """Translate string or bytes to bytes.
+        """
+        if isinstance(s, unicode):
+            return s.encode(sys.getfilesystemencoding())
+        else:
+            return s
+
+    def bytes_to_str(b):
+        """Translate bytes to unicode string.
+        """
+        if isinstance(b, str):
+            return unicode(b, sys.getfilesystemencoding())
+
 # Internal guard to prevent internal classes to be directly
 # instanciated.
 _internal_guard = object()
@@ -219,7 +260,7 @@ def string_result(result, func, arguments):
     """
     if result:
         # make a python string copy
-        s = ctypes.string_at(result)
+        s = bytes_to_str(ctypes.string_at(result))
         # free original string ptr
         libvlc_free(result)
         return s
@@ -240,18 +281,7 @@ class FILE(ctypes.Structure):
     pass
 FILE_ptr = ctypes.POINTER(FILE)
 
-if sys.version_info.major == 2:
-    PyFile_FromFile = ctypes.pythonapi.PyFile_FromFile
-    PyFile_FromFile.restype = ctypes.py_object
-    PyFile_FromFile.argtypes = [FILE_ptr,
-                                ctypes.c_char_p,
-                                ctypes.c_char_p,
-                                ctypes.CFUNCTYPE(ctypes.c_int, FILE_ptr)]
-
-    PyFile_AsFile = ctypes.pythonapi.PyFile_AsFile
-    PyFile_AsFile.restype = FILE_ptr
-    PyFile_AsFile.argtypes = [ctypes.py_object]
-else:
+if PYTHON3:
     PyFile_FromFd = ctypes.pythonapi.PyFile_FromFd
     PyFile_FromFd.restype = ctypes.py_object
     PyFile_FromFd.argtypes = [ctypes.c_int,
@@ -266,6 +296,17 @@ else:
     PyFile_AsFd = ctypes.pythonapi.PyObject_AsFileDescriptor
     PyFile_AsFd.restype = ctypes.c_int
     PyFile_AsFd.argtypes = [ctypes.py_object]
+else:
+    PyFile_FromFile = ctypes.pythonapi.PyFile_FromFile
+    PyFile_FromFile.restype = ctypes.py_object
+    PyFile_FromFile.argtypes = [FILE_ptr,
+                                ctypes.c_char_p,
+                                ctypes.c_char_p,
+                                ctypes.CFUNCTYPE(ctypes.c_int, FILE_ptr)]
+
+    PyFile_AsFile = ctypes.pythonapi.PyFile_AsFile
+    PyFile_AsFile.restype = FILE_ptr
+    PyFile_AsFile.argtypes = [ctypes.py_object]
 
  # Generated enum types #
 # GENERATED_ENUMS go here  # see generate.py
