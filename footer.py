@@ -55,7 +55,7 @@ def libvlc_hex_version():
     """Return the libvlc version in hex or 0 if unavailable.
     """
     try:
-        return _dot2int(libvlc_get_version().split()[0])
+        return _dot2int(bytes_to_str(libvlc_get_version()).split()[0])
     except ValueError:
         return 0
 
@@ -104,8 +104,8 @@ if __name__ == '__main__':
         """Print libvlc version"""
         try:
             print('Build date: %s (%#x)' % (build_date, hex_version()))
-            print('LibVLC version: %s (%#x)' % (libvlc_get_version(), libvlc_hex_version()))
-            print('LibVLC compiler: %s' % libvlc_get_compiler())
+            print('LibVLC version: %s (%#x)' % (bytes_to_str(libvlc_get_version()), libvlc_hex_version()))
+            print('LibVLC compiler: %s' % bytes_to_str(libvlc_get_compiler()))
             if plugin_path:
                 print('Plugin path: %s' % plugin_path)
         except:
@@ -164,7 +164,7 @@ if __name__ == '__main__':
                 print_version()
                 media = player.get_media()
                 print('State: %s' % player.get_state())
-                print('Media: %s' % media.get_mrl())
+                print('Media: %s' % bytes_to_str(media.get_mrl()))
                 print('Track: %s/%s' % (player.video_get_track(), player.video_get_track_count()))
                 print('Current time: %s/%s' % (player.get_time(), media.get_duration()))
                 print('Position: %s' % player.get_position())
