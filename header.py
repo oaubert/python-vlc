@@ -240,16 +240,32 @@ class FILE(ctypes.Structure):
     pass
 FILE_ptr = ctypes.POINTER(FILE)
 
-PyFile_FromFile = ctypes.pythonapi.PyFile_FromFile
-PyFile_FromFile.restype = ctypes.py_object
-PyFile_FromFile.argtypes = [FILE_ptr,
-                            ctypes.c_char_p,
-                            ctypes.c_char_p,
-                            ctypes.CFUNCTYPE(ctypes.c_int, FILE_ptr)]
+if sys.version_info.major == 2:
+    PyFile_FromFile = ctypes.pythonapi.PyFile_FromFile
+    PyFile_FromFile.restype = ctypes.py_object
+    PyFile_FromFile.argtypes = [FILE_ptr,
+                                ctypes.c_char_p,
+                                ctypes.c_char_p,
+                                ctypes.CFUNCTYPE(ctypes.c_int, FILE_ptr)]
 
-PyFile_AsFile = ctypes.pythonapi.PyFile_AsFile
-PyFile_AsFile.restype = FILE_ptr
-PyFile_AsFile.argtypes = [ctypes.py_object]
+    PyFile_AsFile = ctypes.pythonapi.PyFile_AsFile
+    PyFile_AsFile.restype = FILE_ptr
+    PyFile_AsFile.argtypes = [ctypes.py_object]
+else:
+    PyFile_FromFd = ctypes.pythonapi.PyFile_FromFd
+    PyFile_FromFd.restype = ctypes.py_object
+    PyFile_FromFd.argtypes = [ctypes.c_int,
+                              ctypes.c_char_p,
+                              ctypes.c_char_p,
+                              ctypes.c_int,
+                              ctypes.c_char_p,
+                              ctypes.c_char_p,
+                              ctypes.c_char_p,
+                              ctypes.c_int ]
+
+    PyFile_AsFd = ctypes.pythonapi.PyObject_AsFileDescriptor
+    PyFile_AsFd.restype = ctypes.c_int
+    PyFile_AsFd.argtypes = [ctypes.py_object]
 
  # Generated enum types #
 # GENERATED_ENUMS go here  # see generate.py
