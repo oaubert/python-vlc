@@ -49,7 +49,7 @@ from inspect import getargspec
 
 build_date  = ''  # build time stamp and __version__, see generate.py
 
-if sys.version_info.major > 2:
+if sys.version_info[0] > 2:
     str = str
     unicode = str
     bytes = bytes

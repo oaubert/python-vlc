@@ -48,9 +48,9 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Mon Sep 10 16:51:25 2012"
+build_date  = "Fri Sep 28 22:48:50 2012"
 
-if sys.version_info.major > 2:
+if sys.version_info[0] > 2:
     str = str
     unicode = str
     bytes = bytes
