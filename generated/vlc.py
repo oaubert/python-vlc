@@ -48,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Sep 28 22:48:50 2012"
+build_date  = "Fri Oct  5 21:35:59 2012"
 
 if sys.version_info[0] > 2:
     str = str
@@ -680,6 +680,19 @@ class LogCb(ctypes.c_void_p):
 \note Log message handlers <b>must</b> be thread-safe.
     """
     pass
+class VideoLockCb(ctypes.c_void_p):
+    """Callback prototype to allocate and lock a picture buffer.
+Whenever a new video frame needs to be decoded, the lock callback is
+invoked. Depending on the video chroma, one or three pixel planes of
+adequate dimensions must be returned via the second parameter. Those
+planes must be aligned on 32-bytes boundaries.
+\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
+\param planes start address of the pixel planes (LibVLC allocates the array
+            of void pointers, this callback must initialize the array) [OUT]
+\return a private pointer for the display and unlock callbacks to identify
+        the picture buffers
+    """
+    pass
 class VideoUnlockCb(ctypes.c_void_p):
     """Callback prototype to unlock a picture buffer.
 When the video frame decoding is complete, the unlock callback is invoked.
@@ -687,7 +700,7 @@ This callback might not be needed at all. It is only an indication that the
 application can now read the pixel values if it needs to.
 \warning A picture buffer is unlocked after the picture is decoded,
 but before the picture is displayed.
-\param opaque private pointer as passed to libvlc_video_set_callbacks() [IN]
+\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
 \param picture private pointer returned from the @ref libvlc_video_lock_cb
                callback [IN]
 \param planes pixel planes as defined by the @ref libvlc_video_lock_cb
@@ -698,7 +711,7 @@ class VideoDisplayCb(ctypes.c_void_p):
     """Callback prototype to display a picture.
 When the video frame needs to be shown, as determined by the media playback
 clock, the display callback is invoked.
-\param opaque private pointer as passed to libvlc_video_set_callbacks() [IN]
+\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
 \param picture private pointer returned from the @ref libvlc_video_lock_cb
                callback [IN]
     """
@@ -710,7 +723,7 @@ and the chain of video filters (if any). It can opt to change any parameter
 as it needs. In that case, LibVLC will attempt to convert the video format
 (rescaling and chroma conversion) but these operations can be CPU intensive.
 \param opaque pointer to the private pointer passed to
-              libvlc_video_set_callbacks() [IN/OUT]
+              L{libvlc_video_set_callbacks}() [IN/OUT]
 \param chroma pointer to the 4 bytes video format identifier [IN/OUT]
 \param width pointer to the pixel width [IN/OUT]
 \param height pointer to the pixel height [IN/OUT]
@@ -730,7 +743,7 @@ in the video decoders, video filters and/or video converters.
     pass
 class VideoCleanupCb(ctypes.c_void_p):
     """Callback prototype to configure picture buffers format.
-\param opaque private pointer as passed to libvlc_video_set_callbacks()
+\param opaque private pointer as passed to L{libvlc_video_set_callbacks}()
               (and possibly modified by @ref libvlc_video_format_cb) [IN]
     """
     pass
@@ -806,6 +819,18 @@ class CallbackDecorators(object):
 \param args variable argument list for the format
 \note Log message handlers <b>must</b> be thread-safe.
     ''' 
+    VideoLockCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ListPOINTER(ctypes.c_void_p))
+    VideoLockCb.__doc__ = '''Callback prototype to allocate and lock a picture buffer.
+Whenever a new video frame needs to be decoded, the lock callback is
+invoked. Depending on the video chroma, one or three pixel planes of
+adequate dimensions must be returned via the second parameter. Those
+planes must be aligned on 32-bytes boundaries.
+\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
+\param planes start address of the pixel planes (LibVLC allocates the array
+            of void pointers, this callback must initialize the array) [OUT]
+\return a private pointer for the display and unlock callbacks to identify
+        the picture buffers
+    ''' 
     VideoUnlockCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ListPOINTER(ctypes.c_void_p))
     VideoUnlockCb.__doc__ = '''Callback prototype to unlock a picture buffer.
 When the video frame decoding is complete, the unlock callback is invoked.
@@ -813,7 +838,7 @@ This callback might not be needed at all. It is only an indication that the
 application can now read the pixel values if it needs to.
 \warning A picture buffer is unlocked after the picture is decoded,
 but before the picture is displayed.
-\param opaque private pointer as passed to libvlc_video_set_callbacks() [IN]
+\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
 \param picture private pointer returned from the @ref libvlc_video_lock_cb
                callback [IN]
 \param planes pixel planes as defined by the @ref libvlc_video_lock_cb
@@ -823,7 +848,7 @@ but before the picture is displayed.
     VideoDisplayCb.__doc__ = '''Callback prototype to display a picture.
 When the video frame needs to be shown, as determined by the media playback
 clock, the display callback is invoked.
-\param opaque private pointer as passed to libvlc_video_set_callbacks() [IN]
+\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
 \param picture private pointer returned from the @ref libvlc_video_lock_cb
                callback [IN]
     ''' 
@@ -834,7 +859,7 @@ and the chain of video filters (if any). It can opt to change any parameter
 as it needs. In that case, LibVLC will attempt to convert the video format
 (rescaling and chroma conversion) but these operations can be CPU intensive.
 \param opaque pointer to the private pointer passed to
-              libvlc_video_set_callbacks() [IN/OUT]
+              L{libvlc_video_set_callbacks}() [IN/OUT]
 \param chroma pointer to the 4 bytes video format identifier [IN/OUT]
 \param width pointer to the pixel width [IN/OUT]
 \param height pointer to the pixel height [IN/OUT]
@@ -853,7 +878,7 @@ in the video decoders, video filters and/or video converters.
     ''' 
     VideoCleanupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
     VideoCleanupCb.__doc__ = '''Callback prototype to configure picture buffers format.
-\param opaque private pointer as passed to libvlc_video_set_callbacks()
+\param opaque private pointer as passed to L{libvlc_video_set_callbacks}()
               (and possibly modified by @ref libvlc_video_format_cb) [IN]
     ''' 
     AudioPlayCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.c_int64)
@@ -2483,9 +2508,22 @@ class MediaPlayer(_Ctype):
         '''
         return libvlc_media_player_stop(self)
 
+    def video_set_callbacks(self, lock, unlock, display, opaque):
+        '''Set callbacks and private data to render decoded video to a custom area
+        in memory.
+        Use L{video_set_format}() or L{video_set_format_callbacks}()
+        to configure the decoded format.
+        @param lock: callback to lock video memory (must not be NULL).
+        @param unlock: callback to unlock video memory (or NULL if not needed).
+        @param display: callback to display video (or NULL if not needed).
+        @param opaque: private pointer for the three callbacks (as first parameter).
+        @version: LibVLC 1.1.1 or later.
+        '''
+        return libvlc_video_set_callbacks(self, lock, unlock, display, opaque)
+
     def video_set_format(self, chroma, width, height, pitch):
         '''Set decoded video chroma and dimensions.
-        This only works in combination with libvlc_video_set_callbacks(),
+        This only works in combination with L{video_set_callbacks}(),
         and is mutually exclusive with L{video_set_format_callbacks}().
         @param chroma: a four-characters string identifying the chroma (e.g. "RV32" or "YUYV").
         @param width: pixel width.
@@ -2498,7 +2536,7 @@ class MediaPlayer(_Ctype):
 
     def video_set_format_callbacks(self, setup, cleanup):
         '''Set decoded video chroma and dimensions. This only works in combination with
-        libvlc_video_set_callbacks().
+        L{video_set_callbacks}().
         @param setup: callback to select the video format (cannot be NULL).
         @param cleanup: callback to release any allocated resources (or NULL).
         @version: LibVLC 2.0.0 or later.
@@ -4382,9 +4420,26 @@ def libvlc_media_player_stop(p_mi):
                     None, MediaPlayer)
     return f(p_mi)
 
+def libvlc_video_set_callbacks(mp, lock, unlock, display, opaque):
+    '''Set callbacks and private data to render decoded video to a custom area
+    in memory.
+    Use L{libvlc_video_set_format}() or L{libvlc_video_set_format_callbacks}()
+    to configure the decoded format.
+    @param mp: the media player.
+    @param lock: callback to lock video memory (must not be NULL).
+    @param unlock: callback to unlock video memory (or NULL if not needed).
+    @param display: callback to display video (or NULL if not needed).
+    @param opaque: private pointer for the three callbacks (as first parameter).
+    @version: LibVLC 1.1.1 or later.
+    '''
+    f = _Cfunctions.get('libvlc_video_set_callbacks', None) or \
+        _Cfunction('libvlc_video_set_callbacks', ((1,), (1,), (1,), (1,), (1,),), None,
+                    None, MediaPlayer, VideoLockCb, VideoUnlockCb, VideoDisplayCb, ctypes.c_void_p)
+    return f(mp, lock, unlock, display, opaque)
+
 def libvlc_video_set_format(mp, chroma, width, height, pitch):
     '''Set decoded video chroma and dimensions.
-    This only works in combination with libvlc_video_set_callbacks(),
+    This only works in combination with L{libvlc_video_set_callbacks}(),
     and is mutually exclusive with L{libvlc_video_set_format_callbacks}().
     @param mp: the media player.
     @param chroma: a four-characters string identifying the chroma (e.g. "RV32" or "YUYV").
@@ -4401,7 +4456,7 @@ def libvlc_video_set_format(mp, chroma, width, height, pitch):
 
 def libvlc_video_set_format_callbacks(mp, setup, cleanup):
     '''Set decoded video chroma and dimensions. This only works in combination with
-    libvlc_video_set_callbacks().
+    L{libvlc_video_set_callbacks}().
     @param mp: the media player.
     @param setup: callback to select the video format (cannot be NULL).
     @param cleanup: callback to release any allocated resources (or NULL).
@@ -5878,10 +5933,9 @@ def libvlc_vlm_get_event_manager(p_instance):
     return f(p_instance)
 
 
-# 3 function(s) blacklisted:
+# 2 function(s) blacklisted:
 #  libvlc_printerr
 #  libvlc_set_exit_handler
-#  libvlc_video_set_callbacks
 
 # 17 function(s) not wrapped as methods:
 #  libvlc_audio_output_list_release

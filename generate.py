@@ -72,7 +72,6 @@ else:  # Python 3+
 # Functions not wrapped/not referenced
 _blacklist = {
     'libvlc_set_exit_handler':    '',
-    'libvlc_video_set_callbacks': '',
     'libvlc_printerr': '',
 }
 
@@ -114,8 +113,8 @@ def_re       = re.compile('^\s+def\s+(\w+)', re.MULTILINE)
 enum_type_re = re.compile('^(?:typedef\s+)?enum')
 enum_re      = re.compile('(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\S+)?;')
 enum_pair_re = re.compile('\s*=\s*')
-callback_type_re = re.compile('^typedef\s+\w+(\s+\*)?\s+\(\s*\*')
-callback_re  = re.compile('typedef\s+(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
+callback_type_re = re.compile('^typedef\s+\w+(\s+\*)?\s*\(\s*\*')
+callback_re  = re.compile('typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
 forward_re   = re.compile('.+\(\s*(.+?)\s*\)(\s*\S+)')
 libvlc_re    = re.compile('\slibvlc_[a-z_]+')
 param_re     = re.compile('\s*(const\s*|unsigned\s*|struct\s*)?(\S+\s*\**)\s+(.+)')
@@ -926,8 +925,11 @@ class _Enum(ctypes.c_uint):
         for f in self.parser.callbacks:
             name = self.class4(f.name)  #PYCHOK flake
 
-            # return value and arg classes
-            types = ', '.join([self.class4(f.type)] +  #PYCHOK flake
+            # return value and arg classes 
+            # Note: The f.type != 'void**' is a hack to generate a
+            # valid ctypes signature, specifically for the
+            # libvlc_video_lock_cb callback. It should be fixed in a better way (more generic)
+            types = ', '.join([self.class4(f.type if f.type != 'void**' else 'void*')] +  #PYCHOK flake
                               [self.class4(p.type) for p in f.pars])
 
             # xformed doc string with first @param
