@@ -48,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Oct  5 21:35:59 2012"
+build_date  = "Fri Oct  5 21:46:31 2012"
 
 if sys.version_info[0] > 2:
     str = str
@@ -6075,9 +6075,9 @@ if __name__ == '__main__':
             print('Error: %s file not readable' % movie)
             sys.exit(1)
 
-        instance = Instance()
+        instance = Instance("--sub-source marq")
         try:
-            media = instance.media_new(movie, 'sub-filter=marq')  # load marqee option
+            media = instance.media_new(movie)
         except NameError:
             print('NameError: %s (%s vs LibVLC %s)' % (sys.exc_info()[1],
                                                        __version__,
@@ -6087,13 +6087,12 @@ if __name__ == '__main__':
         player.set_media(media)
         player.play()
 
-        # Some marquee examples.  Marquee requires 'sub-filter=marq' in the
-        # media_new() call above.  See also the Media.add_options method
-        # and <http://www.videolan.org/doc/play-howto/en/ch04.html>
+        # Some marquee examples.  Marquee requires '--sub-source marq' in the
+        # Instance() call above.  See <http://www.videolan.org/doc/play-howto/en/ch04.html>
         player.video_set_marquee_int(VideoMarqueeOption.Enable, 1)
         player.video_set_marquee_int(VideoMarqueeOption.Size, 24)  # pixels
         player.video_set_marquee_int(VideoMarqueeOption.Position, Position.Bottom)
-        if True:  # only one marquee can be specified
+        if False:  # only one marquee can be specified
             player.video_set_marquee_int(VideoMarqueeOption.Timeout, 5000)  # millisec, 0==forever
             t = media.get_mrl()  # movie
         else:  # update marquee text periodically
