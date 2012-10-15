@@ -48,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Oct  5 21:46:31 2012"
+build_date  = "Mon Oct 15 20:54:00 2012"
 
 if sys.version_info[0] > 2:
     str = str
@@ -1122,6 +1122,17 @@ def module_description_list(head):
         libvlc_module_description_list_release(head)
     return r
 
+class AudioOutputDevice(_Cstruct):
+
+    def __str__(self):
+        return '%s(%d:%s)' % (self.__class__.__name__, self.id, self.name)
+
+AudioOutputDevice._fields_ = [  # recursive struct
+    ('next', ctypes.POINTER(AudioOutputDevice)),
+    ('device',   ctypes.c_char_p   ),
+    ('description', ctypes.c_char_p),
+    ]
+
  # End of header.py #
 
 class EventManager(_Ctype):
@@ -1361,27 +1372,6 @@ class Instance(_Ctype):
         '''
         return libvlc_set_user_agent(self, name, http)
 
-    def get_log_verbosity(self):
-        '''Always returns minus one.
-        This function is only provided for backward compatibility.
-        @return: always -1.
-        '''
-        return libvlc_get_log_verbosity(self)
-
-    def set_log_verbosity(self, level):
-        '''This function does nothing.
-        It is only provided for backward compatibility.
-        @param level: ignored.
-        '''
-        return libvlc_set_log_verbosity(self, level)
-
-    def log_open(self):
-        '''This function does nothing useful.
-        It is only provided for backward compatibility.
-        @return: an unique pointer or NULL on error.
-        '''
-        return libvlc_log_open(self)
-
     def media_new_location(self, psz_mrl):
         '''Create a media with a certain given media resource location,
         for instance a valid URL.
@@ -1445,34 +1435,26 @@ class Instance(_Ctype):
         return libvlc_media_library_new(self)
 
     def audio_output_list_get(self):
-        '''Get the list of available audio outputs.
+        '''Gets the list of available audio outputs.
         @return: list of available audio outputs. It must be freed it with In case of error, NULL is returned.
         '''
         return libvlc_audio_output_list_get(self)
 
-    def audio_output_device_count(self, psz_audio_output):
-        '''Get count of devices for audio output, these devices are hardware oriented
-        like analor or digital output of sound card.
-        @param psz_audio_output: - name of audio output, See L{AudioOutput}.
-        @return: number of devices.
+    def audio_output_device_list_get(self, aout):
+        '''Gets a list of audio output devices for a given audio output.
+        See L{audio_output_device_set}().
+        @note: Not all audio outputs support this. In particular, an empty (NULL)
+        list of devices does B{not} imply that the specified audio output does
+        not work.
+        @note: The list might not be exhaustive.
+        @warning: Some audio output devices in the list might not actually work in
+        some circumstances. By default, it is recommended to not specify any
+        explicit audio device.
+        @param psz_aout: audio output name (as returned by L{audio_output_list_get}()).
+        @return: A NULL-terminated linked list of potential audio output devices. It must be freed it with L{audio_output_device_list_release}().
+        @version: LibVLC 2.1.0 or later.
         '''
-        return libvlc_audio_output_device_count(self, psz_audio_output)
-
-    def audio_output_device_longname(self, psz_audio_output, i_device):
-        '''Get long name of device, if not available short name given.
-        @param psz_audio_output: - name of audio output, See L{AudioOutput}.
-        @param i_device: device index.
-        @return: long name of device.
-        '''
-        return libvlc_audio_output_device_longname(self, psz_audio_output, i_device)
-
-    def audio_output_device_id(self, psz_audio_output, i_device):
-        '''Get id name of device.
-        @param psz_audio_output: - name of audio output, See L{AudioOutput}.
-        @param i_device: device index.
-        @return: id name of device, use for setting device, need to be free after use.
-        '''
-        return libvlc_audio_output_device_id(self, psz_audio_output, i_device)
+        return libvlc_audio_output_device_list_get(self, aout)
 
     def vlm_release(self):
         '''Release the vlm instance related to the given L{Instance}.
@@ -1682,87 +1664,6 @@ class Instance(_Ctype):
         @return: libvlc_event_manager.
         '''
         return libvlc_vlm_get_event_manager(self)
-
-class Log(_Ctype):
-    '''Create a new VLC log instance.
-    
-    '''
-
-    def __new__(cls, ptr=_internal_guard):
-        '''(INTERNAL) ctypes wrapper constructor.
-        '''
-        return _Constructor(cls, ptr)
-
-    def __iter__(self):
-        return self.get_iterator()
-
-    def dump(self):
-        return [ str(m) for m in self ]
-
-
-    def close(self):
-        '''Frees memory allocated by L{open}().
-        '''
-        return libvlc_log_close(self)
-
-    def count(self):
-        '''Always returns zero.
-        This function is only provided for backward compatibility.
-        @return: always zero.
-        '''
-        return libvlc_log_count(self)
-
-    def __len__(self):
-        return libvlc_log_count(self)
-
-    def clear(self):
-        '''This function does nothing.
-        It is only provided for backward compatibility.
-        '''
-        return libvlc_log_clear(self)
-
-    def get_iterator(self):
-        '''This function does nothing useful.
-        It is only provided for backward compatibility.
-        @return: an unique pointer or NULL on error or if the parameter was NULL.
-        '''
-        return libvlc_log_get_iterator(self)
-
-class LogIterator(_Ctype):
-    '''Create a new VLC log iterator.
-    
-    '''
-
-    def __new__(cls, ptr=_internal_guard):
-        '''(INTERNAL) ctypes wrapper constructor.
-        '''
-        return _Constructor(cls, ptr)
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        if self.has_next():
-            b = LogMessage()
-            i = libvlc_log_iterator_next(self, b)
-            return i.contents
-        raise StopIteration
-
-    def __next__(self):
-        return self.next()
-
-
-    def free(self):
-        '''Frees memory allocated by L{log_get_iterator}().
-        '''
-        return libvlc_log_iterator_free(self)
-
-    def has_next(self):
-        '''Always returns zero.
-        This function is only provided for backward compatibility.
-        @return: always zero.
-        '''
-        return libvlc_log_iterator_has_next(self)
 
 class Media(_Ctype):
     '''Create a new Media instance.
@@ -3084,17 +2985,27 @@ class MediaPlayer(_Ctype):
         return libvlc_video_set_adjust_float(self, option, value)
 
     def audio_output_set(self, psz_name):
-        '''Set the audio output.
-        Change will be applied after stop and play.
+        '''Sets the audio output.
+        @note: Any change will take be effect only after playback is stopped and
+        restarted. Audio output cannot be changed while playing.
         @param psz_name: name of audio output, use psz_name of See L{AudioOutput}.
         @return: 0 if function succeded, -1 on error.
         '''
         return libvlc_audio_output_set(self, psz_name)
 
     def audio_output_device_set(self, psz_audio_output, psz_device_id):
-        '''Set audio output device. Changes are only effective after stop and play.
+        '''Configures an explicit audio output device for a given audio output plugin.
+        A list of possible devices can be obtained with
+        L{audio_output_device_list_get}().
+        @note: This function does not select the specified audio output plugin.
+        L{audio_output_set}() is used for that purpose.
+        @warning: The syntax for the device parameter depends on the audio output.
+        This is not portable. Only use this function if you know what you are doing.
+        Some audio outputs do not support this function (e.g. PulseAudio, WASAPI).
+        Some audio outputs require further parameters (e.g. ALSA: channels map).
         @param psz_audio_output: - name of audio output, See L{AudioOutput}.
         @param psz_device_id: device.
+        @return: Nothing. Errors are ignored.
         '''
         return libvlc_audio_output_device_set(self, psz_audio_output, psz_device_id)
 
@@ -3118,13 +3029,13 @@ class MediaPlayer(_Ctype):
 
     def audio_get_mute(self):
         '''Get current mute status.
-        @return: the mute status (boolean) \libvlc_return_bool.
+        @return: the mute status (boolean) if defined, -1 if undefined/unapplicable.
         '''
         return libvlc_audio_get_mute(self)
 
     def audio_set_mute(self, status):
         '''Set mute status.
-        @param status: If status is true then mute, otherwise unmute.
+        @param status: If status is true then mute, otherwise unmute @warning This function does not always work. If there are no active audio playback stream, the mute status might not be available. If digital pass-through (S/PDIF, HDMI...) is in use, muting may be unapplicable. Also some audio output plugins do not support muting at all. @note To force silent playback, disable all audio tracks. This is more efficient and reliable than mute.
         '''
         return libvlc_audio_set_mute(self, status)
 
@@ -3396,112 +3307,6 @@ def libvlc_log_unsubscribe(sub):
         _Cfunction('libvlc_log_unsubscribe', ((1,),), None,
                     None, ctypes.c_void_p)
     return f(sub)
-
-def libvlc_get_log_verbosity(p_instance):
-    '''Always returns minus one.
-    This function is only provided for backward compatibility.
-    @param p_instance: ignored.
-    @return: always -1.
-    '''
-    f = _Cfunctions.get('libvlc_get_log_verbosity', None) or \
-        _Cfunction('libvlc_get_log_verbosity', ((1,),), None,
-                    ctypes.c_uint, Instance)
-    return f(p_instance)
-
-def libvlc_set_log_verbosity(p_instance, level):
-    '''This function does nothing.
-    It is only provided for backward compatibility.
-    @param p_instance: ignored.
-    @param level: ignored.
-    '''
-    f = _Cfunctions.get('libvlc_set_log_verbosity', None) or \
-        _Cfunction('libvlc_set_log_verbosity', ((1,), (1,),), None,
-                    None, Instance, ctypes.c_uint)
-    return f(p_instance, level)
-
-def libvlc_log_open(p_instance):
-    '''This function does nothing useful.
-    It is only provided for backward compatibility.
-    @param p_instance: libvlc instance.
-    @return: an unique pointer or NULL on error.
-    '''
-    f = _Cfunctions.get('libvlc_log_open', None) or \
-        _Cfunction('libvlc_log_open', ((1,),), class_result(Log),
-                    ctypes.c_void_p, Instance)
-    return f(p_instance)
-
-def libvlc_log_close(p_log):
-    '''Frees memory allocated by L{libvlc_log_open}().
-    @param p_log: libvlc log instance or NULL.
-    '''
-    f = _Cfunctions.get('libvlc_log_close', None) or \
-        _Cfunction('libvlc_log_close', ((1,),), None,
-                    None, Log)
-    return f(p_log)
-
-def libvlc_log_count(p_log):
-    '''Always returns zero.
-    This function is only provided for backward compatibility.
-    @param p_log: ignored.
-    @return: always zero.
-    '''
-    f = _Cfunctions.get('libvlc_log_count', None) or \
-        _Cfunction('libvlc_log_count', ((1,),), None,
-                    ctypes.c_uint, Log)
-    return f(p_log)
-
-def libvlc_log_clear(p_log):
-    '''This function does nothing.
-    It is only provided for backward compatibility.
-    @param p_log: ignored.
-    '''
-    f = _Cfunctions.get('libvlc_log_clear', None) or \
-        _Cfunction('libvlc_log_clear', ((1,),), None,
-                    None, Log)
-    return f(p_log)
-
-def libvlc_log_get_iterator(p_log):
-    '''This function does nothing useful.
-    It is only provided for backward compatibility.
-    @param p_log: ignored.
-    @return: an unique pointer or NULL on error or if the parameter was NULL.
-    '''
-    f = _Cfunctions.get('libvlc_log_get_iterator', None) or \
-        _Cfunction('libvlc_log_get_iterator', ((1,),), class_result(LogIterator),
-                    ctypes.c_void_p, Log)
-    return f(p_log)
-
-def libvlc_log_iterator_free(p_iter):
-    '''Frees memory allocated by L{libvlc_log_get_iterator}().
-    @param p_iter: libvlc log iterator or NULL.
-    '''
-    f = _Cfunctions.get('libvlc_log_iterator_free', None) or \
-        _Cfunction('libvlc_log_iterator_free', ((1,),), None,
-                    None, LogIterator)
-    return f(p_iter)
-
-def libvlc_log_iterator_has_next(p_iter):
-    '''Always returns zero.
-    This function is only provided for backward compatibility.
-    @param p_iter: ignored.
-    @return: always zero.
-    '''
-    f = _Cfunctions.get('libvlc_log_iterator_has_next', None) or \
-        _Cfunction('libvlc_log_iterator_has_next', ((1,),), None,
-                    ctypes.c_int, LogIterator)
-    return f(p_iter)
-
-def libvlc_log_iterator_next(p_iter, p_buffer):
-    '''Always returns NULL.
-    This function is only provided for backward compatibility.
-    @param p_iter: libvlc log iterator or NULL.
-    @param p_buffer: ignored.
-    @return: always NULL.
-    '''
-    f = _Cfunctions.get('libvlc_log_iterator_next', None) or \
-        _Cfunction('libvlc_log_iterator_next', ((1,), (1,),), None,
-                    ctypes.POINTER(LogMessage), LogIterator, ctypes.POINTER(LogMessage))
-    return f(p_iter, p_buffer)
 
 def libvlc_module_description_list_release(p_list):
     '''Release a list of module descriptions.
@@ -4894,14 +4699,6 @@ def libvlc_track_description_list_release(p_track_description):
                     None, ctypes.POINTER(TrackDescription))
     return f(p_track_description)
 
-def libvlc_track_description_release(p_track_description):
-    '''\deprecated Use L{libvlc_track_description_list_release} instead.
-    '''
-    f = _Cfunctions.get('libvlc_track_description_release', None) or \
-        _Cfunction('libvlc_track_description_release', ((1,),), None,
-                    None, ctypes.POINTER(TrackDescription))
-    return f(p_track_description)
-
 def libvlc_toggle_fullscreen(p_mi):
     '''Toggle fullscreen status on non-embedded video outputs.
     @warning: The same limitations applies to this function
@@ -5394,7 +5191,7 @@ def libvlc_video_set_adjust_float(p_mi, option, value):
     return f(p_mi, option, value)
 
 def libvlc_audio_output_list_get(p_instance):
-    '''Get the list of available audio outputs.
+    '''Gets the list of available audio outputs.
     @param p_instance: libvlc instance.
     @return: list of available audio outputs. It must be freed it with In case of error, NULL is returned.
     '''
@@ -5404,7 +5201,7 @@ def libvlc_audio_output_list_get(p_instance):
     return f(p_instance)
 
 def libvlc_audio_output_list_release(p_list):
-    '''Free the list of available audio outputs.
+    '''Frees the list of available audio outputs.
     @param p_list: list with audio outputs for release.
     '''
     f = _Cfunctions.get('libvlc_audio_output_list_release', None) or \
@@ -5413,8 +5210,9 @@ def libvlc_audio_output_list_release(p_list):
     return f(p_list)
 
 def libvlc_audio_output_set(p_mi, psz_name):
-    '''Set the audio output.
-    Change will be applied after stop and play.
+    '''Sets the audio output.
+    @note: Any change will take be effect only after playback is stopped and
+    restarted. Audio output cannot be changed while playing.
     @param p_mi: media player.
     @param psz_name: name of audio output, use psz_name of See L{AudioOutput}.
     @return: 0 if function succeded, -1 on error.
@@ -5424,47 +5222,50 @@ def libvlc_audio_output_set(p_mi, psz_name):
                     ctypes.c_int, MediaPlayer, ctypes.c_char_p)
     return f(p_mi, psz_name)
 
-def libvlc_audio_output_device_count(p_instance, psz_audio_output):
-    '''Get count of devices for audio output, these devices are hardware oriented
-    like analor or digital output of sound card.
+def libvlc_audio_output_device_list_get(p_instance, aout):
+    '''Gets a list of audio output devices for a given audio output.
+    See L{libvlc_audio_output_device_set}().
+    @note: Not all audio outputs support this. In particular, an empty (NULL)
+    list of devices does B{not} imply that the specified audio output does
+    not work.
+    @note: The list might not be exhaustive.
+    @warning: Some audio output devices in the list might not actually work in
+    some circumstances. By default, it is recommended to not specify any
+    explicit audio device.
     @param p_instance: libvlc instance.
-    @param psz_audio_output: - name of audio output, See L{AudioOutput}.
-    @return: number of devices.
+    @param psz_aout: audio output name (as returned by L{libvlc_audio_output_list_get}()).
+    @return: A NULL-terminated linked list of potential audio output devices. It must be freed it with L{libvlc_audio_output_device_list_release}().
+    @version: LibVLC 2.1.0 or later.
     '''
-    f = _Cfunctions.get('libvlc_audio_output_device_count', None) or \
-        _Cfunction('libvlc_audio_output_device_count', ((1,), (1,),), None,
-                    ctypes.c_int, Instance, ctypes.c_char_p)
-    return f(p_instance, psz_audio_output)
+    f = _Cfunctions.get('libvlc_audio_output_device_list_get', None) or \
+        _Cfunction('libvlc_audio_output_device_list_get', ((1,), (1,),), None,
+                    ctypes.POINTER(AudioOutputDevice), Instance, ctypes.c_char_p)
+    return f(p_instance, aout)
 
-def libvlc_audio_output_device_longname(p_instance, psz_audio_output, i_device):
-    '''Get long name of device, if not available short name given.
-    @param p_instance: libvlc instance.
-    @param psz_audio_output: - name of audio output, See L{AudioOutput}.
-    @param i_device: device index.
-    @return: long name of device.
+def libvlc_audio_output_device_list_release(p_list):
+    '''Frees a list of available audio output devices.
+    @param p_list: list with audio outputs for release.
+    @version: LibVLC 2.1.0 or later.
     '''
-    f = _Cfunctions.get('libvlc_audio_output_device_longname', None) or \
-        _Cfunction('libvlc_audio_output_device_longname', ((1,), (1,), (1,),), string_result,
-                    ctypes.c_void_p, Instance, ctypes.c_char_p, ctypes.c_int)
-    return f(p_instance, psz_audio_output, i_device)
-
-def libvlc_audio_output_device_id(p_instance, psz_audio_output, i_device):
-    '''Get id name of device.
-    @param p_instance: libvlc instance.
-    @param psz_audio_output: - name of audio output, See L{AudioOutput}.
-    @param i_device: device index.
-    @return: id name of device, use for setting device, need to be free after use.
-    '''
-    f = _Cfunctions.get('libvlc_audio_output_device_id', None) or \
-        _Cfunction('libvlc_audio_output_device_id', ((1,), (1,), (1,),), string_result,
-                    ctypes.c_void_p, Instance, ctypes.c_char_p, ctypes.c_int)
-    return f(p_instance, psz_audio_output, i_device)
+    f = _Cfunctions.get('libvlc_audio_output_device_list_release', None) or \
+        _Cfunction('libvlc_audio_output_device_list_release', ((1,),), None,
+                    None, ctypes.POINTER(AudioOutputDevice))
+    return f(p_list)
 
 def libvlc_audio_output_device_set(p_mi, psz_audio_output, psz_device_id):
-    '''Set audio output device. Changes are only effective after stop and play.
+    '''Configures an explicit audio output device for a given audio output plugin.
+    A list of possible devices can be obtained with
+    L{libvlc_audio_output_device_list_get}().
+    @note: This function does not select the specified audio output plugin.
+    L{libvlc_audio_output_set}() is used for that purpose.
+    @warning: The syntax for the device parameter depends on the audio output.
+    This is not portable. Only use this function if you know what you are doing.
+    Some audio outputs do not support this function (e.g. PulseAudio, WASAPI).
+    Some audio outputs require further parameters (e.g. ALSA: channels map).
     @param p_mi: media player.
     @param psz_audio_output: - name of audio output, See L{AudioOutput}.
     @param psz_device_id: device.
+    @return: Nothing. Errors are ignored.
     '''
     f = _Cfunctions.get('libvlc_audio_output_device_set', None) or \
         _Cfunction('libvlc_audio_output_device_set', ((1,), (1,), (1,),), None,
@@ -5494,7 +5295,7 @@ def libvlc_audio_output_set_device_type(p_mi, device_type):
 
 def libvlc_audio_toggle_mute(p_mi):
     '''Toggle mute status.
-    @param p_mi: media player.
+    @param p_mi: media player @warning Toggling mute atomically is not always possible: On some platforms, other processes can mute the VLC audio playback stream asynchronously. Thus, there is a small race condition where toggling will not work. See also the limitations of L{libvlc_audio_set_mute}().
     '''
     f = _Cfunctions.get('libvlc_audio_toggle_mute', None) or \
         _Cfunction('libvlc_audio_toggle_mute', ((1,),), None,
@@ -5504,7 +5305,7 @@ def libvlc_audio_toggle_mute(p_mi):
 def libvlc_audio_get_mute(p_mi):
     '''Get current mute status.
     @param p_mi: media player.
-    @return: the mute status (boolean) \libvlc_return_bool.
+    @return: the mute status (boolean) if defined, -1 if undefined/unapplicable.
     '''
     f = _Cfunctions.get('libvlc_audio_get_mute', None) or \
         _Cfunction('libvlc_audio_get_mute', ((1,),), None,
@@ -5514,7 +5315,7 @@ def libvlc_audio_get_mute(p_mi):
 def libvlc_audio_set_mute(p_mi, status):
     '''Set mute status.
     @param p_mi: media player.
-    @param status: If status is true then mute, otherwise unmute.
+    @param status: If status is true then mute, otherwise unmute @warning This function does not always work. If there are no active audio playback stream, the mute status might not be available. If digital pass-through (S/PDIF, HDMI...) is in use, muting may be unapplicable. Also some audio output plugins do not support muting at all. @note To force silent playback, disable all audio tracks. This is more efficient and reliable than mute.
     '''
     f = _Cfunctions.get('libvlc_audio_set_mute', None) or \
         _Cfunction('libvlc_audio_set_mute', ((1,), (1,),), None,
@@ -5938,6 +5739,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_set_exit_handler
 
 # 17 function(s) not wrapped as methods:
+#  libvlc_audio_output_device_list_release
 #  libvlc_audio_output_list_release
 #  libvlc_clearerr
 #  libvlc_clock
@@ -5953,7 +5755,6 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_module_description_list_release
 #  libvlc_new
 #  libvlc_track_description_list_release
-#  libvlc_track_description_release
 #  libvlc_vprinterr
 
 # Start of footer.py #

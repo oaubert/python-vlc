@@ -500,5 +500,16 @@ def module_description_list(head):
         libvlc_module_description_list_release(head)
     return r
 
+class AudioOutputDevice(_Cstruct):
+
+    def __str__(self):
+        return '%s(%d:%s)' % (self.__class__.__name__, self.id, self.name)
+
+AudioOutputDevice._fields_ = [  # recursive struct
+    ('next', ctypes.POINTER(AudioOutputDevice)),
+    ('device',   ctypes.c_char_p   ),
+    ('description', ctypes.c_char_p),
+    ]
+
  # End of header.py #
 

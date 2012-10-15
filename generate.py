@@ -737,6 +737,8 @@ class PythonGenerator(_Generator):
         'libvlc_time_t':               'ctypes.c_longlong',
         'libvlc_track_description_t*': 'ctypes.POINTER(TrackDescription)',
         'libvlc_module_description_t*': 'ctypes.POINTER(ModuleDescription)',
+        'libvlc_audio_output_device_t*': 'ctypes.POINTER(AudioOutputDevice)',
+
         'FILE*':                       'FILE_ptr',
 
         '...':       'ctypes.c_void_p',
