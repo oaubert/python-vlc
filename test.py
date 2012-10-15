@@ -98,29 +98,5 @@ class TestVLCAPI(unittest.TestCase):
         p=i.media_player_new(mrl)
         self.assertEqual(p.get_state(), vlc.State.NothingSpecial)
 
-    def test_libvlc_logger(self):
-        i=vlc.Instance()
-        l=i.log_open()
-        l.clear()
-        self.assertEqual(l.count(), 0)
-        l.close()
-
-    def test_libvlc_logger_clear(self):
-        i=vlc.Instance()
-        l=i.log_open()
-        l.clear()
-        self.assertEqual(l.count(), 0)
-        l.close()
-
-    def test_libvlc_logger(self):
-        i=vlc.Instance()
-        i.set_log_verbosity(3)
-        l=i.log_open()
-        i.add_intf(vlc.str_to_bytes('dummy'))
-        for m in l:
-            # Ensure that messages can be read.
-            self.assertNotEqual(len(m.message), 0)
-        l.close()
-
 if __name__ == '__main__':
     unittest.main()
