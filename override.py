@@ -70,7 +70,7 @@ class Instance:
             m = libvlc_media_new_location(self, str_to_bytes(mrl))
         else:
             # Else it should be a local path.
-            m = libvlc_media_new_path(self, str_to_bytes(mrl))
+            m = libvlc_media_new_path(self, str_to_bytes(os.path.normpath(mrl)))
         for o in options:
             libvlc_media_add_option(m, str_to_bytes(o))
         m._instance = self
