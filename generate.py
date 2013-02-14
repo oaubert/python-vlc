@@ -71,6 +71,9 @@ else:  # Python 3+
 
 # Functions not wrapped/not referenced
 _blacklist = {
+    # Deprecated functions
+    'libvlc_audio_output_set_device_type': '',
+    'libvlc_audio_output_get_device_type': '',
     'libvlc_set_exit_handler':    '',
     'libvlc_printerr': '',
 }
@@ -724,6 +727,8 @@ class PythonGenerator(_Generator):
         'libvlc_log_iterator_t*':      'LogIterator',
         'libvlc_log_subscriber_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
         'libvlc_log_message_t*':       'ctypes.POINTER(LogMessage)',
+        'libvlc_media_track_t**':      'ctypes.POINTER(MediaTrack)',
+        'libvlc_media_track_t***':     'ctypes.POINTER(ctypes.POINTER(MediaTrack))',
         'libvlc_media_t*':             'Media',
         'libvlc_media_discoverer_t*':  'MediaDiscoverer',
         'libvlc_media_library_t*':     'MediaLibrary',

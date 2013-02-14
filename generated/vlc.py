@@ -48,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Mon Oct 15 20:54:00 2012"
+build_date  = "Wed Feb 13 18:40:24 2013"
 
 if sys.version_info[0] > 2:
     str = str
@@ -1000,6 +1000,50 @@ class MediaTrackInfo(_Cstruct):
         ('rate_or_width',      ctypes.c_uint  ),
     ]
 
+class AudioTrack(_Cstruct):
+    _fields_ = [
+        ('channels', ctypes.c_uint),
+        ('rate', ctypes.c_uint),
+        ]
+
+class VideoTrack(_Cstruct):
+    _fields_ = [
+        ('height', ctypes.c_uint),
+        ('width', ctypes.c_uint),
+        ('sar_num', ctypes.c_uint),
+        ('sar_den', ctypes.c_uint),
+        ('frame_rate_num', ctypes.c_uint),
+        ('frame_rate_den', ctypes.c_uint),
+        ]
+
+class SubtitleTrack(_Cstruct):
+    _fields_ = [
+        ('encoding', ctypes.c_char_p),
+        ]
+
+class MediaTrackTracks(ctypes.Union):
+    _fields_ = [
+        ('audio', ctypes.POINTER(AudioTrack)),
+        ('video', ctypes.POINTER(VideoTrack)),
+        ('subtitle', ctypes.POINTER(SubtitleTrack)),
+        ]
+
+class MediaTrack(_Cstruct):
+    _anonymous_ = ("u",)
+    _fields_ = [
+        ('codec',              ctypes.c_uint32),
+        ('original_fourcc',    ctypes.c_uint32),
+        ('id',                 ctypes.c_int   ),
+        ('type',               TrackType      ),
+        ('profile',            ctypes.c_int   ),
+        ('level',              ctypes.c_int   ),
+
+        ('u',                  MediaTrackTracks),
+        ('bitrate',            ctypes.c_uint),
+        ('language',           ctypes.c_char_p),
+        ('description',        ctypes.c_char_p),
+        ]
+
 class PlaylistItem(_Cstruct):
     _fields_ = [
         ('id',   ctypes.c_int   ),
@@ -1293,7 +1337,7 @@ class Instance(_Ctype):
             m = libvlc_media_new_location(self, str_to_bytes(mrl))
         else:
             # Else it should be a local path.
-            m = libvlc_media_new_path(self, str_to_bytes(mrl))
+            m = libvlc_media_new_path(self, str_to_bytes(os.path.normpath(mrl)))
         for o in options:
             libvlc_media_add_option(m, str_to_bytes(o))
         m._instance = self
@@ -1710,11 +1754,13 @@ class Media(_Ctype):
         This option will be used to determine how the media_player will
         read the media. This allows to use VLC's advanced
         reading/streaming options on a per-media basis.
-        The options are detailed in vlc --long-help, for instance
-        "--sout-all". Note that all options are not usable on medias:
-        specifically, due to architectural issues, video-related options
-        such as text renderer options cannot be set on a single media. They
-        must be set on the whole libvlc instance instead.
+        @note: The options are listed in 'vlc --long-help' from the command line,
+        e.g. "-sout-all". Keep in mind that available options and their semantics
+        vary across LibVLC versions and builds.
+        @warning: Not all options affects L{Media} objects:
+        Specifically, due to architectural issues most audio and video options,
+        such as text renderer options, have no effects on an individual media.
+        These options must be set through L{new}() instead.
         @param ppsz_options: the options (as a string).
         '''
         return libvlc_media_add_option(self, ppsz_options)
@@ -1807,6 +1853,14 @@ class Media(_Ctype):
         '''
         return libvlc_media_get_stats(self, p_stats)
 
+    def subitems(self):
+        '''Get subitems of media descriptor object. This will increment
+        the reference count of supplied media descriptor object. Use
+        L{list_release}() to decrement the reference counting.
+        @return: list of media descriptor subitems or NULL.
+        '''
+        return libvlc_media_subitems(self)
+
     def event_manager(self):
         '''Get event manager from media descriptor object.
         NOTE: this function doesn't increment reference counting.
@@ -1826,7 +1880,7 @@ class Media(_Ctype):
         The method is synchronous.
         See L{parse_async}
         See L{get_meta}
-        See L{get_tracks_info}.
+        See libvlc_media_get_tracks_info.
         '''
         return libvlc_media_parse(self)
 
@@ -1840,7 +1894,7 @@ class Media(_Ctype):
         See L{parse}
         See libvlc_MediaParsedChanged
         See L{get_meta}
-        See L{get_tracks_info}.
+        See libvlc_media_get_tracks_info.
         '''
         return libvlc_media_parse_async(self)
 
@@ -1866,15 +1920,16 @@ class Media(_Ctype):
         '''
         return libvlc_media_get_user_data(self)
 
-    def get_tracks_info(self):
+    def tracks_get(self, tracks):
         '''Get media descriptor's elementary streams description
         Note, you need to call L{parse}() or play the media at least once
         before calling this function.
         Not doing this will result in an empty array.
-        @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) [OUT].
-        @return: the number of Elementary Streams.
+        @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed with L{tracks_release}.
+        @return: the number of Elementary Streams (zero on error).
+        @version: LibVLC 2.1.0 and later.
         '''
-        return libvlc_media_get_tracks_info(self)
+        return libvlc_media_tracks_get(self, tracks)
 
     def player_new_from_media(self):
         '''Create a Media Player object from a Media.
@@ -2156,7 +2211,7 @@ class MediaListPlayer(_Ctype):
         return libvlc_media_list_player_play(self)
 
     def pause(self):
-        '''Pause media list.
+        '''Toggle pause (or resume) media list.
         '''
         return libvlc_media_list_player_pause(self)
 
@@ -2582,13 +2637,14 @@ class MediaPlayer(_Ctype):
         return libvlc_media_player_set_time(self, i_time)
 
     def get_position(self):
-        '''Get movie position.
+        '''Get movie position as percentage between 0.0 and 1.0.
         @return: movie position, or -1. in case of error.
         '''
         return libvlc_media_player_get_position(self)
 
     def set_position(self, f_pos):
-        '''Set movie position. This has no effect if playback is not enabled.
+        '''Set movie position as percentage between 0.0 and 1.0.
+        This has no effect if playback is not enabled.
         This might not work depending on the underlying input format and protocol.
         @param f_pos: the position.
         '''
@@ -2869,13 +2925,13 @@ class MediaPlayer(_Ctype):
 
     def video_get_track(self):
         '''Get current video track.
-        @return: the video track (int) or -1 if none.
+        @return: the video track ID (int) or -1 if no active input.
         '''
         return libvlc_video_get_track(self)
 
     def video_set_track(self, i_track):
         '''Set video track.
-        @param i_track: the track (int).
+        @param i_track: the track ID (i_id field from track description).
         @return: 0 on success, -1 if out of range.
         '''
         return libvlc_video_set_track(self, i_track)
@@ -3009,19 +3065,6 @@ class MediaPlayer(_Ctype):
         '''
         return libvlc_audio_output_device_set(self, psz_audio_output, psz_device_id)
 
-    def audio_output_get_device_type(self):
-        '''Get current audio device type. Device type describes something like
-        character of output sound - stereo sound, 2.1, 5.1 etc.
-        @return: the audio devices type See libvlc_audio_output_device_types_t.
-        '''
-        return libvlc_audio_output_get_device_type(self)
-
-    def audio_output_set_device_type(self, device_type):
-        '''Set current audio device type.
-        @param device_type: the audio device type,
-        '''
-        return libvlc_audio_output_set_device_type(self, device_type)
-
     def audio_toggle_mute(self):
         '''Toggle mute status.
         '''
@@ -3060,13 +3103,13 @@ class MediaPlayer(_Ctype):
 
     def audio_get_track(self):
         '''Get current audio track.
-        @return: the audio track (int), or -1 if none.
+        @return: the audio track ID or -1 if no active input.
         '''
         return libvlc_audio_get_track(self)
 
     def audio_set_track(self, i_track):
         '''Set current audio track.
-        @param i_track: the track (int).
+        @param i_track: the track ID (i_id field from track description).
         @return: 0 on success, -1 on error.
         '''
         return libvlc_audio_set_track(self, i_track)
@@ -3420,11 +3463,13 @@ def libvlc_media_add_option(p_md, ppsz_options):
     This option will be used to determine how the media_player will
     read the media. This allows to use VLC's advanced
     reading/streaming options on a per-media basis.
-    The options are detailed in vlc --long-help, for instance
-    "--sout-all". Note that all options are not usable on medias:
-    specifically, due to architectural issues, video-related options
-    such as text renderer options cannot be set on a single media. They
-    must be set on the whole libvlc instance instead.
+    @note: The options are listed in 'vlc --long-help' from the command line,
+    e.g. "-sout-all". Keep in mind that available options and their semantics
+    vary across LibVLC versions and builds.
+    @warning: Not all options affects L{Media} objects:
+    Specifically, due to architectural issues most audio and video options,
+    such as text renderer options, have no effects on an individual media.
+    These options must be set through L{libvlc_new}() instead.
     @param p_md: the media descriptor.
     @param ppsz_options: the options (as a string).
     '''
@@ -3561,6 +3606,18 @@ def libvlc_media_get_stats(p_md, p_stats):
                     ctypes.c_int, Media, ctypes.POINTER(MediaStats))
     return f(p_md, p_stats)
 
+def libvlc_media_subitems(p_md):
+    '''Get subitems of media descriptor object. This will increment
+    the reference count of supplied media descriptor object. Use
+    L{libvlc_media_list_release}() to decrement the reference counting.
+    @param p_md: media descriptor object.
+    @return: list of media descriptor subitems or NULL.
+    '''
+    f = _Cfunctions.get('libvlc_media_subitems', None) or \
+        _Cfunction('libvlc_media_subitems', ((1,),), class_result(MediaList),
+                    ctypes.c_void_p, Media)
+    return f(p_md)
+
 def libvlc_media_event_manager(p_md):
     '''Get event manager from media descriptor object.
     NOTE: this function doesn't increment reference counting.
@@ -3588,7 +3645,7 @@ def libvlc_media_parse(p_md):
     The method is synchronous.
     See L{libvlc_media_parse_async}
     See L{libvlc_media_get_meta}
-    See L{libvlc_media_get_tracks_info}.
+    See libvlc_media_get_tracks_info.
     @param p_md: media descriptor object.
     '''
     f = _Cfunctions.get('libvlc_media_parse', None) or \
@@ -3606,7 +3663,7 @@ def libvlc_media_parse_async(p_md):
     See L{libvlc_media_parse}
     See libvlc_MediaParsedChanged
     See L{libvlc_media_get_meta}
-    See L{libvlc_media_get_tracks_info}.
+    See libvlc_media_get_tracks_info.
     @param p_md: media descriptor object.
     '''
     f = _Cfunctions.get('libvlc_media_parse_async', None) or \
@@ -3648,19 +3705,31 @@ def libvlc_media_get_user_data(p_md):
                     ctypes.c_void_p, Media)
     return f(p_md)
 
-def libvlc_media_get_tracks_info(p_md):
+def libvlc_media_tracks_get(p_md, tracks):
     '''Get media descriptor's elementary streams description
     Note, you need to call L{libvlc_media_parse}() or play the media at least once
     before calling this function.
     Not doing this will result in an empty array.
     @param p_md: media descriptor object.
-    @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) [OUT].
-    @return: the number of Elementary Streams.
+    @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed with L{libvlc_media_tracks_release}.
+    @return: the number of Elementary Streams (zero on error).
+    @version: LibVLC 2.1.0 and later.
     '''
-    f = _Cfunctions.get('libvlc_media_get_tracks_info', None) or \
-        _Cfunction('libvlc_media_get_tracks_info', ((1,), (2,),), None,
-                    ctypes.c_int, Media, ctypes.POINTER(ctypes.c_void_p))
-    return f(p_md)
+    f = _Cfunctions.get('libvlc_media_tracks_get', None) or \
+        _Cfunction('libvlc_media_tracks_get', ((1,), (1,),), None,
+                    ctypes.c_uint, Media, ctypes.POINTER(ctypes.POINTER(MediaTrack)))
+    return f(p_md, tracks)
+
+def libvlc_media_tracks_release(p_tracks, i_count):
+    '''Release media descriptor's elementary streams description array.
+    @param p_tracks: tracks info array to release.
+    @param i_count: number of elements in the array.
+    @version: LibVLC 2.1.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_media_tracks_release', None) or \
+        _Cfunction('libvlc_media_tracks_release', ((1,), (1,),), None,
+                    None, ctypes.POINTER(MediaTrack), ctypes.c_uint)
+    return f(p_tracks, i_count)
 
 def libvlc_media_discoverer_new_from_name(p_inst, psz_name):
     '''Discover media service by name.
@@ -4013,7 +4082,7 @@ def libvlc_media_list_player_play(p_mlp):
     return f(p_mlp)
 
 def libvlc_media_list_player_pause(p_mlp):
-    '''Pause media list.
+    '''Toggle pause (or resume) media list.
     @param p_mlp: media list player instance.
     '''
     f = _Cfunctions.get('libvlc_media_list_player_pause', None) or \
@@ -4478,7 +4547,7 @@ def libvlc_media_player_set_time(p_mi, i_time):
     return f(p_mi, i_time)
 
 def libvlc_media_player_get_position(p_mi):
-    '''Get movie position.
+    '''Get movie position as percentage between 0.0 and 1.0.
     @param p_mi: the Media Player.
     @return: movie position, or -1. in case of error.
     '''
@@ -4488,7 +4557,8 @@ def libvlc_media_player_get_position(p_mi):
     return f(p_mi)
 
 def libvlc_media_player_set_position(p_mi, f_pos):
-    '''Set movie position. This has no effect if playback is not enabled.
+    '''Set movie position as percentage between 0.0 and 1.0.
+    This has no effect if playback is not enabled.
     This might not work depending on the underlying input format and protocol.
     @param p_mi: the Media Player.
     @param f_pos: the position.
@@ -5016,7 +5086,7 @@ def libvlc_video_get_track_description(p_mi):
 def libvlc_video_get_track(p_mi):
     '''Get current video track.
     @param p_mi: media player.
-    @return: the video track (int) or -1 if none.
+    @return: the video track ID (int) or -1 if no active input.
     '''
     f = _Cfunctions.get('libvlc_video_get_track', None) or \
         _Cfunction('libvlc_video_get_track', ((1,),), None,
@@ -5026,7 +5096,7 @@ def libvlc_video_get_track(p_mi):
 def libvlc_video_set_track(p_mi, i_track):
     '''Set video track.
     @param p_mi: media player.
-    @param i_track: the track (int).
+    @param i_track: the track ID (i_id field from track description).
     @return: 0 on success, -1 if out of range.
     '''
     f = _Cfunctions.get('libvlc_video_set_track', None) or \
@@ -5272,27 +5342,6 @@ def libvlc_audio_output_device_set(p_mi, psz_audio_output, psz_device_id):
                     None, MediaPlayer, ctypes.c_char_p, ctypes.c_char_p)
     return f(p_mi, psz_audio_output, psz_device_id)
 
-def libvlc_audio_output_get_device_type(p_mi):
-    '''Get current audio device type. Device type describes something like
-    character of output sound - stereo sound, 2.1, 5.1 etc.
-    @param p_mi: media player.
-    @return: the audio devices type See libvlc_audio_output_device_types_t.
-    '''
-    f = _Cfunctions.get('libvlc_audio_output_get_device_type', None) or \
-        _Cfunction('libvlc_audio_output_get_device_type', ((1,),), None,
-                    ctypes.c_int, MediaPlayer)
-    return f(p_mi)
-
-def libvlc_audio_output_set_device_type(p_mi, device_type):
-    '''Set current audio device type.
-    @param p_mi: vlc instance.
-    @param device_type: the audio device type,
-    '''
-    f = _Cfunctions.get('libvlc_audio_output_set_device_type', None) or \
-        _Cfunction('libvlc_audio_output_set_device_type', ((1,), (1,),), None,
-                    None, MediaPlayer, ctypes.c_int)
-    return f(p_mi, device_type)
-
 def libvlc_audio_toggle_mute(p_mi):
     '''Toggle mute status.
     @param p_mi: media player @warning Toggling mute atomically is not always possible: On some platforms, other processes can mute the VLC audio playback stream asynchronously. Thus, there is a small race condition where toggling will not work. See also the limitations of L{libvlc_audio_set_mute}().
@@ -5366,7 +5415,7 @@ def libvlc_audio_get_track_description(p_mi):
 def libvlc_audio_get_track(p_mi):
     '''Get current audio track.
     @param p_mi: media player.
-    @return: the audio track (int), or -1 if none.
+    @return: the audio track ID or -1 if no active input.
     '''
     f = _Cfunctions.get('libvlc_audio_get_track', None) or \
         _Cfunction('libvlc_audio_get_track', ((1,),), None,
@@ -5376,7 +5425,7 @@ def libvlc_audio_get_track(p_mi):
 def libvlc_audio_set_track(p_mi, i_track):
     '''Set current audio track.
     @param p_mi: media player.
-    @param i_track: the track (int).
+    @param i_track: the track ID (i_id field from track description).
     @return: 0 on success, -1 on error.
     '''
     f = _Cfunctions.get('libvlc_audio_set_track', None) or \
@@ -5734,11 +5783,13 @@ def libvlc_vlm_get_event_manager(p_instance):
     return f(p_instance)
 
 
-# 2 function(s) blacklisted:
+# 4 function(s) blacklisted:
+#  libvlc_audio_output_get_device_type
+#  libvlc_audio_output_set_device_type
 #  libvlc_printerr
 #  libvlc_set_exit_handler
 
-# 17 function(s) not wrapped as methods:
+# 18 function(s) not wrapped as methods:
 #  libvlc_audio_output_device_list_release
 #  libvlc_audio_output_list_release
 #  libvlc_clearerr
@@ -5752,6 +5803,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_log_subscribe
 #  libvlc_log_subscribe_file
 #  libvlc_log_unsubscribe
+#  libvlc_media_tracks_release
 #  libvlc_module_description_list_release
 #  libvlc_new
 #  libvlc_track_description_list_release

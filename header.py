@@ -378,6 +378,50 @@ class MediaTrackInfo(_Cstruct):
         ('rate_or_width',      ctypes.c_uint  ),
     ]
 
+class AudioTrack(_Cstruct):
+    _fields_ = [
+        ('channels', ctypes.c_uint),
+        ('rate', ctypes.c_uint),
+        ]
+
+class VideoTrack(_Cstruct):
+    _fields_ = [
+        ('height', ctypes.c_uint),
+        ('width', ctypes.c_uint),
+        ('sar_num', ctypes.c_uint),
+        ('sar_den', ctypes.c_uint),
+        ('frame_rate_num', ctypes.c_uint),
+        ('frame_rate_den', ctypes.c_uint),
+        ]
+
+class SubtitleTrack(_Cstruct):
+    _fields_ = [
+        ('encoding', ctypes.c_char_p),
+        ]
+
+class MediaTrackTracks(ctypes.Union):
+    _fields_ = [
+        ('audio', ctypes.POINTER(AudioTrack)),
+        ('video', ctypes.POINTER(VideoTrack)),
+        ('subtitle', ctypes.POINTER(SubtitleTrack)),
+        ]
+
+class MediaTrack(_Cstruct):
+    _anonymous_ = ("u",)
+    _fields_ = [
+        ('codec',              ctypes.c_uint32),
+        ('original_fourcc',    ctypes.c_uint32),
+        ('id',                 ctypes.c_int   ),
+        ('type',               TrackType      ),
+        ('profile',            ctypes.c_int   ),
+        ('level',              ctypes.c_int   ),
+
+        ('u',                  MediaTrackTracks),
+        ('bitrate',            ctypes.c_uint),
+        ('language',           ctypes.c_char_p),
+        ('description',        ctypes.c_char_p),
+        ]
+
 class PlaylistItem(_Cstruct):
     _fields_ = [
         ('id',   ctypes.c_int   ),
