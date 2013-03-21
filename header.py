@@ -89,6 +89,8 @@ else:
         """
         if isinstance(b, str):
             return unicode(b, sys.getfilesystemencoding())
+        else:
+            return b
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.

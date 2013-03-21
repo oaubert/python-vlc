@@ -48,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Wed Feb 13 18:40:24 2013"
+build_date  = "Thu Mar 21 22:33:03 2013"
 
 if sys.version_info[0] > 2:
     str = str
@@ -70,7 +70,7 @@ if sys.version_info[0] > 2:
         if isinstance(b, bytes):
             return b.decode(sys.getfilesystemencoding())
         else:
-            return b
+            return str(b)
 else:
     str = str
     unicode = unicode
@@ -90,6 +90,8 @@ else:
         """
         if isinstance(b, str):
             return unicode(b, sys.getfilesystemencoding())
+        else:
+            return b
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.
