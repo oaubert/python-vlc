@@ -224,7 +224,14 @@ class Func(_Source):
            Ctypes returns all output parameter values as part of
            the returned tuple.
         """
-        return [p.name for p in self.pars[first:] if
+        return [p.name for p in self.in_params(first)]
+
+    def in_params(self, first=0):
+        """Return the parameters, excluding output parameters.
+           Ctypes returns all output parameter values as part of
+           the returned tuple.
+        """
+        return [p for p in self.pars[first:] if
                 p.flags(self.out)[0] != Flag.Out]
 
     def check(self):
@@ -912,7 +919,7 @@ class _Enum(ctypes.c_uint):
 
     def generate_callbacks(self):
         """Generate decorators for callback functions.
-        
+
         We generate both decorators (for defining functions) and
         associated classes, to help in defining function signatures.
         """
@@ -932,7 +939,7 @@ class _Enum(ctypes.c_uint):
         for f in self.parser.callbacks:
             name = self.class4(f.name)  #PYCHOK flake
 
-            # return value and arg classes 
+            # return value and arg classes
             # Note: The f.type != 'void**' is a hack to generate a
             # valid ctypes signature, specifically for the
             # libvlc_video_lock_cb callback. It should be fixed in a better way (more generic)
@@ -970,7 +977,7 @@ class _Enum(ctypes.c_uint):
                 cls = c
                 self.output("""class %s(_Ctype):
     '''%s
-    '''""" % (cls, docstrs.get(cls, '') or _NA_))
+    '''""" % (cls, docstrs.get(cls, '') or _NA_)) # """ emacs-mode is confused...
 
                 c = codes.get(cls, '')
                 if not 'def __new__' in c:
@@ -994,7 +1001,11 @@ class _Enum(ctypes.c_uint):
 
             # arg names, excluding output args
             # and rename first arg to 'self'
-            args = ', '.join(['self'] + f.args(1))  #PYCHOK flake
+            args = ', '.join(['self'] + f.args(1))  #PYCHOK flake "
+            wrapped_args = ', '.join(['self'] + [ ('str_to_bytes(%s)' % p.name
+                                                   if p.type == 'char*'
+                                                   else p.name)
+                                                  for p in f.in_params(1) ])  #PYCHOK flake
 
             # xformed doc string without first @param
             docs = self.epylink(f.epydocs(1, 8), striprefix)  #PYCHOK flake
@@ -1002,7 +1013,7 @@ class _Enum(ctypes.c_uint):
             self.output("""    def %(meth)s(%(args)s):
         '''%(docs)s
         '''
-        return %(name)s(%(args)s)
+        return %(name)s(%(wrapped_args)s)
 """ % locals())
 
             # check for some standard methods
