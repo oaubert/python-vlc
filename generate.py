@@ -723,7 +723,7 @@ class PythonGenerator(_Generator):
         'libvlc_event_type_t':         'ctypes.c_uint',
         'libvlc_event_manager_t*':     'EventManager',
         'libvlc_instance_t*':          'Instance',
-        'libvlc_log_t*':               'Log',
+        'libvlc_log_t*':               'Log_ptr',
         'libvlc_log_iterator_t*':      'LogIterator',
         'libvlc_log_subscriber_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
         'libvlc_log_message_t*':       'ctypes.POINTER(LogMessage)',

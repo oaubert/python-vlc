@@ -277,6 +277,11 @@ def class_result(classname):
         return classname(result)
     return wrap_errcheck
 
+# Wrapper for the opaque struct libvlc_log_t
+class Log(ctypes.Structure):
+    pass
+Log_ptr = ctypes.POINTER(Log)
+
 # FILE* ctypes wrapper, copied from
 # http://svn.python.org/projects/ctypes/trunk/ctypeslib/ctypeslib/contrib/pythonhdr.py
 class FILE(ctypes.Structure):
