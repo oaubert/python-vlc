@@ -761,6 +761,7 @@ class PythonGenerator(_Generator):
         'float':     'ctypes.c_float',
         'int':       'ctypes.c_int',
         'int*':      'ctypes.POINTER(ctypes.c_int)',  # _video_get_cursor
+        'uintptr_t*':      'ctypes.POINTER(ctypes.c_uint)',
         'int64_t':   'ctypes.c_int64',
         'short':     'ctypes.c_short',
         'uint32_t':  'ctypes.c_uint32',
