@@ -1,3 +1,6 @@
+from distribute_setup import use_setuptools
+use_setuptools()
+
 from distutils.core import setup
 import sys
 import os

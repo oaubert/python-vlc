@@ -15,6 +15,15 @@ To generate the vlc.py module and its documentation, use
 make
 or use the generated/vlc.py file.
 
+To install it for development purposes (add a symlink to your Python
+library) simply do
+
+    python setup.py develop
+
+preferably inside a virtualenv. You can uninstall it later with
+
+    python setup.py develop --uninstall
+
 Documentation building needs epydoc. An online build is available at 
 http://advene.org/download/python-ctypes/
 
