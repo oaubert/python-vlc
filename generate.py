@@ -890,6 +890,9 @@ class _Enum(ctypes.c_uint):
         n = self._enum_names_.get(self.value, '') or ('FIXME_(%r)' % (self.value,))
         return '.'.join((self.__class__.__name__, n))
 
+    def __hash__(self):
+        return self.value
+
     def __repr__(self):
         return '.'.join((self.__class__.__module__, self.__str__()))
 

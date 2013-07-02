@@ -48,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Mon Apr 29 12:17:29 2013"
+build_date  = "Tue Jul  2 10:35:53 2013"
 
 if sys.version_info[0] > 2:
     str = str
@@ -326,6 +326,9 @@ class _Enum(ctypes.c_uint):
     def __str__(self):
         n = self._enum_names_.get(self.value, '') or ('FIXME_(%r)' % (self.value,))
         return '.'.join((self.__class__.__name__, n))
+
+    def __hash__(self):
+        return self.value
 
     def __repr__(self):
         return '.'.join((self.__class__.__module__, self.__str__()))
