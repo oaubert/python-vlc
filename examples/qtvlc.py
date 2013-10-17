@@ -46,7 +46,10 @@ class Player(QtGui.QMainWindow):
         self.setCentralWidget(self.widget)
 
         # In this widget, the video will be drawn
-        self.videoframe = QtGui.QFrame()
+        if sys.platform == "darwin": # for MacOS
+            self.videoframe = QtGui.QMacCocoaViewContainer(0)
+        else:
+            self.videoframe = QtGui.QFrame()
         self.palette = self.videoframe.palette()
         self.palette.setColor (QtGui.QPalette.Window,
                                QtGui.QColor(0,0,0))
@@ -152,7 +155,7 @@ class Player(QtGui.QMainWindow):
         elif sys.platform == "win32": # for Windows
             self.mediaplayer.set_hwnd(self.videoframe.winId())
         elif sys.platform == "darwin": # for MacOS
-            self.mediaplayer.set_agl(self.videoframe.windId())
+            self.mediaplayer.set_nsobject(self.videoframe.winId())
         self.PlayPause()
 
     def setVolume(self, Volume):
