@@ -157,6 +157,19 @@ class Media:
         for o in options:
             self.add_option(o)
 
+    def tracks_get(self):
+        """Get media descriptor's elementary streams description
+        Note, you need to call L{parse}() or play the media at least once
+        before calling this function.
+        Not doing this will result in an empty array.
+        The result must be freed with L{tracks_release}.
+        @version: LibVLC 2.1.0 and later.
+        """
+        mediaTrack_pp = ctypes.POINTER(MediaTrack)()
+        n = libvlc_media_tracks_get(self, byref(mediaTrack_pp))
+        info = cast(ctypes.mediaTrack_pp, ctypes.POINTER(ctypes.POINTER(MediaTrack) * n))
+        return info
+
 class MediaList:
     """Create a new MediaList instance.
     
