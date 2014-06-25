@@ -750,6 +750,7 @@ class PythonGenerator(_Generator):
         'libvlc_track_description_t*': 'ctypes.POINTER(TrackDescription)',
         'libvlc_module_description_t*': 'ctypes.POINTER(ModuleDescription)',
         'libvlc_audio_output_device_t*': 'ctypes.POINTER(AudioOutputDevice)',
+        'libvlc_equalizer_t*':         'ctypes.c_void_p',
 
         'FILE*':                       'FILE_ptr',
 
