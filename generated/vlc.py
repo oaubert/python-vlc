@@ -48,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Wed Jun 25 13:46:01 2014"
+build_date  = "Fri Aug 15 21:30:18 2014"
 
 if sys.version_info[0] > 2:
     str = str
@@ -390,6 +390,9 @@ class EventType(_Enum):
         273: 'MediaPlayerLengthChanged',
         274: 'MediaPlayerVout',
         275: 'MediaPlayerScrambledChanged',
+        276: 'MediaPlayerESAdded',
+        277: 'MediaPlayerESDeleted',
+        278: 'MediaPlayerESSelected',
         0x200: 'MediaListItemAdded',
         513: 'MediaListWillAddItem',
         514: 'MediaListItemDeleted',
@@ -434,6 +437,9 @@ EventType.MediaMetaChanged              = EventType(0)
 EventType.MediaParsedChanged            = EventType(3)
 EventType.MediaPlayerBackward           = EventType(264)
 EventType.MediaPlayerBuffering          = EventType(259)
+EventType.MediaPlayerESAdded            = EventType(276)
+EventType.MediaPlayerESDeleted          = EventType(277)
+EventType.MediaPlayerESSelected         = EventType(278)
 EventType.MediaPlayerEncounteredError   = EventType(266)
 EventType.MediaPlayerEndReached         = EventType(265)
 EventType.MediaPlayerForward            = EventType(263)
