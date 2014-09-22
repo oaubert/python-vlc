@@ -1,4 +1,3 @@
+* Add more test coverage
+* Provide more examples
 * Investigate memory management
-
-* Support multiple VLC versions: define a front-end module which will
-   load the appropriate versionned module from a subdirectory.
