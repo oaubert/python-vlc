@@ -61,11 +61,7 @@ vlc_ver = subprocess.Popen([vlcexec, "--version"],
 vlcver = vlc_ver.split(" ")[2]
 
 
-if vlcver.startswith(b"1.0"):
-    from vlc_100 import *
-elif vlcver.startswith(b"1.1"):
-    from vlc_110 import *
-elif vlcver.startswith(b"2.0"):
+if vlcver.startswith(b"2.0"):
     from vlc_200 import *
 elif vlcver.startswith(b"2.1"):
     from vlc_210 import *
