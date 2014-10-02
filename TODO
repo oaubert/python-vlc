@@ -1,10 +1,3 @@
+* Add more test coverage
+* Provide more examples
 * Investigate memory management
-
-* Support multiple VLC versions: define a front-end module which will
-   load the appropriate versioned module from a subdirectory.
-
-** This is now available in the dist directory (stand alone zips
-    should be made from it for the website).
-
-* Take advantage of path discovery processes in frontend to reduce the
-   dll and dylib search clutter in the actual module files.

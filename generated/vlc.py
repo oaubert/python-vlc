@@ -5,7 +5,7 @@
 # Copyright (C) 2009-2012 the VideoLAN team
 # $Id: $
 #
-# Authors: Olivier Aubert <olivier.aubert at liris.cnrs.fr>
+# Authors: Olivier Aubert <contact at olivieraubert.net>
 #          Jean Brouwers <MrJean1 at gmail.com>
 #          Geoff Salmon <geoff.salmon at gmail.com>
 #
