@@ -48,7 +48,7 @@ import sys
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Aug 15 21:30:18 2014"
+build_date  = "Tue Jan 20 14:51:26 2015"
 
 if sys.version_info[0] > 2:
     str = str
@@ -397,6 +397,7 @@ class EventType(_Enum):
         513: 'MediaListWillAddItem',
         514: 'MediaListItemDeleted',
         515: 'MediaListWillDeleteItem',
+        516: 'MediaListEndReached',
         0x300: 'MediaListViewItemAdded',
         769: 'MediaListViewWillAddItem',
         770: 'MediaListViewItemDeleted',
@@ -422,6 +423,7 @@ EventType.MediaDiscovererEnded          = EventType(1281)
 EventType.MediaDiscovererStarted        = EventType(0x500)
 EventType.MediaDurationChanged          = EventType(2)
 EventType.MediaFreed                    = EventType(4)
+EventType.MediaListEndReached           = EventType(516)
 EventType.MediaListItemAdded            = EventType(0x200)
 EventType.MediaListItemDeleted          = EventType(514)
 EventType.MediaListPlayerNextItemSet    = EventType(1025)
@@ -500,15 +502,19 @@ class Meta(_Enum):
         20: 'Episode',
         21: 'ShowName',
         22: 'Actors',
+        23: 'AlbumArtist',
+        24: 'DiscNumber',
     }
 Meta.Actors      = Meta(22)
 Meta.Album       = Meta(4)
+Meta.AlbumArtist = Meta(23)
 Meta.Artist      = Meta(1)
 Meta.ArtworkURL  = Meta(15)
 Meta.Copyright   = Meta(3)
 Meta.Date        = Meta(8)
 Meta.Description = Meta(6)
 Meta.Director    = Meta(18)
+Meta.DiscNumber  = Meta(24)
 Meta.EncodedBy   = Meta(14)
 Meta.Episode     = Meta(20)
 Meta.Genre       = Meta(2)
@@ -565,6 +571,21 @@ TrackType.audio   = TrackType(0)
 TrackType.text    = TrackType(2)
 TrackType.unknown = TrackType(-1)
 TrackType.video   = TrackType(1)
+
+class MediaParseFlag(_Enum):
+    '''Parse flags used by libvlc_media_parse_with_options()
+See libvlc_media_parse_with_options.
+    '''
+    _enum_names_ = {
+        0x00: 'local',
+        0x01: 'network',
+        0x02: 'local',
+        0x04: 'network',
+    }
+MediaParseFlag.local   = MediaParseFlag(0x00)
+MediaParseFlag.local   = MediaParseFlag(0x02)
+MediaParseFlag.network = MediaParseFlag(0x01)
+MediaParseFlag.network = MediaParseFlag(0x04)
 
 class PlaybackMode(_Enum):
     '''Defines playback modes for playlist.
@@ -802,7 +823,7 @@ the number of bytes per pixel multiplied by the pixel width.
 Similarly, the number of scanlines must be bigger than of equal to
 the pixel height.
 Furthermore, we recommend that pitches and lines be multiple of 32
-to not break assumption that might be made by various optimizations
+to not break assumptions that might be held by optimized code
 in the video decoders, video filters and/or video converters.
     """
     pass
@@ -941,7 +962,7 @@ the number of bytes per pixel multiplied by the pixel width.
 Similarly, the number of scanlines must be bigger than of equal to
 the pixel height.
 Furthermore, we recommend that pitches and lines be multiple of 32
-to not break assumption that might be made by various optimizations
+to not break assumptions that might be held by optimized code
 in the video decoders, video filters and/or video converters.
     ''' 
     VideoCleanupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
@@ -1569,12 +1590,22 @@ class Instance(_Ctype):
         '''
         return libvlc_media_new_as_node(self, str_to_bytes(psz_name))
 
-    def media_discoverer_new_from_name(self, psz_name):
-        '''Discover media service by name.
+    def media_discoverer_new(self, psz_name):
+        '''Create a media discoverer object by name.
+        After this object is created, you should attach to events in order to be
+        notified of the discoverer state.
+        You should also attach to media_list events in order to be notified of new
+        items discovered.
+        You need to call L{media_discoverer_start}() in order to start the
+        discovery.
+        See L{media_discoverer_media_list}
+        See L{media_discoverer_event_manager}
+        See L{media_discoverer_start}.
         @param psz_name: service name.
         @return: media discover object or NULL in case of error.
+        @version: LibVLC 3.0.0 or later.
         '''
-        return libvlc_media_discoverer_new_from_name(self, str_to_bytes(psz_name))
+        return libvlc_media_discoverer_new(self, str_to_bytes(psz_name))
 
     def media_library_new(self):
         '''Create an new Media Library object.
@@ -1993,7 +2024,7 @@ class Media(_Ctype):
 
     def parse(self):
         '''Parse a media.
-        This fetches (local) meta data and tracks information.
+        This fetches (local) art, meta data and tracks information.
         The method is synchronous.
         See L{parse_async}
         See L{get_meta}
@@ -2003,7 +2034,7 @@ class Media(_Ctype):
 
     def parse_async(self):
         '''Parse a media.
-        This fetches (local) meta data and tracks information.
+        This fetches (local) art, meta data and tracks information.
         The method is the asynchronous of L{parse}().
         To track when this is over you can listen to libvlc_MediaParsedChanged
         event. However if the media was already parsed you will not receive this
@@ -2014,6 +2045,26 @@ class Media(_Ctype):
         See libvlc_media_get_tracks_info.
         '''
         return libvlc_media_parse_async(self)
+
+    def parse_with_options(self, parse_flag):
+        '''Parse the media asynchronously with options.
+        This fetches (local or network) art, meta data and/or tracks information.
+        This method is the extended version of L{parse_async}().
+        To track when this is over you can listen to libvlc_MediaParsedChanged
+        event. However if this functions returns an error, you will not receive this
+        event.
+        It uses a flag to specify parse options (see libvlc_media_parse_flag_t). All
+        these flags can be combined. By default, media is parsed if it's a local
+        file.
+        See libvlc_MediaParsedChanged
+        See L{get_meta}
+        See L{tracks_get}
+        See libvlc_media_parse_flag_t.
+        @param parse_flag: parse options:
+        @return: -1 in case of error, 0 otherwise.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_media_parse_with_options(self, parse_flag)
 
     def is_parsed(self):
         '''Get Parsed status for media descriptor object.
@@ -2051,6 +2102,23 @@ class MediaDiscoverer(_Ctype):
         '''(INTERNAL) ctypes wrapper constructor.
         '''
         return _Constructor(cls, ptr)
+    def start(self):
+        '''Start media discovery.
+        To stop it, call L{stop}() or
+        L{release}() directly.
+        See L{stop}.
+        @return: -1 in case of error, 0 otherwise.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_media_discoverer_start(self)
+
+    def stop(self):
+        '''Stop media discovery.
+        See L{start}.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_media_discoverer_stop(self)
+
     def release(self):
         '''Release media discover object. If the reference count reaches 0, then
         the object will be released.
@@ -2695,7 +2763,8 @@ class MediaPlayer(_Ctype):
         return libvlc_audio_set_callbacks(self, play, pause, resume, flush, drain, opaque)
 
     def audio_set_volume_callback(self, set_volume):
-        '''Set callbacks and private data for decoded audio.
+        '''Set callbacks and private data for decoded audio. This only works in
+        combination with L{audio_set_callbacks}().
         Use L{audio_set_format}() or L{audio_set_format_callbacks}()
         to configure the decoded audio format.
         @param set_volume: callback to apply audio volume, or NULL to apply volume in software.
@@ -3855,7 +3924,7 @@ def libvlc_media_get_duration(p_md):
 
 def libvlc_media_parse(p_md):
     '''Parse a media.
-    This fetches (local) meta data and tracks information.
+    This fetches (local) art, meta data and tracks information.
     The method is synchronous.
     See L{libvlc_media_parse_async}
     See L{libvlc_media_get_meta}
@@ -3869,7 +3938,7 @@ def libvlc_media_parse(p_md):
 
 def libvlc_media_parse_async(p_md):
     '''Parse a media.
-    This fetches (local) meta data and tracks information.
+    This fetches (local) art, meta data and tracks information.
     The method is the asynchronous of L{libvlc_media_parse}().
     To track when this is over you can listen to libvlc_MediaParsedChanged
     event. However if the media was already parsed you will not receive this
@@ -3884,6 +3953,30 @@ def libvlc_media_parse_async(p_md):
         _Cfunction('libvlc_media_parse_async', ((1,),), None,
                     None, Media)
     return f(p_md)
+
+def libvlc_media_parse_with_options(p_md, parse_flag):
+    '''Parse the media asynchronously with options.
+    This fetches (local or network) art, meta data and/or tracks information.
+    This method is the extended version of L{libvlc_media_parse_async}().
+    To track when this is over you can listen to libvlc_MediaParsedChanged
+    event. However if this functions returns an error, you will not receive this
+    event.
+    It uses a flag to specify parse options (see libvlc_media_parse_flag_t). All
+    these flags can be combined. By default, media is parsed if it's a local
+    file.
+    See libvlc_MediaParsedChanged
+    See L{libvlc_media_get_meta}
+    See L{libvlc_media_tracks_get}
+    See libvlc_media_parse_flag_t.
+    @param p_md: media descriptor object.
+    @param parse_flag: parse options:
+    @return: -1 in case of error, 0 otherwise.
+    @version: LibVLC 3.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_media_parse_with_options', None) or \
+        _Cfunction('libvlc_media_parse_with_options', ((1,), (1,),), None,
+                    ctypes.c_int, Media, MediaParseFlag)
+    return f(p_md, parse_flag)
 
 def libvlc_media_is_parsed(p_md):
     '''Get Parsed status for media descriptor object.
@@ -3934,6 +4027,18 @@ def libvlc_media_tracks_get(p_md, tracks):
                     ctypes.c_uint, Media, ctypes.POINTER(ctypes.POINTER(MediaTrack)))
     return f(p_md, tracks)
 
+def libvlc_media_get_codec_description(i_type, i_codec):
+    '''Get codec description from media elementary stream.
+    @param i_type: i_type from L{MediaTrack}.
+    @param i_codec: i_codec or i_original_fourcc from L{MediaTrack}.
+    @return: codec description.
+    @version: LibVLC 3.0.0 and later. See L{MediaTrack}.
+    '''
+    f = _Cfunctions.get('libvlc_media_get_codec_description', None) or \
+        _Cfunction('libvlc_media_get_codec_description', ((1,), (1,),), None,
+                    ctypes.c_char_p, TrackType, ctypes.c_uint32)
+    return f(i_type, i_codec)
+
 def libvlc_media_tracks_release(p_tracks, i_count):
     '''Release media descriptor's elementary streams description array.
     @param p_tracks: tracks info array to release.
@@ -3945,16 +4050,51 @@ def libvlc_media_tracks_release(p_tracks, i_count):
                     None, ctypes.POINTER(MediaTrack), ctypes.c_uint)
     return f(p_tracks, i_count)
 
-def libvlc_media_discoverer_new_from_name(p_inst, psz_name):
-    '''Discover media service by name.
+def libvlc_media_discoverer_new(p_inst, psz_name):
+    '''Create a media discoverer object by name.
+    After this object is created, you should attach to events in order to be
+    notified of the discoverer state.
+    You should also attach to media_list events in order to be notified of new
+    items discovered.
+    You need to call L{libvlc_media_discoverer_start}() in order to start the
+    discovery.
+    See L{libvlc_media_discoverer_media_list}
+    See L{libvlc_media_discoverer_event_manager}
+    See L{libvlc_media_discoverer_start}.
     @param p_inst: libvlc instance.
     @param psz_name: service name.
     @return: media discover object or NULL in case of error.
+    @version: LibVLC 3.0.0 or later.
     '''
-    f = _Cfunctions.get('libvlc_media_discoverer_new_from_name', None) or \
-        _Cfunction('libvlc_media_discoverer_new_from_name', ((1,), (1,),), class_result(MediaDiscoverer),
+    f = _Cfunctions.get('libvlc_media_discoverer_new', None) or \
+        _Cfunction('libvlc_media_discoverer_new', ((1,), (1,),), class_result(MediaDiscoverer),
                     ctypes.c_void_p, Instance, ctypes.c_char_p)
     return f(p_inst, psz_name)
+
+def libvlc_media_discoverer_start(p_mdis):
+    '''Start media discovery.
+    To stop it, call L{libvlc_media_discoverer_stop}() or
+    L{libvlc_media_discoverer_release}() directly.
+    See L{libvlc_media_discoverer_stop}.
+    @param p_mdis: media discover object.
+    @return: -1 in case of error, 0 otherwise.
+    @version: LibVLC 3.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_media_discoverer_start', None) or \
+        _Cfunction('libvlc_media_discoverer_start', ((1,),), None,
+                    ctypes.c_int, MediaDiscoverer)
+    return f(p_mdis)
+
+def libvlc_media_discoverer_stop(p_mdis):
+    '''Stop media discovery.
+    See L{libvlc_media_discoverer_start}.
+    @param p_mdis: media discover object.
+    @version: LibVLC 3.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_media_discoverer_stop', None) or \
+        _Cfunction('libvlc_media_discoverer_stop', ((1,),), None,
+                    None, MediaDiscoverer)
+    return f(p_mdis)
 
 def libvlc_media_discoverer_release(p_mdis):
     '''Release media discover object. If the reference count reaches 0, then
@@ -4689,7 +4829,8 @@ def libvlc_audio_set_callbacks(mp, play, pause, resume, flush, drain, opaque):
     return f(mp, play, pause, resume, flush, drain, opaque)
 
 def libvlc_audio_set_volume_callback(mp, set_volume):
-    '''Set callbacks and private data for decoded audio.
+    '''Set callbacks and private data for decoded audio. This only works in
+    combination with L{libvlc_audio_set_callbacks}().
     Use L{libvlc_audio_set_format}() or L{libvlc_audio_set_format_callbacks}()
     to configure the decoded audio format.
     @param mp: the media player.
@@ -6224,7 +6365,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_printerr
 #  libvlc_set_exit_handler
 
-# 28 function(s) not wrapped as methods:
+# 29 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_amp_at_index
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
@@ -6248,6 +6389,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_get_version
 #  libvlc_log_get_context
 #  libvlc_log_get_object
+#  libvlc_media_get_codec_description
 #  libvlc_media_tracks_release
 #  libvlc_module_description_list_release
 #  libvlc_new
