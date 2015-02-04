@@ -4,7 +4,7 @@
 
 See https://github.com/oaubert/python-vlc/issues/2
 
-This currently does not exhibit the reported issue.
+This currently should exhibit the reported issue.
 """
 
 import sys
@@ -12,15 +12,19 @@ import vlc
 import time
 import gc
 
-p = vlc.MediaPlayer(sys.argv[1])
-def endreached(foo):
-    print "EndReached"
-em = p.event_manager()
-em.event_attach(vlc.EventType.MediaPlayerEndReached, endreached) 
-p.play()
-time.sleep(.5)
+i = vlc.Instance()
+p = vlc.MediaPlayer()
+
+def poschanged(foo):
+    print "poschanged"
+
 for n in range(10):
-    print "Try", n
+    p.stop()
+    p.set_media(i.media_new(sys.argv[1]))
+    em = p.event_manager()
+    em.event_attach(vlc.EventType.MediaPlayerPositionChanged, poschanged)
+    p.play()
+    time.sleep(.5)
     p.pause()
     gc.collect()
     p.pause()
