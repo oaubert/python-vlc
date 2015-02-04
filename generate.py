@@ -1014,8 +1014,11 @@ class _Enum(ctypes.c_uint):
 
             # xformed doc string without first @param
             docs = self.epylink(f.epydocs(1, 8), striprefix)  #PYCHOK flake
-
-            self.output("""    def %(meth)s(%(args)s):
+            decorator = ""
+            if meth.endswith('event_manager'):
+                decorator = '@memoize_parameterless'
+            self.output("""    %(decorator)s
+    def %(meth)s(%(args)s):
         '''%(docs)s
         '''
         return %(name)s(%(wrapped_args)s)
