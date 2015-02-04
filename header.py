@@ -43,6 +43,7 @@ import ctypes
 from ctypes.util import find_library
 import os
 import sys
+import functools
 
 # Used by EventManager in override.py
 from inspect import getargspec
@@ -175,6 +176,35 @@ try:
 except NameError:  # no long in Python 3+
     _Ints =  int
 _Seqs = (list, tuple)
+
+# Used for handling *event_manager() methods.
+class memoize_parameterless(object):
+    """Decorator. Caches a parameterless method's return value each time it is called.
+
+    If called later with the same arguments, the cached value is returned
+    (not reevaluated).
+    Adapted from https://wiki.python.org/moin/PythonDecoratorLibrary
+    """
+    def __init__(self, func):
+        self.func = func
+        self._cache = {}
+
+    def __call__(self, obj):
+        try:
+            return self._cache[obj]
+        except KeyError:
+            v = self._cache[obj] = self.func(obj)
+            return v
+
+    def __repr__(self):
+        """Return the function's docstring.
+        """
+        return self.func.__doc__
+
+    def __get__(self, obj, objtype):
+      """Support instance methods.
+      """
+      return functools.partial(self.__call__, obj)
 
 # Default instance. It is used to instanciate classes directly in the
 # OO-wrapper.
