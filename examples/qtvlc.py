@@ -20,7 +20,7 @@
 #
 
 import sys
-import user
+import os.path
 import vlc
 from PyQt4 import QtGui, QtCore
 
@@ -131,12 +131,14 @@ class Player(QtGui.QMainWindow):
         """Open a media file in a MediaPlayer
         """
         if filename is None:
-            filename = QtGui.QFileDialog.getOpenFileName(self, "Open File", user.home)
+            filename = QtGui.QFileDialog.getOpenFileName(self, "Open File", os.path.expanduser('~'))
         if not filename:
             return
 
         # create the media
-        self.media = self.instance.media_new(unicode(filename))
+        if sys.version < '3':
+            filename = unicode(filename)
+        self.media = self.instance.media_new(filename)
         # put the media in the media player
         self.mediaplayer.set_media(self.media)
 
@@ -150,7 +152,7 @@ class Player(QtGui.QMainWindow):
         # this is platform specific!
         # you have to give the id of the QFrame (or similar object) to
         # vlc, different platforms have different functions for this
-        if sys.platform == "linux2": # for Linux using the X Server
+        if sys.platform.startswith('linux'): # for Linux using the X Server
             self.mediaplayer.set_xwindow(self.videoframe.winId())
         elif sys.platform == "win32": # for Windows
             self.mediaplayer.set_hwnd(self.videoframe.winId())
