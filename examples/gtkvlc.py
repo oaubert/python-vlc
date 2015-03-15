@@ -158,7 +158,7 @@ class MultiVideoPlayer:
 
 if __name__ == '__main__':
     if not sys.argv[1:]:
-       print "You must provide at least 1 movie filename"
+       print('You must provide at least 1 movie filename')
        sys.exit(1)
     if len(sys.argv[1:]) == 1:
         # Only 1 file. Simple interface

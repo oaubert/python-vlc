@@ -55,13 +55,14 @@ class Instance:
         local path. If you need more control, directly use
         media_new_location/media_new_path methods.
 
-        Options can be specified as supplementary string parameters, e.g.
+        Options can be specified as supplementary string parameters,
+        but note that many options cannot be set at the media level,
+        and rather at the Instance level. For instance, the marquee
+        filter must be specified when creating the vlc.Instance or
+        vlc.MediaPlayer.
 
-        C{m = i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')}
-
-        Alternatively, the options can be added to the media using the Media.add_options method:
-
-        C{m.add_options('foo.avi', 'sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')}
+        Alternatively, options can be added to the media using the
+        Media.add_options method (with the same limitation).
 
         @param options: optional media option=value strings
         """
@@ -144,13 +145,10 @@ class Media:
     def add_options(self, *options):
         """Add a list of options to the media.
 
-        Options must be written without the double-dash, e.g.:
-
-        C{m.add_options('sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')}
-
-        Alternatively, the options can directly be passed in the Instance.media_new method:
-
-        C{m = instance.media_new('foo.avi', 'sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')}
+        Options must be written without the double-dash. Warning: most
+        audio and video options, such as text renderer, have no
+        effects on an individual media. These options must be set at
+        the vlc.Instance or vlc.MediaPlayer instanciation.
 
         @param options: optional media option=value strings
         """
@@ -231,6 +229,10 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
 
     def set_mrl(self, mrl, *options):
         """Set the MRL to play.
+
+        Warning: most audio and video options, such as text renderer,
+        have no effects on an individual media. These options must be
+        set at the vlc.Instance or vlc.MediaPlayer instanciation.
 
         @param mrl: The MRL
         @param options: optional media option=value strings
