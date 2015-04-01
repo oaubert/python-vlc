@@ -764,8 +764,13 @@ class PythonGenerator(_Generator):
         'int*':      'ctypes.POINTER(ctypes.c_int)',  # _video_get_cursor
         'uintptr_t*':      'ctypes.POINTER(ctypes.c_uint)',
         'int64_t':   'ctypes.c_int64',
+        'uint64_t':   'ctypes.c_uint64',
+        'uint64_t*':   'ctypes.POINTER(ctypes.c_uint64)',
         'short':     'ctypes.c_short',
         'uint32_t':  'ctypes.c_uint32',
+        'ssize_t':   'ctypes.c_ssize_t',
+        'size_t':    'ctypes.c_size_t',
+        'ssize_t*':   'ctypes.POINTER(ctypes.c_ssize_t)',
         'unsigned':  'ctypes.c_uint',
         'unsigned*': 'ctypes.POINTER(ctypes.c_uint)',  # _video_get_size
         'void':      'None',

@@ -49,7 +49,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Wed Feb  4 16:43:32 2015"
+build_date  = "Wed Apr  1 21:28:00 2015"
 
 if sys.version_info[0] > 2:
     str = str
@@ -602,6 +602,25 @@ TrackType.text    = TrackType(2)
 TrackType.unknown = TrackType(-1)
 TrackType.video   = TrackType(1)
 
+class MediaType(_Enum):
+    '''Media type
+See libvlc_media_get_type.
+    '''
+    _enum_names_ = {
+        0: 'unknown',
+        1: 'file',
+        2: 'directory',
+        3: 'disc',
+        4: 'stream',
+        5: 'playlist',
+    }
+MediaType.directory = MediaType(2)
+MediaType.disc      = MediaType(3)
+MediaType.file      = MediaType(1)
+MediaType.playlist  = MediaType(5)
+MediaType.stream    = MediaType(4)
+MediaType.unknown   = MediaType(0)
+
 class MediaParseFlag(_Enum):
     '''Parse flags used by libvlc_media_parse_with_options()
 See libvlc_media_parse_with_options.
@@ -796,6 +815,49 @@ class LogCb(ctypes.c_void_p):
          variable arguments are only valid until the callback returns.
     """
     pass
+class MediaOpenCb(ctypes.c_void_p):
+    """Callback prototype to open a custom bitstream input media.
+The same media item can be opened multiple times. Each time, this callback
+is invoked. It should allocate and initialize any instance-specific
+resources, then store them in *datap. The instance resources can be freed
+in the @ref libvlc_close_cb callback.
+\param opaque private pointer as passed to L{libvlc_media_new_callbacks}()
+\param datap storage space for a private data pointer [OUT]
+\param sizep byte length of the bitstream or 0 if unknown [OUT]
+\note For convenience, *datap is initially NULL and *sizep is initially 0.
+\return 0 on success, non-zero on error. In case of failure, the other
+callbacks will not be invoked and any value stored in *datap and *sizep is
+discarded.
+    """
+    pass
+class MediaReadCb(ctypes.c_void_p):
+    """Callback prototype to read data from a custom bitstream input media.
+\param opaque private pointer as set by the @ref libvlc_media_open_cb
+              callback
+\param buf start address of the buffer to read data into
+\param len bytes length of the buffer
+\return strictly positive number of bytes read, 0 on end-of-stream,
+        or -1 on non-recoverable error
+\note If no data is immediately available, then the callback should sleep.
+\warning The application is responsible for avoiding deadlock situations.
+In particular, the callback should return an error if playback is stopped;
+if it does not return, then L{libvlc_media_player_stop}() will never return.
+    """
+    pass
+class MediaSeekCb(ctypes.c_void_p):
+    """Callback prototype to seek a custom bitstream input media.
+\param opaque private pointer as set by the @ref libvlc_media_open_cb
+              callback
+\param offset absolute byte offset to seek to
+\return 0 on success, -1 on error.
+    """
+    pass
+class MediaCloseCb(ctypes.c_void_p):
+    """Callback prototype to close a custom bitstream input media.
+\param opaque private pointer as set by the @ref libvlc_media_open_cb
+              callback
+    """
+    pass
 class VideoLockCb(ctypes.c_void_p):
     """Callback prototype to allocate and lock a picture buffer.
 Whenever a new video frame needs to be decoded, the lock callback is
@@ -937,6 +999,45 @@ class CallbackDecorators(object):
 \note Log message handlers <b>must</b> be thread-safe.
 \warning The message context pointer, the format string parameters and the
          variable arguments are only valid until the callback returns.
+    ''' 
+    MediaOpenCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ctypes.c_void_p, ListPOINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64))
+    MediaOpenCb.__doc__ = '''Callback prototype to open a custom bitstream input media.
+The same media item can be opened multiple times. Each time, this callback
+is invoked. It should allocate and initialize any instance-specific
+resources, then store them in *datap. The instance resources can be freed
+in the @ref libvlc_close_cb callback.
+\param opaque private pointer as passed to L{libvlc_media_new_callbacks}()
+\param datap storage space for a private data pointer [OUT]
+\param sizep byte length of the bitstream or 0 if unknown [OUT]
+\note For convenience, *datap is initially NULL and *sizep is initially 0.
+\return 0 on success, non-zero on error. In case of failure, the other
+callbacks will not be invoked and any value stored in *datap and *sizep is
+discarded.
+    ''' 
+    MediaReadCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_ssize_t), ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t)
+    MediaReadCb.__doc__ = '''Callback prototype to read data from a custom bitstream input media.
+\param opaque private pointer as set by the @ref libvlc_media_open_cb
+              callback
+\param buf start address of the buffer to read data into
+\param len bytes length of the buffer
+\return strictly positive number of bytes read, 0 on end-of-stream,
+        or -1 on non-recoverable error
+\note If no data is immediately available, then the callback should sleep.
+\warning The application is responsible for avoiding deadlock situations.
+In particular, the callback should return an error if playback is stopped;
+if it does not return, then L{libvlc_media_player_stop}() will never return.
+    ''' 
+    MediaSeekCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ctypes.c_void_p, ctypes.c_uint64)
+    MediaSeekCb.__doc__ = '''Callback prototype to seek a custom bitstream input media.
+\param opaque private pointer as set by the @ref libvlc_media_open_cb
+              callback
+\param offset absolute byte offset to seek to
+\return 0 on success, -1 on error.
+    ''' 
+    MediaCloseCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
+    MediaCloseCb.__doc__ = '''Callback prototype to close a custom bitstream input media.
+\param opaque private pointer as set by the @ref libvlc_media_open_cb
+              callback
     ''' 
     VideoLockCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ListPOINTER(ctypes.c_void_p))
     VideoLockCb.__doc__ = '''Callback prototype to allocate and lock a picture buffer.
@@ -1441,13 +1542,14 @@ class Instance(_Ctype):
         local path. If you need more control, directly use
         media_new_location/media_new_path methods.
 
-        Options can be specified as supplementary string parameters, e.g.
+        Options can be specified as supplementary string parameters,
+        but note that many options cannot be set at the media level,
+        and rather at the Instance level. For instance, the marquee
+        filter must be specified when creating the vlc.Instance or
+        vlc.MediaPlayer.
 
-        C{m = i.media_new('foo.avi', 'sub-filter=marq{marquee=Hello}', 'vout-filter=invert')}
-
-        Alternatively, the options can be added to the media using the Media.add_options method:
-
-        C{m.add_options('foo.avi', 'sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')}
+        Alternatively, options can be added to the media using the
+        Media.add_options method (with the same limitation).
 
         @param options: optional media option=value strings
         """
@@ -1622,6 +1724,19 @@ class Instance(_Ctype):
         @version: LibVLC 1.1.5 and later.
         '''
         return libvlc_media_new_fd(self, fd)
+
+    
+    def media_new_callbacks(self, open_cb, read_cb, seek_cb, close_cb, opaque):
+        '''Create a media with custom callbacks to read the data from.
+        @param open_cb: callback to open the custom bitstream input media.
+        @param read_cb: callback to read data (must not be NULL).
+        @param seek_cb: callback to seek, or NULL if seeking is not supported.
+        @param close_cb: callback to close the media, or NULL if unnecessary.
+        @param opaque: data pointer for the open callback.
+        @return: the newly created media or NULL on error @note If open_cb is NULL, the opaque pointer will be passed to read_cb, seek_cb and close_cb, and the stream size will be treated as unknown. @note The callbacks may be called asynchronously (from another thread). A single stream instance need not be reentrant. However the open_cb needs to be reentrant if the media is used by multiple player instances. @warning The callbacks may be used until all or any player instances that were supplied the media item are stopped. See L{media_release}.
+        @version: LibVLC 3.0.0 and later.
+        '''
+        return libvlc_media_new_callbacks(self, open_cb, read_cb, seek_cb, close_cb, opaque)
 
     
     def media_new_as_node(self, psz_name):
@@ -1940,13 +2055,10 @@ class Media(_Ctype):
     def add_options(self, *options):
         """Add a list of options to the media.
 
-        Options must be written without the double-dash, e.g.:
-
-        C{m.add_options('sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')}
-
-        Alternatively, the options can directly be passed in the Instance.media_new method:
-
-        C{m = instance.media_new('foo.avi', 'sub-filter=marq@test{marquee=Hello}', 'video-filter=invert')}
+        Options must be written without the double-dash. Warning: most
+        audio and video options, such as text renderer, have no
+        effects on an individual media. These options must be set at
+        the vlc.Instance or vlc.MediaPlayer instanciation.
 
         @param options: optional media option=value strings
         """
@@ -2177,6 +2289,14 @@ class Media(_Ctype):
         an native object that references a L{Media} pointer.
         '''
         return libvlc_media_get_user_data(self)
+
+    
+    def get_type(self):
+        '''Get the media type of the media descriptor object.
+        @return: media type.
+        @version: LibVLC 3.0.0 and later. See libvlc_media_type_t.
+        '''
+        return libvlc_media_get_type(self)
 
     
     def player_new_from_media(self):
@@ -2606,6 +2726,10 @@ class MediaPlayer(_Ctype):
 
     def set_mrl(self, mrl, *options):
         """Set the MRL to play.
+
+        Warning: most audio and video options, such as text renderer,
+        have no effects on an individual media. These options must be
+        set at the vlc.Instance or vlc.MediaPlayer instanciation.
 
         @param mrl: The MRL
         @param options: optional media option=value strings
@@ -3500,6 +3624,24 @@ class MediaPlayer(_Ctype):
         return libvlc_audio_output_device_set(self, str_to_bytes(module), str_to_bytes(device_id))
 
     
+    def audio_output_device_get(self):
+        '''Get the current audio output device identifier.
+        This complements L{audio_output_device_set}().
+        @warning: The initial value for the current audio output device identifier
+        may not be set or may be some unknown value. A LibVLC application should
+        compare this value against the known device identifiers (e.g. those that
+        were previously retrieved by a call to L{audio_output_device_enum} or
+        L{audio_output_device_list_get}) to find the current audio output device.
+        It is possible that the selected audio output device changes (an external
+        change) without a call to L{audio_output_device_set}. That may make this
+        method unsuitable to use if a LibVLC application is attempting to track
+        dynamic audio device changes as they happen.
+        @return: the current audio output device identifier NULL if no device is selected or in case of error (the result must be released with free() or L{free}()).
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_audio_output_device_get(self)
+
+    
     def audio_toggle_mute(self):
         '''Toggle mute status.
         '''
@@ -3961,6 +4103,22 @@ def libvlc_media_new_fd(p_instance, fd):
                     ctypes.c_void_p, Instance, ctypes.c_int)
     return f(p_instance, fd)
 
+def libvlc_media_new_callbacks(instance, open_cb, read_cb, seek_cb, close_cb, opaque):
+    '''Create a media with custom callbacks to read the data from.
+    @param instance: LibVLC instance.
+    @param open_cb: callback to open the custom bitstream input media.
+    @param read_cb: callback to read data (must not be NULL).
+    @param seek_cb: callback to seek, or NULL if seeking is not supported.
+    @param close_cb: callback to close the media, or NULL if unnecessary.
+    @param opaque: data pointer for the open callback.
+    @return: the newly created media or NULL on error @note If open_cb is NULL, the opaque pointer will be passed to read_cb, seek_cb and close_cb, and the stream size will be treated as unknown. @note The callbacks may be called asynchronously (from another thread). A single stream instance need not be reentrant. However the open_cb needs to be reentrant if the media is used by multiple player instances. @warning The callbacks may be used until all or any player instances that were supplied the media item are stopped. See L{libvlc_media_release}.
+    @version: LibVLC 3.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_media_new_callbacks', None) or \
+        _Cfunction('libvlc_media_new_callbacks', ((1,), (1,), (1,), (1,), (1,), (1,),), class_result(Media),
+                    ctypes.c_void_p, Instance, MediaOpenCb, MediaReadCb, MediaSeekCb, MediaCloseCb, ctypes.c_void_p)
+    return f(instance, open_cb, read_cb, seek_cb, close_cb, opaque)
+
 def libvlc_media_new_as_node(p_instance, psz_name):
     '''Create a media as an empty node with a given name.
     See L{libvlc_media_release}.
@@ -4281,6 +4439,17 @@ def libvlc_media_tracks_release(p_tracks, i_count):
         _Cfunction('libvlc_media_tracks_release', ((1,), (1,),), None,
                     None, ctypes.POINTER(MediaTrack), ctypes.c_uint)
     return f(p_tracks, i_count)
+
+def libvlc_media_get_type(p_md):
+    '''Get the media type of the media descriptor object.
+    @param p_md: media descriptor object.
+    @return: media type.
+    @version: LibVLC 3.0.0 and later. See libvlc_media_type_t.
+    '''
+    f = _Cfunctions.get('libvlc_media_get_type', None) or \
+        _Cfunction('libvlc_media_get_type', ((1,),), None,
+                    MediaType, Media)
+    return f(p_md)
 
 def libvlc_media_discoverer_new(p_inst, psz_name):
     '''Create a media discoverer object by name.
@@ -5980,6 +6149,27 @@ def libvlc_audio_output_device_set(mp, module, device_id):
         _Cfunction('libvlc_audio_output_device_set', ((1,), (1,), (1,),), None,
                     None, MediaPlayer, ctypes.c_char_p, ctypes.c_char_p)
     return f(mp, module, device_id)
+
+def libvlc_audio_output_device_get(mp):
+    '''Get the current audio output device identifier.
+    This complements L{libvlc_audio_output_device_set}().
+    @warning: The initial value for the current audio output device identifier
+    may not be set or may be some unknown value. A LibVLC application should
+    compare this value against the known device identifiers (e.g. those that
+    were previously retrieved by a call to L{libvlc_audio_output_device_enum} or
+    L{libvlc_audio_output_device_list_get}) to find the current audio output device.
+    It is possible that the selected audio output device changes (an external
+    change) without a call to L{libvlc_audio_output_device_set}. That may make this
+    method unsuitable to use if a LibVLC application is attempting to track
+    dynamic audio device changes as they happen.
+    @param mp: media player.
+    @return: the current audio output device identifier NULL if no device is selected or in case of error (the result must be released with free() or L{libvlc_free}()).
+    @version: LibVLC 3.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_audio_output_device_get', None) or \
+        _Cfunction('libvlc_audio_output_device_get', ((1,),), None,
+                    ctypes.c_char_p, MediaPlayer)
+    return f(mp)
 
 def libvlc_audio_toggle_mute(p_mi):
     '''Toggle mute status.
