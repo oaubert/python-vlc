@@ -275,6 +275,7 @@ class Func(_Source):
                           .replace('\\bug', '@bug').replace('\\version', '@version') \
                           .replace('\\note', '@note').replace('\\warning', '@warning') \
                           .replace('\\param', '@param').replace('\\return', '@return') \
+                          .replace('NULL', 'None') \
                           .splitlines():
             if '@param' in t:
                 if _OUT_ in t:
