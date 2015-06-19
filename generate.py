@@ -118,9 +118,13 @@ enum_re      = re.compile('(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\
 enum_pair_re = re.compile('\s*=\s*')
 callback_type_re = re.compile('^typedef\s+\w+(\s+\*)?\s*\(\s*\*')
 callback_re  = re.compile('typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
+struct_type_re = re.compile('^typedef\s+struct\s*(\S+)\s*$')
+struct_re    = re.compile('typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
+typedef_re   = re.compile('^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
 forward_re   = re.compile('.+\(\s*(.+?)\s*\)(\s*\S+)')
 libvlc_re    = re.compile('\slibvlc_[a-z_]+')
 param_re     = re.compile('\s*(const\s*|unsigned\s*|struct\s*)?(\S+\s*\**)\s+(.+)')
+decllist_re  = re.compile('\s*;\s*')
 paramlist_re = re.compile('\s*,\s*')
 version_re   = re.compile('vlc[\-]\d+[.]\d+[.]\d+.*')
 
@@ -185,6 +189,38 @@ class Enum(_Source):
     def dump(self):  # for debug
         sys.stderr.write('%s (%s): %s\n' % (self.name, self.type, self.source))
         for v in self.vals:
+            v.dump()
+
+    def epydocs(self):
+        """Return epydoc string.
+        """
+        return self.docs.replace('@see', 'See').replace('\\see', 'See')
+
+class Struct(_Source):
+    """Struct type.
+    """
+    type = 'struct'
+
+    def __init__(self, name, type='struct', fields=(), docs='', **kwds):
+        if type != self.type:
+            raise TypeError('expected struct type: %s %s' % (type, name))
+        self.docs = docs
+        self.name = name
+        self.fields = fields  # list/tuple of Par instances
+        if _debug:
+           _Source.__init__(self, **kwds)
+
+    def check(self):
+        """Perform some consistency checks.
+        """
+        if not self.docs:
+            errorf('no comment for typedef %s %s', self.type, self.name)
+        if self.type != 'struct':
+            errorf('expected struct type: %s %s', self.type, self.name)
+
+    def dump(self):  # for debug
+        sys.stderr.write('STRUCT %s (%s): %s\n' % (self.name, self.type, self.source))
+        for v in self.fields:
             v.dump()
 
     def epydocs(self):
@@ -378,7 +414,9 @@ class Parser(object):
     def __init__(self, h_files, version=''):
         self.enums = []
         self.callbacks = []
+        self.structs = []
         self.funcs = []
+        self.typedefs = {}
         self.version = version
 
         for h in h_files:
@@ -388,6 +426,8 @@ class Parser(object):
                         self.version = v
                         break
             self.h_file = h
+            self.typedefs.update(self.parse_typedefs())
+            self.structs.extend(self.parse_structs())
             self.enums.extend(self.parse_enums())
             self.callbacks.extend(self.parse_callbacks())
             self.funcs.extend(self.parse_funcs())
@@ -401,6 +441,8 @@ class Parser(object):
             f.check()
         for f in self.callbacks:
             f.check()
+        for s in self.structs:
+            s.check()
 
     def dump(self, attr):
         sys.stderr.write('%s==== %s ==== %s\n' % (_NL_, attr, self.version))
@@ -450,6 +492,24 @@ class Parser(object):
             yield Enum(name, typ, vals, docs,
                        file_=self.h_file, line=line)
 
+    def parse_structs(self):
+        """Parse header file for struct definitions.
+
+        @return: yield a Struct instance for each struct.
+        """
+        for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile('^\}(\s*\S+)?\s*;$')):
+            fields = [ self.parse_param(t.strip()) for t in decllist_re.split(body) if t.strip() and not '%s()' % name in t ]
+            fields = [ f for f in fields if f is not None ]
+
+            name = name.strip()
+            if not name:  # anonymous?
+                name = 'FIXME_undefined_name'
+
+            # more doc string cleanup
+            docs = endot(docs).capitalize()
+            yield Struct(name, typ, fields, docs,
+                         file_=self.h_file, line=line)
+
     def parse_funcs(self):
         """Parse header file for public function definitions.
 
@@ -485,6 +545,14 @@ class Parser(object):
             yield Func(f.name, f.type, pars, docs,
                        file_=self.h_file, line=line)
 
+    def parse_typedefs(self):
+        """Parse header file for typedef definitions.
+
+        @return: a dict instance with typedef matches
+        """
+        return dict( (new, original) 
+            for original, new, docs, line in self.parse_groups(typedef_re.match, typedef_re.match) )
+
     def parse_groups(self, match_t, match_re, ends=';'):
         """Parse header file for matching lines, re and ends.
 
@@ -495,6 +563,7 @@ class Parser(object):
         d = []  # doc lines
         n = 0   # line number
         s = False  # skip comments except doc
+
         f = opener(self.h_file)
         for t in f:
             n += 1
@@ -508,16 +577,15 @@ class Parser(object):
                 t, m = t.strip(), None
                 if s or t.startswith('/*'):  # in comment
                     s = not t.endswith('*/')
-
                 elif a:  # accumulate multi-line
                     t = t.split('/*', 1)[0].rstrip()  # //?
                     a.append(t)
-                    if t.endswith(ends):  # end
+                    if (t.endswith(ends) if isinstance(ends, basestring) else ends.match(t)):  # end
                         t = ' '.join(a)
                         m = match_re(t)
                         a = []
                 elif match_t(t):
-                    if t.endswith(ends):
+                    if (t.endswith(ends) if isinstance(ends, basestring) else ends.match(t)):
                         m = match_re(t)  # single line
                     else:  # new multi-line
                         a = [t]
@@ -576,10 +644,10 @@ class _Generator(object):
     type2class   = {}    # must be overloaded
 
     def __init__(self, parser=None):
-      ##self.type2class = self.type2class.copy()
         self.parser = parser
-        self.convert_enums()
-        self.convert_callbacks()
+        self.convert_classnames(parser.structs)
+        self.convert_classnames(parser.enums)
+        self.convert_classnames(parser.callbacks)
 
     def check_types(self):
         """Make sure that all types are properly translated.
@@ -601,30 +669,27 @@ class _Generator(object):
         """
         return self.type2class.get(type, '') or ('FIXME_%s' % (type,))
 
-    def convert_enums(self):
+    def convert_classnames(self, element_list):
         """Convert enum names to class names.
-        """
-        for e in self.parser.enums:
-            if e.type != 'enum':
-                raise TypeError('expected enum: %s %s' % (e.type, e.name))
+        
+        source is either 'enum' or 'struct'.
 
-            c = self.type_re.findall(e.name)[0][0]
+        """
+        for e in element_list:
+            if e.name in self.type2class:
+                # Do not override predefined values
+                continue
+
+            c = self.type_re.findall(e.name)
+            if c:
+                c = c[0][0]
+            else:
+                c = e.name
             if '_' in c:
                 c = c.title().replace('_', '')
             elif c[0].islower():
                 c = c.capitalize()
             self.type2class[e.name] = c
-
-    def convert_callbacks(self):
-        """Convert callback names to class names.
-        """
-        for f in self.parser.callbacks:
-            c = self.type_re.findall(f.name)[0][0]
-            if '_' in c:
-                c = c.title().replace('_', '')
-            elif c[0].islower():
-                c = c.capitalize()
-            self.type2class[f.name] = c
 
     def dump_dicts(self):  # for debug
         s = _NL_ + _INDENT_
@@ -1013,10 +1078,10 @@ class _Enum(ctypes.c_uint):
             # arg names, excluding output args
             # and rename first arg to 'self'
             args = ', '.join(['self'] + f.args(1))  #PYCHOK flake "
-            wrapped_args = ', '.join(['self'] + [ ('str_to_bytes(%s)' % p.name
-                                                   if p.type == 'char*'
-                                                   else p.name)
-                                                  for p in f.in_params(1) ])  #PYCHOK flake
+            wrapped_args = ', '.join(['self'] + [ ('str_to_bytes(%s)' % pa.name
+                                                   if pa.type == 'char*'
+                                                   else pa.name)
+                                                  for pa in f.in_params(1) ])  #PYCHOK flake
 
             # xformed doc string without first @param
             docs = self.epylink(f.epydocs(1, 8), striprefix)  #PYCHOK flake
@@ -1278,7 +1343,7 @@ Parse VLC include files and generate bindings code for Python or Java.""")
 
     p = Parser(args, opts.version)
     if opts.debug:
-        for t in ('enums', 'funcs', 'callbacks'):
+        for t in ('structs', 'enums', 'funcs', 'callbacks'):
             p.dump(t)
 
     if opts.java:
