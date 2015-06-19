@@ -269,6 +269,27 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         """
         return track_description_list(libvlc_audio_get_track_description(self))
 
+    def get_full_title_descriptions(self):
+        '''Get the full description of available titles.
+        @return: the titles list
+        @version: LibVLC 3.0.0 and later.
+        '''
+        titleDescription_pp = ctypes.POINTER(TitleDescription)()
+        n = libvlc_media_player_get_full_title_descriptions(self, ctypes.byref(titleDescription_pp))
+        info = ctypes.cast(ctypes.titleDescription_pp, ctypes.POINTER(ctypes.POINTER(TitleDescription) * n))
+        return info
+
+    def get_full_chapter_descriptions(self, i_chapters_of_title):
+        '''Get the full description of available chapters.
+        @param index: of the title to query for chapters.
+        @return: the chapter list
+        @version: LibVLC 3.0.0 and later.
+        '''
+        chapterDescription_pp = ctypes.POINTER(ChapterDescription)()
+        n = libvlc_media_player_get_full_chapter_descriptions(self, ctypes.byref(chapterDescription_pp))
+        info = ctypes.cast(ctypes.chapterDescription_pp, ctypes.POINTER(ctypes.POINTER(ChapterDescription) * n))
+        return info
+
     def video_get_size(self, num=0):
         """Get the video size in pixels as 2-tuple (width, height).
 

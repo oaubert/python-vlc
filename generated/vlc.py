@@ -49,7 +49,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Jun  5 16:13:58 2015"
+build_date  = "Fri Jun 19 13:45:56 2015"
 
 if sys.version_info[0] > 2:
     str = str
@@ -806,7 +806,7 @@ class Callback(ctypes.c_void_p):
 class LogCb(ctypes.c_void_p):
     """Callback prototype for LibVLC log message handler.
 \param data data pointer as given to L{libvlc_log_set}()
-\param level message level (@ref enum libvlc_log_level)
+\param level message level (@ref libvlc_log_level)
 \param ctx message context (meta-information about the message)
 \param fmt printf() format string (as defined by ISO C11)
 \param args variable argument list for the format
@@ -820,7 +820,7 @@ class MediaOpenCb(ctypes.c_void_p):
 The same media item can be opened multiple times. Each time, this callback
 is invoked. It should allocate and initialize any instance-specific
 resources, then store them in *datap. The instance resources can be freed
-in the @ref libvlc_close_cb callback.
+in the @ref libvlc_media_close_cb callback.
 \param opaque private pointer as passed to L{libvlc_media_new_callbacks}()
 \param datap storage space for a private data pointer [OUT]
 \param sizep byte length of the bitstream or 0 if unknown [OUT]
@@ -992,7 +992,7 @@ class CallbackDecorators(object):
     LogCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, Log_ptr, ctypes.c_char_p, ctypes.c_void_p)
     LogCb.__doc__ = '''Callback prototype for LibVLC log message handler.
 \param data data pointer as given to L{libvlc_log_set}()
-\param level message level (@ref enum libvlc_log_level)
+\param level message level (@ref libvlc_log_level)
 \param ctx message context (meta-information about the message)
 \param fmt printf() format string (as defined by ISO C11)
 \param args variable argument list for the format
@@ -1005,7 +1005,7 @@ class CallbackDecorators(object):
 The same media item can be opened multiple times. Each time, this callback
 is invoked. It should allocate and initialize any instance-specific
 resources, then store them in *datap. The instance resources can be freed
-in the @ref libvlc_close_cb callback.
+in the @ref libvlc_media_close_cb callback.
 \param opaque private pointer as passed to L{libvlc_media_new_callbacks}()
 \param datap storage space for a private data pointer [OUT]
 \param sizep byte length of the bitstream or 0 if unknown [OUT]
@@ -1397,6 +1397,20 @@ AudioOutputDevice._fields_ = [  # recursive struct
     ('description', ctypes.c_char_p),
     ]
 
+class TitleDescription(_Cstruct):
+    _fields = [
+        ('duration', ctypes.c_longlong),
+        ('name', ctypes.c_char_p),
+        ('menu', ctypes.c_bool),
+    ]
+
+class ChapterDescription(_Cstruct):
+    _fields = [
+        ('time_offset', ctypes.c_longlong),
+        ('duration', ctypes.c_longlong),
+        ('name', ctypes.c_char_p),
+    ]
+
  # End of header.py #
 
 class EventManager(_Ctype):
@@ -1775,7 +1789,7 @@ class Instance(_Ctype):
     
     def audio_output_list_get(self):
         '''Gets the list of available audio output modules.
-        @return: list of available audio outputs. It must be freed it with In case of error, None is returned.
+        @return: list of available audio outputs. It must be freed with In case of error, None is returned.
         '''
         return libvlc_audio_output_list_get(self)
 
@@ -1791,7 +1805,7 @@ class Instance(_Ctype):
         some circumstances. By default, it is recommended to not specify any
         explicit audio device.
         @param psz_aout: audio output name (as returned by L{audio_output_list_get}()).
-        @return: A None-terminated linked list of potential audio output devices. It must be freed it with L{audio_output_device_list_release}().
+        @return: A None-terminated linked list of potential audio output devices. It must be freed with L{audio_output_device_list_release}().
         @version: LibVLC 2.1.0 or later.
         '''
         return libvlc_audio_output_device_list_get(self, str_to_bytes(aout))
@@ -2074,8 +2088,8 @@ class Media(_Ctype):
         @version: LibVLC 2.1.0 and later.
         """
         mediaTrack_pp = ctypes.POINTER(MediaTrack)()
-        n = libvlc_media_tracks_get(self, byref(mediaTrack_pp))
-        info = cast(ctypes.mediaTrack_pp, ctypes.POINTER(ctypes.POINTER(MediaTrack) * n))
+        n = libvlc_media_tracks_get(self, ctypes.byref(mediaTrack_pp))
+        info = ctypes.cast(ctypes.mediaTrack_pp, ctypes.POINTER(ctypes.POINTER(MediaTrack) * n))
         return info
 
 
@@ -2766,6 +2780,27 @@ class MediaPlayer(_Ctype):
         """
         return track_description_list(libvlc_audio_get_track_description(self))
 
+    def get_full_title_descriptions(self):
+        '''Get the full description of available titles.
+        @return: the titles list
+        @version: LibVLC 3.0.0 and later.
+        '''
+        titleDescription_pp = ctypes.POINTER(TitleDescription)()
+        n = libvlc_media_player_get_full_title_descriptions(self, ctypes.byref(titleDescription_pp))
+        info = ctypes.cast(ctypes.titleDescription_pp, ctypes.POINTER(ctypes.POINTER(TitleDescription) * n))
+        return info
+
+    def get_full_chapter_descriptions(self, i_chapters_of_title):
+        '''Get the full description of available chapters.
+        @param index: of the title to query for chapters.
+        @return: the chapter list
+        @version: LibVLC 3.0.0 and later.
+        '''
+        chapterDescription_pp = ctypes.POINTER(ChapterDescription)()
+        n = libvlc_media_player_get_full_chapter_descriptions(self, ctypes.byref(chapterDescription_pp))
+        info = ctypes.cast(ctypes.chapterDescription_pp, ctypes.POINTER(ctypes.POINTER(ChapterDescription) * n))
+        return info
+
     def video_get_size(self, num=0):
         """Get the video size in pixels as 2-tuple (width, height).
 
@@ -2946,7 +2981,7 @@ class MediaPlayer(_Ctype):
         Use the vout called "macosx".
         The drawable is an NSObject that follow the VLCOpenGLVideoViewEmbedding
         protocol:
-        @begincode
+        @code.m
         \@protocol VLCOpenGLVideoViewEmbedding <NSObject>
         - (void)addVoutSubview:(NSView *)view;
         - (void)removeVoutSubview:(NSView *)view;
@@ -2955,7 +2990,7 @@ class MediaPlayer(_Ctype):
         Or it can be an NSView object.
         If you want to use it along with Qt4 see the QMacCocoaViewContainer. Then
         the following code should work:
-        @begincode
+        @code.mm
         
             NSView *video = [[NSView alloc] init];
             QMacCocoaViewContainer *container = new QMacCocoaViewContainer(video, parent);
@@ -3590,7 +3625,7 @@ class MediaPlayer(_Ctype):
         @warning: Some audio output devices in the list might not actually work in
         some circumstances. By default, it is recommended to not specify any
         explicit audio device.
-        @return: A None-terminated linked list of potential audio output devices. It must be freed it with L{audio_output_device_list_release}().
+        @return: A None-terminated linked list of potential audio output devices. It must be freed with L{audio_output_device_list_release}().
         @version: LibVLC 2.2.0 or later.
         '''
         return libvlc_audio_output_device_enum(self)
@@ -5101,7 +5136,7 @@ def libvlc_media_player_set_nsobject(p_mi, drawable):
     Use the vout called "macosx".
     The drawable is an NSObject that follow the VLCOpenGLVideoViewEmbedding
     protocol:
-    @begincode
+    @code.m
     \@protocol VLCOpenGLVideoViewEmbedding <NSObject>
     - (void)addVoutSubview:(NSView *)view;
     - (void)removeVoutSubview:(NSView *)view;
@@ -5110,7 +5145,7 @@ def libvlc_media_player_set_nsobject(p_mi, drawable):
     Or it can be an NSView object.
     If you want to use it along with Qt4 see the QMacCocoaViewContainer. Then
     the following code should work:
-    @begincode
+    @code.mm
     
         NSView *video = [[NSView alloc] init];
         QMacCocoaViewContainer *container = new QMacCocoaViewContainer(video, parent);
@@ -5716,7 +5751,7 @@ def libvlc_video_get_spu_count(p_mi):
 def libvlc_video_get_spu_description(p_mi):
     '''Get the description of available video subtitles.
     @param p_mi: the media player.
-    @return: list containing description of available video subtitles.
+    @return: list containing description of available video subtitles. It must be freed with L{libvlc_track_description_list_release}().
     '''
     f = _Cfunctions.get('libvlc_video_get_spu_description', None) or \
         _Cfunction('libvlc_video_get_spu_description', ((1,),), None,
@@ -5772,26 +5807,52 @@ def libvlc_video_set_spu_delay(p_mi, i_delay):
                     ctypes.c_int, MediaPlayer, ctypes.c_int64)
     return f(p_mi, i_delay)
 
-def libvlc_video_get_title_description(p_mi):
-    '''Get the description of available titles.
+def libvlc_media_player_get_full_title_descriptions(p_mi, titles):
+    '''Get the full description of available titles.
     @param p_mi: the media player.
-    @return: list containing description of available titles.
+    @param address: to store an allocated array of title descriptions descriptions (must be freed with L{libvlc_title_descriptions_release}() by the caller) [OUT].
+    @return: the number of titles (-1 on error).
+    @version: LibVLC 3.0.0 and later.
     '''
-    f = _Cfunctions.get('libvlc_video_get_title_description', None) or \
-        _Cfunction('libvlc_video_get_title_description', ((1,),), None,
-                    ctypes.POINTER(TrackDescription), MediaPlayer)
-    return f(p_mi)
+    f = _Cfunctions.get('libvlc_media_player_get_full_title_descriptions', None) or \
+        _Cfunction('libvlc_media_player_get_full_title_descriptions', ((1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, ctypes.POINTER(ctypes.POINTER(TitleDescription)))
+    return f(p_mi, titles)
 
-def libvlc_video_get_chapter_description(p_mi, i_title):
-    '''Get the description of available chapters for specific title.
-    @param p_mi: the media player.
-    @param i_title: selected title.
-    @return: list containing description of available chapter for title i_title.
+def libvlc_title_descriptions_release(p_titles, i_count):
+    '''Release a title description.
+    @param title: description array to release.
+    @param number: of title descriptions to release.
+    @version: LibVLC 3.0.0 and later.
     '''
-    f = _Cfunctions.get('libvlc_video_get_chapter_description', None) or \
-        _Cfunction('libvlc_video_get_chapter_description', ((1,), (1,),), None,
-                    ctypes.POINTER(TrackDescription), MediaPlayer, ctypes.c_int)
-    return f(p_mi, i_title)
+    f = _Cfunctions.get('libvlc_title_descriptions_release', None) or \
+        _Cfunction('libvlc_title_descriptions_release', ((1,), (1,),), None,
+                    None, ctypes.POINTER(TitleDescription), ctypes.c_uint)
+    return f(p_titles, i_count)
+
+def libvlc_media_player_get_full_chapter_descriptions(p_mi, i_chapters_of_title, pp_chapters):
+    '''Get the full description of available chapters.
+    @param p_mi: the media player.
+    @param index: of the title to query for chapters.
+    @param address: to store an allocated array of chapter descriptions descriptions (must be freed with L{libvlc_chapter_descriptions_release}() by the caller) [OUT].
+    @return: the number of chapters (-1 on error).
+    @version: LibVLC 3.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_get_full_chapter_descriptions', None) or \
+        _Cfunction('libvlc_media_player_get_full_chapter_descriptions', ((1,), (1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, ctypes.c_int, ctypes.POINTER(ctypes.POINTER(ChapterDescription)))
+    return f(p_mi, i_chapters_of_title, pp_chapters)
+
+def libvlc_chapter_descriptions_release(p_chapters, i_count):
+    '''Release a chapter description.
+    @param chapter: description array to release.
+    @param number: of chapter descriptions to release.
+    @version: LibVLC 3.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_chapter_descriptions_release', None) or \
+        _Cfunction('libvlc_chapter_descriptions_release', ((1,), (1,),), None,
+                    None, ctypes.POINTER(ChapterDescription), ctypes.c_uint)
+    return f(p_chapters, i_count)
 
 def libvlc_video_get_crop_geometry(p_mi):
     '''Get current crop filter geometry.
@@ -5855,7 +5916,7 @@ def libvlc_video_get_track_count(p_mi):
 def libvlc_video_get_track_description(p_mi):
     '''Get the description of available video tracks.
     @param p_mi: media player.
-    @return: list with description of available video tracks, or None on error.
+    @return: list with description of available video tracks, or None on error. It must be freed with L{libvlc_track_description_list_release}().
     '''
     f = _Cfunctions.get('libvlc_video_get_track_description', None) or \
         _Cfunction('libvlc_video_get_track_description', ((1,),), None,
@@ -6042,7 +6103,7 @@ def libvlc_video_set_adjust_float(p_mi, option, value):
 def libvlc_audio_output_list_get(p_instance):
     '''Gets the list of available audio output modules.
     @param p_instance: libvlc instance.
-    @return: list of available audio outputs. It must be freed it with In case of error, None is returned.
+    @return: list of available audio outputs. It must be freed with In case of error, None is returned.
     '''
     f = _Cfunctions.get('libvlc_audio_output_list_get', None) or \
         _Cfunction('libvlc_audio_output_list_get', ((1,),), None,
@@ -6081,7 +6142,7 @@ def libvlc_audio_output_device_enum(mp):
     some circumstances. By default, it is recommended to not specify any
     explicit audio device.
     @param mp: media player.
-    @return: A None-terminated linked list of potential audio output devices. It must be freed it with L{libvlc_audio_output_device_list_release}().
+    @return: A None-terminated linked list of potential audio output devices. It must be freed with L{libvlc_audio_output_device_list_release}().
     @version: LibVLC 2.2.0 or later.
     '''
     f = _Cfunctions.get('libvlc_audio_output_device_enum', None) or \
@@ -6101,7 +6162,7 @@ def libvlc_audio_output_device_list_get(p_instance, aout):
     explicit audio device.
     @param p_instance: libvlc instance.
     @param psz_aout: audio output name (as returned by L{libvlc_audio_output_list_get}()).
-    @return: A None-terminated linked list of potential audio output devices. It must be freed it with L{libvlc_audio_output_device_list_release}().
+    @return: A None-terminated linked list of potential audio output devices. It must be freed with L{libvlc_audio_output_device_list_release}().
     @version: LibVLC 2.1.0 or later.
     '''
     f = _Cfunctions.get('libvlc_audio_output_device_list_get', None) or \
@@ -6234,7 +6295,7 @@ def libvlc_audio_get_track_count(p_mi):
 def libvlc_audio_get_track_description(p_mi):
     '''Get the description of available audio tracks.
     @param p_mi: media player.
-    @return: list with description of available audio tracks, or None.
+    @return: list with description of available audio tracks, or None. It must be freed with L{libvlc_track_description_list_release}().
     '''
     f = _Cfunctions.get('libvlc_audio_get_track_description', None) or \
         _Cfunction('libvlc_audio_get_track_description', ((1,),), None,
@@ -6787,7 +6848,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_printerr
 #  libvlc_set_exit_handler
 
-# 29 function(s) not wrapped as methods:
+# 31 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_amp_at_index
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
@@ -6801,6 +6862,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_audio_equalizer_set_preamp
 #  libvlc_audio_output_device_list_release
 #  libvlc_audio_output_list_release
+#  libvlc_chapter_descriptions_release
 #  libvlc_clearerr
 #  libvlc_clock
 #  libvlc_errmsg
@@ -6815,6 +6877,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_media_tracks_release
 #  libvlc_module_description_list_release
 #  libvlc_new
+#  libvlc_title_descriptions_release
 #  libvlc_track_description_list_release
 #  libvlc_vprinterr
 

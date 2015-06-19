@@ -596,5 +596,19 @@ AudioOutputDevice._fields_ = [  # recursive struct
     ('description', ctypes.c_char_p),
     ]
 
+class TitleDescription(_Cstruct):
+    _fields = [
+        ('duration', ctypes.c_longlong),
+        ('name', ctypes.c_char_p),
+        ('menu', ctypes.c_bool),
+    ]
+
+class ChapterDescription(_Cstruct):
+    _fields = [
+        ('time_offset', ctypes.c_longlong),
+        ('duration', ctypes.c_longlong),
+        ('name', ctypes.c_char_p),
+    ]
+
  # End of header.py #
 
