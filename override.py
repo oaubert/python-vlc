@@ -164,8 +164,8 @@ class Media:
         @version: LibVLC 2.1.0 and later.
         """
         mediaTrack_pp = ctypes.POINTER(MediaTrack)()
-        n = libvlc_media_tracks_get(self, byref(mediaTrack_pp))
-        info = cast(ctypes.mediaTrack_pp, ctypes.POINTER(ctypes.POINTER(MediaTrack) * n))
+        n = libvlc_media_tracks_get(self, ctypes.byref(mediaTrack_pp))
+        info = ctypes.cast(ctypes.mediaTrack_pp, ctypes.POINTER(ctypes.POINTER(MediaTrack) * n))
         return info
 
 class MediaList:
