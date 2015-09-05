@@ -540,12 +540,15 @@ class EventUnion(ctypes.Union):
         ('new_status',   ctypes.c_int     ),
         ('media',        ctypes.c_void_p  ),
         ('new_state',    ctypes.c_uint    ),
-        # Media instance
+        # FIXME: Media instance
+        ('new_cache', ctypes.c_float   ),
         ('new_position', ctypes.c_float   ),
         ('new_time',     ctypes.c_longlong),
         ('new_title',    ctypes.c_int     ),
         ('new_seekable', ctypes.c_longlong),
         ('new_pausable', ctypes.c_longlong),
+        ('new_scrambled', ctypes.c_longlong),
+        ('new_count', ctypes.c_longlong),
         # FIXME: Skipped MediaList and MediaListView...
         ('filename',     ctypes.c_char_p  ),
         ('new_length',   ctypes.c_longlong),
