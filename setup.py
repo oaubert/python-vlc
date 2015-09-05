@@ -22,7 +22,7 @@ else:
 setup(name='python-vlc',
       version = '1.1.0',
       author='Olivier Aubert',
-      author_email='olivier.aubert@liris.cnrs.fr',
+      author_email='contact@olivieraubert.net',
       url='http://wiki.videolan.org/PythonBinding',
       py_modules=['vlc'],
       keywords = [ 'vlc', 'video' ],
