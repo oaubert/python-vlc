@@ -1,19 +1,23 @@
 from distribute_setup import use_setuptools
 use_setuptools()
 
-from distutils.core import setup
-import sys
+import logging
 import os
+import shutil
+from distutils.core import setup
+
 import generate
 
-vlc_include_path = os.path.join("..","..","include","vlc")
-if not os.path.exists(vlc_include_path):
-    raise Exception("This script should be run from a VLC tree.")
 
-files = [ os.path.join(vlc_include_path, filename)
-          for filename in os.listdir(vlc_include_path) ]
-
-generate.process('vlc.py', files)
+vlc_include_path = os.path.join("..", "..", "include", "vlc")
+if os.path.exists(vlc_include_path):
+    files = [ os.path.join(vlc_include_path, filename)
+              for filename in os.listdir(vlc_include_path) ]
+    generate.process('vlc.py', files)
+else:
+    logging.warning("This script should be run from a VLC tree. "
+                    "Falling back to pre-generated file.")
+    shutil.copy(os.path.join('generated', 'vlc.py'), 'vlc.py')
 
 setup(name='python-vlc',
       version = '1.1.0',
@@ -29,6 +33,6 @@ setup(name='python-vlc',
 This module provides ctypes-based bindings for the native libvlc API
 (see http://wiki.videolan.org/LibVLC) of the VLC video player.
 
-It is automatically generated from the include files.
+It is automatically generated from the include files if they are available.
 """
       )
