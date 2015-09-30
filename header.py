@@ -50,6 +50,11 @@ from inspect import getargspec
 
 build_date  = ''  # build time stamp and __version__, see generate.py
 
+# The libvlc doc states that filenames are expected to be in UTF8, do
+# not rely on sys.getfilesystemencoding() which will be confused,
+# esp. on windows.
+DEFAULT_ENCODING = 'utf-8'
+
 if sys.version_info[0] > 2:
     str = str
     unicode = str
@@ -60,7 +65,7 @@ if sys.version_info[0] > 2:
         """Translate string or bytes to bytes.
         """
         if isinstance(s, str):
-            return bytes(s, sys.getfilesystemencoding())
+            return bytes(s, DEFAULT_ENCODING)
         else:
             return s
 
@@ -68,7 +73,7 @@ if sys.version_info[0] > 2:
         """Translate bytes to string.
         """
         if isinstance(b, bytes):
-            return b.decode(sys.getfilesystemencoding())
+            return b.decode(DEFAULT_ENCODING)
         else:
             return b
 else:
@@ -81,7 +86,7 @@ else:
         """Translate string or bytes to bytes.
         """
         if isinstance(s, unicode):
-            return s.encode(sys.getfilesystemencoding())
+            return s.encode(DEFAULT_ENCODING)
         else:
             return s
 
@@ -89,7 +94,7 @@ else:
         """Translate bytes to unicode string.
         """
         if isinstance(b, str):
-            return unicode(b, sys.getfilesystemencoding())
+            return unicode(b, DEFAULT_ENCODING)
         else:
             return b
 
