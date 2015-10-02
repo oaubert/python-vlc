@@ -1,4 +1,5 @@
 #! /usr/bin/python
+# This Python file uses the following encoding: utf-8
 
 #
 # Code generator for python ctypes bindings for VLC
@@ -26,7 +27,16 @@
 """
 
 import unittest
-import vlc
+try:
+    import urllib.parse as urllib # python3
+except:
+    import urllib # python2
+
+try:
+    import vlc
+except:
+    import generated.vlc as vlc
+
 print ("Checking " + vlc.__file__)
 
 class TestVLCAPI(unittest.TestCase):
@@ -97,6 +107,14 @@ class TestVLCAPI(unittest.TestCase):
         i=vlc.Instance()
         p=i.media_player_new(mrl)
         self.assertEqual(p.get_state(), vlc.State.NothingSpecial)
+
+    # Test that the VLC bindings can handle special characters in the filenames
+    def test_libvlc_player_special_chars(self):
+        mrl = u'/tmp/Test 韓 Korean.mp4'
+        i = vlc.Instance()
+        m = i.media_new(mrl)
+        url_encoded_mrl = urllib.quote(mrl.encode('utf-8'))
+        self.assertEqual(m.get_mrl(), 'file://' + url_encoded_mrl)
 
 if __name__ == '__main__':
     unittest.main()
