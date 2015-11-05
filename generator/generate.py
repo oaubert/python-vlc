@@ -61,6 +61,8 @@ import re
 import time
 import operator
 
+BASEDIR = os.path.abspath(os.path.dirname(sys.argv[0]))
+
 # Opener for text files
 if sys.hexversion < 0x3000000:
     def opener(name, mode='r'):
@@ -1040,7 +1042,7 @@ class _Enum(ctypes.c_uint):
         def striprefix(name):
             return name.replace(x, '').replace('libvlc_', '')
 
-        codes, methods, docstrs = self.parse_override('override.py')
+        codes, methods, docstrs = self.parse_override(os.path.join(BASEDIR, 'override.py'))
 
         # sort functions on the type/class
         # of their first parameter
@@ -1158,14 +1160,14 @@ class _Enum(ctypes.c_uint):
         """Write Python bindings to a file or C{stdout}.
         """
         self.outopen(path or '-')
-        self.insert_code('header.py', genums=True)
+        self.insert_code(os.path.join(BASEDIR, 'header.py'), genums=True)
 
         self.generate_wrappers()
         self.generate_ctypes()
 
         self.unwrapped()
 
-        self.insert_code('footer.py')
+        self.insert_code(os.path.join(BASEDIR, 'footer.py'))
         self.outclose()
 
 
@@ -1228,7 +1230,7 @@ class JavaGenerator(_Generator):
             j = self.class4(e.name)
             self.outopen(j + '.java')
 
-            self.insert_code('boilerplate.java')
+            self.insert_code(os.path.join(BASEDIR, 'boilerplate.java'))
             self.output("""package org.videolan.jvlc.internal;
 
 public enum %s
@@ -1258,8 +1260,8 @@ public enum %s
         """
         self.outopen('LibVlc.java')
 
-        self.insert_code('boilerplate.java')
-        self.insert_code('LibVlc-header.java')
+        self.insert_code(os.path.join(BASEDIR, 'boilerplate.java'))
+        self.insert_code(os.path.join(BASEDIR, 'LibVlc-header.java'))
 
         self.generate_header()
         for f in self.parser.funcs:
@@ -1267,7 +1269,7 @@ public enum %s
             p =    ', '.join('%s %s' % (self.class4(p.type), p.name) for p in f.pars)
             self.output('%s %s(%s);' % (self.class4(f.type), f.name, p), nt=2)
 
-        self.insert_code('LibVlc-footer.java')
+        self.insert_code(os.path.join(BASEDIR, 'LibVlc-footer.java'))
 
         self.unwrapped()
         self.outclose()
