@@ -51,7 +51,7 @@ C{LibVlc-footer.java} and C{LibVlc-header.java}.
 __all__     = ('Parser',
                'PythonGenerator', 'JavaGenerator',
                'process')
-__version__ =  '20.12.04.27'
+__version__ =  '20.15.11.06'
 
 _debug = False
 
@@ -61,15 +61,24 @@ import re
 import time
 import operator
 
-BASEDIR = os.path.abspath(os.path.dirname(sys.argv[0]))
+BASEDIR = os.path.abspath(os.path.dirname(__file__))
 
-# Opener for text files
-if sys.hexversion < 0x3000000:
+if sys.version_info[0] < 3:
+    PYTHON3 = False
     def opener(name, mode='r'):
         return open(name, mode)
+    str = str
+    unicode = unicode
+    bytes = str
+    basestring = basestring
 else:  # Python 3+
+    PYTHON3 = True
     def opener(name, mode='r'):  #PYCHOK expected
         return open(name, mode, encoding='utf8')
+    str = str
+    unicode = str
+    bytes = bytes
+    basestring = (str, bytes)
 
 # Functions not wrapped/not referenced
 _blacklist = {

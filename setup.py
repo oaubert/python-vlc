@@ -4,15 +4,13 @@ use_setuptools()
 import logging
 import os
 import shutil
-from distutils.core import setup
-
-import generate
-
+from setuptools import setup
 
 vlc_include_path = os.path.join("..", "..", "include", "vlc")
 if os.path.exists(vlc_include_path):
     files = [ os.path.join(vlc_include_path, filename)
               for filename in os.listdir(vlc_include_path) ]
+    from generator import generate
     generate.process('vlc.py', files)
 else:
     logging.warning("This script should be run from a VLC tree. "
@@ -20,7 +18,7 @@ else:
     shutil.copy(os.path.join('generated', 'vlc.py'), 'vlc.py')
 
 setup(name='python-vlc',
-      version = '1.1.1',
+      version = '1.1.2',
       author='Olivier Aubert',
       author_email='contact@olivieraubert.net',
       maintainer='Olivier Aubert',

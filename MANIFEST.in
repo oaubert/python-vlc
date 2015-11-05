@@ -1,0 +1,6 @@
+include setup.py
+include COPYING COPYING.generator MANIFEST.in README.rst TODO
+include distribute_setup.py Makefile 
+recursive-include generator *
+recursive-include tests *
+recursive-include examples *
