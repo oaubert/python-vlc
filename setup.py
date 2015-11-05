@@ -20,7 +20,7 @@ else:
     shutil.copy(os.path.join('generated', 'vlc.py'), 'vlc.py')
 
 setup(name='python-vlc',
-      version = '1.1.0',
+      version = '1.1.1',
       author='Olivier Aubert',
       author_email='contact@olivieraubert.net',
       url='http://wiki.videolan.org/PythonBinding',
