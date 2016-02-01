@@ -281,8 +281,8 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
 
     def get_full_chapter_descriptions(self, i_chapters_of_title):
         '''Get the full description of available chapters.
-        @param index: of the title to query for chapters.
-        @return: the chapter list
+        @param i_chapters_of_title: index of the title to query for chapters (uses current title if set to -1).
+        @return: the chapters list
         @version: LibVLC 3.0.0 and later.
         '''
         chapterDescription_pp = ctypes.POINTER(ChapterDescription)()

@@ -49,7 +49,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Thu Nov  5 23:41:43 2015"
+build_date  = "Mon Feb  1 16:15:29 2016"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -434,6 +434,7 @@ class EventType(_Enum):
         282: 'MediaPlayerUnmuted',
         283: 'MediaPlayerAudioVolume',
         284: 'MediaPlayerAudioDevice',
+        285: 'MediaPlayerChapterChanged',
         0x200: 'MediaListItemAdded',
         513: 'MediaListWillAddItem',
         514: 'MediaListItemDeleted',
@@ -482,6 +483,7 @@ EventType.MediaPlayerAudioDevice        = EventType(284)
 EventType.MediaPlayerAudioVolume        = EventType(283)
 EventType.MediaPlayerBackward           = EventType(264)
 EventType.MediaPlayerBuffering          = EventType(259)
+EventType.MediaPlayerChapterChanged     = EventType(285)
 EventType.MediaPlayerCorked             = EventType(279)
 EventType.MediaPlayerESAdded            = EventType(276)
 EventType.MediaPlayerESDeleted          = EventType(277)
@@ -551,6 +553,7 @@ class Meta(_Enum):
         22: 'Actors',
         23: 'AlbumArtist',
         24: 'DiscNumber',
+        25: 'DiscTotal',
     }
 Meta.Actors      = Meta(22)
 Meta.Album       = Meta(4)
@@ -562,6 +565,7 @@ Meta.Date        = Meta(8)
 Meta.Description = Meta(6)
 Meta.Director    = Meta(18)
 Meta.DiscNumber  = Meta(24)
+Meta.DiscTotal   = Meta(25)
 Meta.EncodedBy   = Meta(14)
 Meta.Episode     = Meta(20)
 Meta.Genre       = Meta(2)
@@ -816,357 +820,289 @@ AudioOutputChannel.Right   = AudioOutputChannel(4)
 AudioOutputChannel.Stereo  = AudioOutputChannel(1)
 
 class Callback(ctypes.c_void_p):
-    """Callback function notification
-\param p_event the event triggering the callback
+    """Callback function notification.
+    @param p_event: the event triggering the callback.
     """
     pass
 class LogCb(ctypes.c_void_p):
     """Callback prototype for LibVLC log message handler.
-\param data data pointer as given to L{libvlc_log_set}()
-\param level message level (@ref libvlc_log_level)
-\param ctx message context (meta-information about the message)
-\param fmt printf() format string (as defined by ISO C11)
-\param args variable argument list for the format
-\note Log message handlers <b>must</b> be thread-safe.
-\warning The message context pointer, the format string parameters and the
-         variable arguments are only valid until the callback returns.
+    @param data: data pointer as given to L{libvlc_log_set}().
+    @param level: message level (@ref libvlc_log_level).
+    @param ctx: message context (meta-information about the message).
+    @param fmt: printf() format string (as defined by ISO C11).
+    @param args: variable argument list for the format @note Log message handlers B{must} be thread-safe. @warning The message context pointer, the format string parameters and the variable arguments are only valid until the callback returns.
     """
     pass
 class MediaOpenCb(ctypes.c_void_p):
     """Callback prototype to open a custom bitstream input media.
-The same media item can be opened multiple times. Each time, this callback
-is invoked. It should allocate and initialize any instance-specific
-resources, then store them in *datap. The instance resources can be freed
-in the @ref libvlc_media_close_cb callback.
-\param opaque private pointer as passed to L{libvlc_media_new_callbacks}()
-\param datap storage space for a private data pointer [OUT]
-\param sizep byte length of the bitstream or UINT64_MAX if unknown [OUT]
-\note For convenience, *datap is initially NULL and *sizep is initially 0.
-\return 0 on success, non-zero on error. In case of failure, the other
-callbacks will not be invoked and any value stored in *datap and *sizep is
-discarded.
+    The same media item can be opened multiple times. Each time, this callback
+    is invoked. It should allocate and initialize any instance-specific
+    resources, then store them in *datap. The instance resources can be freed
+    in the @ref libvlc_media_close_cb callback.
+    @param opaque: private pointer as passed to L{libvlc_media_new_callbacks}().
+    @return: datap storage space for a private data pointer, sizep byte length of the bitstream or UINT64_MAX if unknown.
     """
     pass
 class MediaReadCb(ctypes.c_void_p):
     """Callback prototype to read data from a custom bitstream input media.
-\param opaque private pointer as set by the @ref libvlc_media_open_cb
-              callback
-\param buf start address of the buffer to read data into
-\param len bytes length of the buffer
-\return strictly positive number of bytes read, 0 on end-of-stream,
-        or -1 on non-recoverable error
-\note If no data is immediately available, then the callback should sleep.
-\warning The application is responsible for avoiding deadlock situations.
-In particular, the callback should return an error if playback is stopped;
-if it does not return, then L{libvlc_media_player_stop}() will never return.
+    @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
+    @param buf: start address of the buffer to read data into.
+    @param len: bytes length of the buffer.
+    @return: strictly positive number of bytes read, 0 on end-of-stream, or -1 on non-recoverable error @note If no data is immediately available, then the callback should sleep. @warning The application is responsible for avoiding deadlock situations. In particular, the callback should return an error if playback is stopped; if it does not return, then L{libvlc_media_player_stop}() will never return.
     """
     pass
 class MediaSeekCb(ctypes.c_void_p):
     """Callback prototype to seek a custom bitstream input media.
-\param opaque private pointer as set by the @ref libvlc_media_open_cb
-              callback
-\param offset absolute byte offset to seek to
-\return 0 on success, -1 on error.
+    @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
+    @param offset: absolute byte offset to seek to.
+    @return: 0 on success, -1 on error.
     """
     pass
 class MediaCloseCb(ctypes.c_void_p):
     """Callback prototype to close a custom bitstream input media.
-\param opaque private pointer as set by the @ref libvlc_media_open_cb
-              callback
+    @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
     """
     pass
 class VideoLockCb(ctypes.c_void_p):
     """Callback prototype to allocate and lock a picture buffer.
-Whenever a new video frame needs to be decoded, the lock callback is
-invoked. Depending on the video chroma, one or three pixel planes of
-adequate dimensions must be returned via the second parameter. Those
-planes must be aligned on 32-bytes boundaries.
-\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
-\param planes start address of the pixel planes (LibVLC allocates the array
-            of void pointers, this callback must initialize the array) [OUT]
-\return a private pointer for the display and unlock callbacks to identify
-        the picture buffers
+    Whenever a new video frame needs to be decoded, the lock callback is
+    invoked. Depending on the video chroma, one or three pixel planes of
+    adequate dimensions must be returned via the second parameter. Those
+    planes must be aligned on 32-bytes boundaries.
+    @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
+    @param planes: start address of the pixel planes (LibVLC allocates the array of void pointers, this callback must initialize the array) [OUT].
+    @return: a private pointer for the display and unlock callbacks to identify the picture buffers.
     """
     pass
 class VideoUnlockCb(ctypes.c_void_p):
     """Callback prototype to unlock a picture buffer.
-When the video frame decoding is complete, the unlock callback is invoked.
-This callback might not be needed at all. It is only an indication that the
-application can now read the pixel values if it needs to.
-\warning A picture buffer is unlocked after the picture is decoded,
-but before the picture is displayed.
-\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
-\param picture private pointer returned from the @ref libvlc_video_lock_cb
-               callback [IN]
-\param planes pixel planes as defined by the @ref libvlc_video_lock_cb
-              callback (this parameter is only for convenience) [IN]
+    When the video frame decoding is complete, the unlock callback is invoked.
+    This callback might not be needed at all. It is only an indication that the
+    application can now read the pixel values if it needs to.
+    @warning: A picture buffer is unlocked after the picture is decoded,
+    but before the picture is displayed.
+    @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
+    @param picture: private pointer returned from the @ref libvlc_video_lock_cb callback [IN].
+    @param planes: pixel planes as defined by the @ref libvlc_video_lock_cb callback (this parameter is only for convenience) [IN].
     """
     pass
 class VideoDisplayCb(ctypes.c_void_p):
     """Callback prototype to display a picture.
-When the video frame needs to be shown, as determined by the media playback
-clock, the display callback is invoked.
-\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
-\param picture private pointer returned from the @ref libvlc_video_lock_cb
-               callback [IN]
+    When the video frame needs to be shown, as determined by the media playback
+    clock, the display callback is invoked.
+    @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
+    @param picture: private pointer returned from the @ref libvlc_video_lock_cb callback [IN].
     """
     pass
 class VideoFormatCb(ctypes.c_void_p):
     """Callback prototype to configure picture buffers format.
-This callback gets the format of the video as output by the video decoder
-and the chain of video filters (if any). It can opt to change any parameter
-as it needs. In that case, LibVLC will attempt to convert the video format
-(rescaling and chroma conversion) but these operations can be CPU intensive.
-\param opaque pointer to the private pointer passed to
-              L{libvlc_video_set_callbacks}() [IN/OUT]
-\param chroma pointer to the 4 bytes video format identifier [IN/OUT]
-\param width pointer to the pixel width [IN/OUT]
-\param height pointer to the pixel height [IN/OUT]
-\param pitches table of scanline pitches in bytes for each pixel plane
-               (the table is allocated by LibVLC) [OUT]
-\param lines table of scanlines count for each plane [OUT]
-\return the number of picture buffers allocated, 0 indicates failure
-\note
-For each pixels plane, the scanline pitch must be bigger than or equal to
-the number of bytes per pixel multiplied by the pixel width.
-Similarly, the number of scanlines must be bigger than of equal to
-the pixel height.
-Furthermore, we recommend that pitches and lines be multiple of 32
-to not break assumptions that might be held by optimized code
-in the video decoders, video filters and/or video converters.
+    This callback gets the format of the video as output by the video decoder
+    and the chain of video filters (if any). It can opt to change any parameter
+    as it needs. In that case, LibVLC will attempt to convert the video format
+    (rescaling and chroma conversion) but these operations can be CPU intensive.
+    @param opaque: pointer to the private pointer passed to L{libvlc_video_set_callbacks}() [IN/OUT].
+    @param chroma: pointer to the 4 bytes video format identifier [IN/OUT].
+    @param width: pointer to the pixel width [IN/OUT].
+    @param height: pointer to the pixel height [IN/OUT].
+    @param pitches: table of scanline pitches in bytes for each pixel plane (the table is allocated by LibVLC) [OUT].
+    @return: lines table of scanlines count for each plane.
     """
     pass
 class VideoCleanupCb(ctypes.c_void_p):
     """Callback prototype to configure picture buffers format.
-\param opaque private pointer as passed to L{libvlc_video_set_callbacks}()
-              (and possibly modified by @ref libvlc_video_format_cb) [IN]
+    @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() (and possibly modified by @ref libvlc_video_format_cb) [IN].
     """
     pass
 class AudioPlayCb(ctypes.c_void_p):
     """Callback prototype for audio playback.
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
-\param samples pointer to the first audio sample to play back [IN]
-\param count number of audio samples to play back
-\param pts expected play time stamp (see libvlc_delay())
+    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+    @param samples: pointer to the first audio sample to play back [IN].
+    @param count: number of audio samples to play back.
+    @param pts: expected play time stamp (see libvlc_delay()).
     """
     pass
 class AudioPauseCb(ctypes.c_void_p):
     """Callback prototype for audio pause.
-\note The pause callback is never called if the audio is already paused.
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
-\param pts time stamp of the pause request (should be elapsed already)
+    @note: The pause callback is never called if the audio is already paused.
+    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+    @param pts: time stamp of the pause request (should be elapsed already).
     """
     pass
 class AudioResumeCb(ctypes.c_void_p):
     """Callback prototype for audio resumption (i.e. restart from pause).
-\note The resume callback is never called if the audio is not paused.
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
-\param pts time stamp of the resumption request (should be elapsed already)
+    @note: The resume callback is never called if the audio is not paused.
+    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+    @param pts: time stamp of the resumption request (should be elapsed already).
     """
     pass
 class AudioFlushCb(ctypes.c_void_p):
     """Callback prototype for audio buffer flush
-(i.e. discard all pending buffers and stop playback as soon as possible).
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
+    (i.e. discard all pending buffers and stop playback as soon as possible).
+    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
     """
     pass
 class AudioDrainCb(ctypes.c_void_p):
     """Callback prototype for audio buffer drain
-(i.e. wait for pending buffers to be played).
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
+    (i.e. wait for pending buffers to be played).
+    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
     """
     pass
 class AudioSetVolumeCb(ctypes.c_void_p):
     """Callback prototype for audio volume change.
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
-\param volume software volume (1. = nominal, 0. = mute)
-\param mute muted flag
+    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+    @param volume: software volume (1. = nominal, 0. = mute).
+    @param mute: muted flag.
     """
     pass
 class AudioSetupCb(ctypes.c_void_p):
     """Callback prototype to setup the audio playback.
-This is called when the media player needs to create a new audio output.
-\param opaque pointer to the data pointer passed to
-              L{libvlc_audio_set_callbacks}() [IN/OUT]
-\param format 4 bytes sample format [IN/OUT]
-\param rate sample rate [IN/OUT]
-\param channels channels count [IN/OUT]
-\return 0 on success, anything else to skip audio playback
+    This is called when the media player needs to create a new audio output.
+    @param opaque: pointer to the data pointer passed to L{libvlc_audio_set_callbacks}() [IN/OUT].
+    @param format: 4 bytes sample format [IN/OUT].
+    @param rate: sample rate [IN/OUT].
+    @param channels: channels count [IN/OUT].
+    @return: 0 on success, anything else to skip audio playback.
     """
     pass
 class AudioCleanupCb(ctypes.c_void_p):
     """Callback prototype for audio playback cleanup.
-This is called when the media player no longer needs an audio output.
-\param opaque data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
+    This is called when the media player no longer needs an audio output.
+    @param opaque: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
     """
     pass
 class CallbackDecorators(object):
     "Class holding various method decorators for callback functions."
     Callback = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p)
-    Callback.__doc__ = '''Callback function notification
-\param p_event the event triggering the callback
+    Callback.__doc__ = '''Callback function notification.
+        @param p_event: the event triggering the callback.
     ''' 
     LogCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, Log_ptr, ctypes.c_char_p, ctypes.c_void_p)
     LogCb.__doc__ = '''Callback prototype for LibVLC log message handler.
-\param data data pointer as given to L{libvlc_log_set}()
-\param level message level (@ref libvlc_log_level)
-\param ctx message context (meta-information about the message)
-\param fmt printf() format string (as defined by ISO C11)
-\param args variable argument list for the format
-\note Log message handlers <b>must</b> be thread-safe.
-\warning The message context pointer, the format string parameters and the
-         variable arguments are only valid until the callback returns.
+        @param data: data pointer as given to L{libvlc_log_set}().
+        @param level: message level (@ref libvlc_log_level).
+        @param ctx: message context (meta-information about the message).
+        @param fmt: printf() format string (as defined by ISO C11).
+        @param args: variable argument list for the format @note Log message handlers B{must} be thread-safe. @warning The message context pointer, the format string parameters and the variable arguments are only valid until the callback returns.
     ''' 
     MediaOpenCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ctypes.c_void_p, ListPOINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64))
     MediaOpenCb.__doc__ = '''Callback prototype to open a custom bitstream input media.
-The same media item can be opened multiple times. Each time, this callback
-is invoked. It should allocate and initialize any instance-specific
-resources, then store them in *datap. The instance resources can be freed
-in the @ref libvlc_media_close_cb callback.
-\param opaque private pointer as passed to L{libvlc_media_new_callbacks}()
-\param datap storage space for a private data pointer [OUT]
-\param sizep byte length of the bitstream or UINT64_MAX if unknown [OUT]
-\note For convenience, *datap is initially NULL and *sizep is initially 0.
-\return 0 on success, non-zero on error. In case of failure, the other
-callbacks will not be invoked and any value stored in *datap and *sizep is
-discarded.
+        The same media item can be opened multiple times. Each time, this callback
+        is invoked. It should allocate and initialize any instance-specific
+        resources, then store them in *datap. The instance resources can be freed
+        in the @ref libvlc_media_close_cb callback.
+        @param opaque: private pointer as passed to L{libvlc_media_new_callbacks}().
+        @return: datap storage space for a private data pointer, sizep byte length of the bitstream or UINT64_MAX if unknown.
     ''' 
     MediaReadCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_ssize_t), ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t)
     MediaReadCb.__doc__ = '''Callback prototype to read data from a custom bitstream input media.
-\param opaque private pointer as set by the @ref libvlc_media_open_cb
-              callback
-\param buf start address of the buffer to read data into
-\param len bytes length of the buffer
-\return strictly positive number of bytes read, 0 on end-of-stream,
-        or -1 on non-recoverable error
-\note If no data is immediately available, then the callback should sleep.
-\warning The application is responsible for avoiding deadlock situations.
-In particular, the callback should return an error if playback is stopped;
-if it does not return, then L{libvlc_media_player_stop}() will never return.
+        @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
+        @param buf: start address of the buffer to read data into.
+        @param len: bytes length of the buffer.
+        @return: strictly positive number of bytes read, 0 on end-of-stream, or -1 on non-recoverable error @note If no data is immediately available, then the callback should sleep. @warning The application is responsible for avoiding deadlock situations. In particular, the callback should return an error if playback is stopped; if it does not return, then L{libvlc_media_player_stop}() will never return.
     ''' 
     MediaSeekCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ctypes.c_void_p, ctypes.c_uint64)
     MediaSeekCb.__doc__ = '''Callback prototype to seek a custom bitstream input media.
-\param opaque private pointer as set by the @ref libvlc_media_open_cb
-              callback
-\param offset absolute byte offset to seek to
-\return 0 on success, -1 on error.
+        @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
+        @param offset: absolute byte offset to seek to.
+        @return: 0 on success, -1 on error.
     ''' 
     MediaCloseCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
     MediaCloseCb.__doc__ = '''Callback prototype to close a custom bitstream input media.
-\param opaque private pointer as set by the @ref libvlc_media_open_cb
-              callback
+        @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
     ''' 
     VideoLockCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ListPOINTER(ctypes.c_void_p))
     VideoLockCb.__doc__ = '''Callback prototype to allocate and lock a picture buffer.
-Whenever a new video frame needs to be decoded, the lock callback is
-invoked. Depending on the video chroma, one or three pixel planes of
-adequate dimensions must be returned via the second parameter. Those
-planes must be aligned on 32-bytes boundaries.
-\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
-\param planes start address of the pixel planes (LibVLC allocates the array
-            of void pointers, this callback must initialize the array) [OUT]
-\return a private pointer for the display and unlock callbacks to identify
-        the picture buffers
+        Whenever a new video frame needs to be decoded, the lock callback is
+        invoked. Depending on the video chroma, one or three pixel planes of
+        adequate dimensions must be returned via the second parameter. Those
+        planes must be aligned on 32-bytes boundaries.
+        @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
+        @param planes: start address of the pixel planes (LibVLC allocates the array of void pointers, this callback must initialize the array) [OUT].
+        @return: a private pointer for the display and unlock callbacks to identify the picture buffers.
     ''' 
     VideoUnlockCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ListPOINTER(ctypes.c_void_p))
     VideoUnlockCb.__doc__ = '''Callback prototype to unlock a picture buffer.
-When the video frame decoding is complete, the unlock callback is invoked.
-This callback might not be needed at all. It is only an indication that the
-application can now read the pixel values if it needs to.
-\warning A picture buffer is unlocked after the picture is decoded,
-but before the picture is displayed.
-\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
-\param picture private pointer returned from the @ref libvlc_video_lock_cb
-               callback [IN]
-\param planes pixel planes as defined by the @ref libvlc_video_lock_cb
-              callback (this parameter is only for convenience) [IN]
+        When the video frame decoding is complete, the unlock callback is invoked.
+        This callback might not be needed at all. It is only an indication that the
+        application can now read the pixel values if it needs to.
+        @warning: A picture buffer is unlocked after the picture is decoded,
+        but before the picture is displayed.
+        @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
+        @param picture: private pointer returned from the @ref libvlc_video_lock_cb callback [IN].
+        @param planes: pixel planes as defined by the @ref libvlc_video_lock_cb callback (this parameter is only for convenience) [IN].
     ''' 
     VideoDisplayCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p)
     VideoDisplayCb.__doc__ = '''Callback prototype to display a picture.
-When the video frame needs to be shown, as determined by the media playback
-clock, the display callback is invoked.
-\param opaque private pointer as passed to L{libvlc_video_set_callbacks}() [IN]
-\param picture private pointer returned from the @ref libvlc_video_lock_cb
-               callback [IN]
+        When the video frame needs to be shown, as determined by the media playback
+        clock, the display callback is invoked.
+        @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
+        @param picture: private pointer returned from the @ref libvlc_video_lock_cb callback [IN].
     ''' 
     VideoFormatCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_uint), ListPOINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
     VideoFormatCb.__doc__ = '''Callback prototype to configure picture buffers format.
-This callback gets the format of the video as output by the video decoder
-and the chain of video filters (if any). It can opt to change any parameter
-as it needs. In that case, LibVLC will attempt to convert the video format
-(rescaling and chroma conversion) but these operations can be CPU intensive.
-\param opaque pointer to the private pointer passed to
-              L{libvlc_video_set_callbacks}() [IN/OUT]
-\param chroma pointer to the 4 bytes video format identifier [IN/OUT]
-\param width pointer to the pixel width [IN/OUT]
-\param height pointer to the pixel height [IN/OUT]
-\param pitches table of scanline pitches in bytes for each pixel plane
-               (the table is allocated by LibVLC) [OUT]
-\param lines table of scanlines count for each plane [OUT]
-\return the number of picture buffers allocated, 0 indicates failure
-\note
-For each pixels plane, the scanline pitch must be bigger than or equal to
-the number of bytes per pixel multiplied by the pixel width.
-Similarly, the number of scanlines must be bigger than of equal to
-the pixel height.
-Furthermore, we recommend that pitches and lines be multiple of 32
-to not break assumptions that might be held by optimized code
-in the video decoders, video filters and/or video converters.
+        This callback gets the format of the video as output by the video decoder
+        and the chain of video filters (if any). It can opt to change any parameter
+        as it needs. In that case, LibVLC will attempt to convert the video format
+        (rescaling and chroma conversion) but these operations can be CPU intensive.
+        @param opaque: pointer to the private pointer passed to L{libvlc_video_set_callbacks}() [IN/OUT].
+        @param chroma: pointer to the 4 bytes video format identifier [IN/OUT].
+        @param width: pointer to the pixel width [IN/OUT].
+        @param height: pointer to the pixel height [IN/OUT].
+        @param pitches: table of scanline pitches in bytes for each pixel plane (the table is allocated by LibVLC) [OUT].
+        @return: lines table of scanlines count for each plane.
     ''' 
     VideoCleanupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
     VideoCleanupCb.__doc__ = '''Callback prototype to configure picture buffers format.
-\param opaque private pointer as passed to L{libvlc_video_set_callbacks}()
-              (and possibly modified by @ref libvlc_video_format_cb) [IN]
+        @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() (and possibly modified by @ref libvlc_video_format_cb) [IN].
     ''' 
     AudioPlayCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.c_int64)
     AudioPlayCb.__doc__ = '''Callback prototype for audio playback.
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
-\param samples pointer to the first audio sample to play back [IN]
-\param count number of audio samples to play back
-\param pts expected play time stamp (see libvlc_delay())
+        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+        @param samples: pointer to the first audio sample to play back [IN].
+        @param count: number of audio samples to play back.
+        @param pts: expected play time stamp (see libvlc_delay()).
     ''' 
     AudioPauseCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int64)
     AudioPauseCb.__doc__ = '''Callback prototype for audio pause.
-\note The pause callback is never called if the audio is already paused.
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
-\param pts time stamp of the pause request (should be elapsed already)
+        @note: The pause callback is never called if the audio is already paused.
+        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+        @param pts: time stamp of the pause request (should be elapsed already).
     ''' 
     AudioResumeCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int64)
     AudioResumeCb.__doc__ = '''Callback prototype for audio resumption (i.e. restart from pause).
-\note The resume callback is never called if the audio is not paused.
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
-\param pts time stamp of the resumption request (should be elapsed already)
+        @note: The resume callback is never called if the audio is not paused.
+        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+        @param pts: time stamp of the resumption request (should be elapsed already).
     ''' 
     AudioFlushCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int64)
     AudioFlushCb.__doc__ = '''Callback prototype for audio buffer flush
-(i.e. discard all pending buffers and stop playback as soon as possible).
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
+        (i.e. discard all pending buffers and stop playback as soon as possible).
+        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
     ''' 
     AudioDrainCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
     AudioDrainCb.__doc__ = '''Callback prototype for audio buffer drain
-(i.e. wait for pending buffers to be played).
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
+        (i.e. wait for pending buffers to be played).
+        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
     ''' 
     AudioSetVolumeCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_float, ctypes.c_bool)
     AudioSetVolumeCb.__doc__ = '''Callback prototype for audio volume change.
-\param data data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
-\param volume software volume (1. = nominal, 0. = mute)
-\param mute muted flag
+        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+        @param volume: software volume (1. = nominal, 0. = mute).
+        @param mute: muted flag.
     ''' 
     AudioSetupCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ListPOINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
     AudioSetupCb.__doc__ = '''Callback prototype to setup the audio playback.
-This is called when the media player needs to create a new audio output.
-\param opaque pointer to the data pointer passed to
-              L{libvlc_audio_set_callbacks}() [IN/OUT]
-\param format 4 bytes sample format [IN/OUT]
-\param rate sample rate [IN/OUT]
-\param channels channels count [IN/OUT]
-\return 0 on success, anything else to skip audio playback
+        This is called when the media player needs to create a new audio output.
+        @param opaque: pointer to the data pointer passed to L{libvlc_audio_set_callbacks}() [IN/OUT].
+        @param format: 4 bytes sample format [IN/OUT].
+        @param rate: sample rate [IN/OUT].
+        @param channels: channels count [IN/OUT].
+        @return: 0 on success, anything else to skip audio playback.
     ''' 
     AudioCleanupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
     AudioCleanupCb.__doc__ = '''Callback prototype for audio playback cleanup.
-This is called when the media player no longer needs an audio output.
-\param opaque data pointer as passed to L{libvlc_audio_set_callbacks}() [IN]
+        This is called when the media player no longer needs an audio output.
+        @param opaque: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
     ''' 
 cb = CallbackDecorators
  # End of generated enum types #
@@ -1824,7 +1760,7 @@ class Instance(_Ctype):
         @warning: Some audio output devices in the list might not actually work in
         some circumstances. By default, it is recommended to not specify any
         explicit audio device.
-        @param psz_aout: audio output name (as returned by L{audio_output_list_get}()).
+        @param aout: audio output name (as returned by L{audio_output_list_get}()).
         @return: A None-terminated linked list of potential audio output devices. It must be freed with L{audio_output_device_list_release}().
         @version: LibVLC 2.1.0 or later.
         '''
@@ -2819,8 +2755,8 @@ class MediaPlayer(_Ctype):
 
     def get_full_chapter_descriptions(self, i_chapters_of_title):
         '''Get the full description of available chapters.
-        @param index: of the title to query for chapters.
-        @return: the chapter list
+        @param i_chapters_of_title: index of the title to query for chapters (uses current title if set to -1).
+        @return: the chapters list
         @version: LibVLC 3.0.0 and later.
         '''
         chapterDescription_pp = ctypes.POINTER(ChapterDescription)()
@@ -3095,10 +3031,19 @@ class MediaPlayer(_Ctype):
     def set_android_context(self, p_jvm, p_awindow_handler):
         '''Set the android context.
         @param p_jvm: the Java VM of the android process.
-        @param awindow_handler: org.videolan.libvlc.IAWindowNativeHandler jobject implemented by the org.videolan.libvlc.MediaPlayer class from the libvlc-android project.
+        @param p_awindow_handler: org.videolan.libvlc.IAWindowNativeHandler jobject implemented by the org.videolan.libvlc.MediaPlayer class from the libvlc-android project.
         @version: LibVLC 3.0.0 and later.
         '''
         return libvlc_media_player_set_android_context(self, p_jvm, p_awindow_handler)
+
+    
+    def set_evas_object(self, p_evas_object):
+        '''Set the EFL Evas Object.
+        @param p_evas_object: a valid EFL Evas Object (Evas_Object).
+        @return: -1 if an error was detected, 0 otherwise.
+        @version: LibVLC 3.0.0 and later.
+        '''
+        return libvlc_media_player_set_evas_object(self, p_evas_object)
 
     
     def audio_set_callbacks(self, play, pause, resume, flush, drain, opaque):
@@ -3281,7 +3226,11 @@ class MediaPlayer(_Ctype):
 
     
     def get_fps(self):
-        '''Get movie fps rate.
+        '''Get movie fps rate
+        This function is provided for backward compatibility. It cannot deal with
+        multiple video tracks. In LibVLC versions prior to 3.0, it would also fail
+        if the file format did not convey the frame rate explicitly.
+        \deprecated Consider using L{media_tracks_get}() instead.
         @return: frames per second (fps) for this playing movie, or 0 if unspecified.
         '''
         return libvlc_media_player_get_fps(self)
@@ -5329,13 +5278,25 @@ def libvlc_media_player_set_android_context(p_mi, p_jvm, p_awindow_handler):
     '''Set the android context.
     @param p_mi: the media player.
     @param p_jvm: the Java VM of the android process.
-    @param awindow_handler: org.videolan.libvlc.IAWindowNativeHandler jobject implemented by the org.videolan.libvlc.MediaPlayer class from the libvlc-android project.
+    @param p_awindow_handler: org.videolan.libvlc.IAWindowNativeHandler jobject implemented by the org.videolan.libvlc.MediaPlayer class from the libvlc-android project.
     @version: LibVLC 3.0.0 and later.
     '''
     f = _Cfunctions.get('libvlc_media_player_set_android_context', None) or \
         _Cfunction('libvlc_media_player_set_android_context', ((1,), (1,), (1,),), None,
                     None, MediaPlayer, ctypes.c_void_p, ctypes.c_void_p)
     return f(p_mi, p_jvm, p_awindow_handler)
+
+def libvlc_media_player_set_evas_object(p_mi, p_evas_object):
+    '''Set the EFL Evas Object.
+    @param p_mi: the media player.
+    @param p_evas_object: a valid EFL Evas Object (Evas_Object).
+    @return: -1 if an error was detected, 0 otherwise.
+    @version: LibVLC 3.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_set_evas_object', None) or \
+        _Cfunction('libvlc_media_player_set_evas_object', ((1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, ctypes.c_void_p)
+    return f(p_mi, p_evas_object)
 
 def libvlc_audio_set_callbacks(mp, play, pause, resume, flush, drain, opaque):
     '''Set callbacks and private data for decoded audio.
@@ -5583,7 +5544,11 @@ def libvlc_media_player_get_state(p_mi):
     return f(p_mi)
 
 def libvlc_media_player_get_fps(p_mi):
-    '''Get movie fps rate.
+    '''Get movie fps rate
+    This function is provided for backward compatibility. It cannot deal with
+    multiple video tracks. In LibVLC versions prior to 3.0, it would also fail
+    if the file format did not convey the frame rate explicitly.
+    \deprecated Consider using L{libvlc_media_tracks_get}() instead.
     @param p_mi: the Media Player.
     @return: frames per second (fps) for this playing movie, or 0 if unspecified.
     '''
@@ -5901,7 +5866,7 @@ def libvlc_video_set_spu_delay(p_mi, i_delay):
 def libvlc_media_player_get_full_title_descriptions(p_mi, titles):
     '''Get the full description of available titles.
     @param p_mi: the media player.
-    @param address: to store an allocated array of title descriptions descriptions (must be freed with L{libvlc_title_descriptions_release}() by the caller) [OUT].
+    @param titles: address to store an allocated array of title descriptions descriptions (must be freed with L{libvlc_title_descriptions_release}() by the caller) [OUT].
     @return: the number of titles (-1 on error).
     @version: LibVLC 3.0.0 and later.
     '''
@@ -5912,8 +5877,8 @@ def libvlc_media_player_get_full_title_descriptions(p_mi, titles):
 
 def libvlc_title_descriptions_release(p_titles, i_count):
     '''Release a title description.
-    @param title: description array to release.
-    @param number: of title descriptions to release.
+    @param p_titles: title description array to release.
+    @param i_count: number of title descriptions to release.
     @version: LibVLC 3.0.0 and later.
     '''
     f = _Cfunctions.get('libvlc_title_descriptions_release', None) or \
@@ -5924,8 +5889,8 @@ def libvlc_title_descriptions_release(p_titles, i_count):
 def libvlc_media_player_get_full_chapter_descriptions(p_mi, i_chapters_of_title, pp_chapters):
     '''Get the full description of available chapters.
     @param p_mi: the media player.
-    @param index: of the title to query for chapters (uses current title if set to -1).
-    @param address: to store an allocated array of chapter descriptions descriptions (must be freed with L{libvlc_chapter_descriptions_release}() by the caller) [OUT].
+    @param i_chapters_of_title: index of the title to query for chapters (uses current title if set to -1).
+    @param pp_chapters: address to store an allocated array of chapter descriptions descriptions (must be freed with L{libvlc_chapter_descriptions_release}() by the caller) [OUT].
     @return: the number of chapters (-1 on error).
     @version: LibVLC 3.0.0 and later.
     '''
@@ -5936,8 +5901,8 @@ def libvlc_media_player_get_full_chapter_descriptions(p_mi, i_chapters_of_title,
 
 def libvlc_chapter_descriptions_release(p_chapters, i_count):
     '''Release a chapter description.
-    @param chapter: description array to release.
-    @param number: of chapter descriptions to release.
+    @param p_chapters: chapter description array to release.
+    @param i_count: number of chapter descriptions to release.
     @version: LibVLC 3.0.0 and later.
     '''
     f = _Cfunctions.get('libvlc_chapter_descriptions_release', None) or \
@@ -6252,7 +6217,7 @@ def libvlc_audio_output_device_list_get(p_instance, aout):
     some circumstances. By default, it is recommended to not specify any
     explicit audio device.
     @param p_instance: libvlc instance.
-    @param psz_aout: audio output name (as returned by L{libvlc_audio_output_list_get}()).
+    @param aout: audio output name (as returned by L{libvlc_audio_output_list_get}()).
     @return: A None-terminated linked list of potential audio output devices. It must be freed with L{libvlc_audio_output_device_list_release}().
     @version: LibVLC 2.1.0 or later.
     '''

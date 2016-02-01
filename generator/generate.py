@@ -51,7 +51,7 @@ C{LibVlc-footer.java} and C{LibVlc-header.java}.
 __all__     = ('Parser',
                'PythonGenerator', 'JavaGenerator',
                'process')
-__version__ =  '20.15.11.06'
+__version__ =  '20.16.02.01'
 
 _debug = False
 
@@ -908,6 +908,8 @@ class PythonGenerator(_Generator):
         for f in self.parser.funcs:
             f.xform()
             self.links[f.name] = f.name
+        for f in self.parser.callbacks:
+            f.xform()
         self.check_types()
 
     def generate_ctypes(self):
@@ -1019,7 +1021,7 @@ class _Enum(ctypes.c_uint):
         # Generate classes
         for f in self.parser.callbacks:
             name = self.class4(f.name)  #PYCHOK flake
-            docs = self.epylink(f.docs)
+            docs = self.epylink(f.epydocs(0, 4))
             self.output('''class %(name)s(ctypes.c_void_p):
     """%(docs)s
     """
@@ -1038,7 +1040,7 @@ class _Enum(ctypes.c_uint):
                               [self.class4(p.type) for p in f.pars])
 
             # xformed doc string with first @param
-            docs = self.epylink(f.docs)
+            docs = self.epylink(f.epydocs(0, 8))
 
             self.output("""    %(name)s = ctypes.CFUNCTYPE(%(types)s)
     %(name)s.__doc__ = '''%(docs)s
