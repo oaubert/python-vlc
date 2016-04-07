@@ -158,9 +158,11 @@ def find_lib():
         p = d + 'lib/libvlc.dylib'
         if os.path.exists(p):
             dll = ctypes.CDLL(p)
-            d += 'modules'
-            if os.path.isdir(d):
-                plugin_path = d
+            for p in ('modules', 'plugins'):
+                p = d + p
+                if os.path.isdir(p):
+                    plugin_path = p
+                    break
         else:  # hope, some PATH is set...
             dll = ctypes.CDLL('libvlc.dylib')
 

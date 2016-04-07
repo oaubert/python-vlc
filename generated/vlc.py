@@ -50,7 +50,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Thu Apr  7 16:08:23 2016"
+build_date  = "Thu Apr  7 16:11:32 2016"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -159,9 +159,11 @@ def find_lib():
         p = d + 'lib/libvlc.dylib'
         if os.path.exists(p):
             dll = ctypes.CDLL(p)
-            d += 'modules'
-            if os.path.isdir(d):
-                plugin_path = d
+            for p in ('modules', 'plugins'):
+                p = d + p
+                if os.path.isdir(p):
+                    plugin_path = p
+                    break
         else:  # hope, some PATH is set...
             dll = ctypes.CDLL('libvlc.dylib')
 
