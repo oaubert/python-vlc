@@ -1,4 +1,5 @@
 #! /usr/bin/python
+# -*- coding: utf8 -*-
 
 # Python ctypes bindings for VLC
 #
