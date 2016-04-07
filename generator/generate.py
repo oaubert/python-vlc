@@ -480,20 +480,31 @@ class Parser(object):
         @return: yield an Enum instance for each enum.
         """
         for typ, name, enum, docs, line in self.parse_groups(enum_type_re.match, enum_re.match):
-            vals, v = [], -1  # enum value(s)
+            vals, e, h = [], -1, {}  # enum value(s)
             for t in paramlist_re.split(enum):
                 t = t.strip()
-                if not t.startswith('/*'):
+                if t[:2] not in ('/*', '//'):
                     if '=' in t:  # has value
                         n, v = enum_pair_re.split(t)
-                        vals.append(Val(n, v))
-                        if v.startswith('0x'):  # '0X'?
-                            v = int(v, 16)
-                        else:
-                            v = int(v)
+                        try:
+                            if v[:2] in ('0x', '0X'):
+                                e = int(v, 16)
+                                h[n] = v
+                            else:
+                                e = int(v)
+                        except ValueError:
+                            try:  # .. an enum expression
+                                e = eval(v, dict(vals))
+                            except (SyntaxError, ValueError, TypeError):
+                                errorf('%s %s: %s', typ, name, t)
+                                raise
+                        vals.append((n, e))
                     elif t:  # only name
-                        v += 1
-                        vals.append(Val(t, str(v)))
+                        e += 1
+                        vals.append((t, e))
+            # convert to list of Val instances, preserving
+            # enums originally specified with a hex value
+            vals = [Val(n, h.get(n, str(e))) for n, e in vals]
 
             name = name.strip()
             if not name:  # anonymous

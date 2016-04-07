@@ -50,7 +50,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Thu Apr  7 16:11:32 2016"
+build_date  = "Thu Apr  7 23:45:57 2016"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -424,7 +424,7 @@ class EventType(_Enum):
         4: 'MediaFreed',
         5: 'MediaStateChanged',
         6: 'MediaSubItemTreeAdded',
-        256: 'MediaPlayerMediaChanged',
+        0x100: 'MediaPlayerMediaChanged',
         257: 'MediaPlayerNothingSpecial',
         258: 'MediaPlayerOpening',
         259: 'MediaPlayerBuffering',
@@ -454,21 +454,21 @@ class EventType(_Enum):
         283: 'MediaPlayerAudioVolume',
         284: 'MediaPlayerAudioDevice',
         285: 'MediaPlayerChapterChanged',
-        512: 'MediaListItemAdded',
+        0x200: 'MediaListItemAdded',
         513: 'MediaListWillAddItem',
         514: 'MediaListItemDeleted',
         515: 'MediaListWillDeleteItem',
         516: 'MediaListEndReached',
-        768: 'MediaListViewItemAdded',
+        0x300: 'MediaListViewItemAdded',
         769: 'MediaListViewWillAddItem',
         770: 'MediaListViewItemDeleted',
         771: 'MediaListViewWillDeleteItem',
-        1024: 'MediaListPlayerPlayed',
+        0x400: 'MediaListPlayerPlayed',
         1025: 'MediaListPlayerNextItemSet',
         1026: 'MediaListPlayerStopped',
-        1280: 'MediaDiscovererStarted',
+        0x500: 'MediaDiscovererStarted',
         1281: 'MediaDiscovererEnded',
-        1536: 'VlmMediaAdded',
+        0x600: 'VlmMediaAdded',
         1537: 'VlmMediaRemoved',
         1538: 'VlmMediaChanged',
         1539: 'VlmMediaInstanceStarted',
@@ -481,16 +481,16 @@ class EventType(_Enum):
         1546: 'VlmMediaInstanceStatusError',
     }
 EventType.MediaDiscovererEnded          = EventType(1281)
-EventType.MediaDiscovererStarted        = EventType(1280)
+EventType.MediaDiscovererStarted        = EventType(0x500)
 EventType.MediaDurationChanged          = EventType(2)
 EventType.MediaFreed                    = EventType(4)
 EventType.MediaListEndReached           = EventType(516)
-EventType.MediaListItemAdded            = EventType(512)
+EventType.MediaListItemAdded            = EventType(0x200)
 EventType.MediaListItemDeleted          = EventType(514)
 EventType.MediaListPlayerNextItemSet    = EventType(1025)
-EventType.MediaListPlayerPlayed         = EventType(1024)
+EventType.MediaListPlayerPlayed         = EventType(0x400)
 EventType.MediaListPlayerStopped        = EventType(1026)
-EventType.MediaListViewItemAdded        = EventType(768)
+EventType.MediaListViewItemAdded        = EventType(0x300)
 EventType.MediaListViewItemDeleted      = EventType(770)
 EventType.MediaListViewWillAddItem      = EventType(769)
 EventType.MediaListViewWillDeleteItem   = EventType(771)
@@ -511,7 +511,7 @@ EventType.MediaPlayerEncounteredError   = EventType(266)
 EventType.MediaPlayerEndReached         = EventType(265)
 EventType.MediaPlayerForward            = EventType(263)
 EventType.MediaPlayerLengthChanged      = EventType(273)
-EventType.MediaPlayerMediaChanged       = EventType(256)
+EventType.MediaPlayerMediaChanged       = EventType(0x100)
 EventType.MediaPlayerMuted              = EventType(281)
 EventType.MediaPlayerNothingSpecial     = EventType(257)
 EventType.MediaPlayerOpening            = EventType(258)
@@ -531,7 +531,7 @@ EventType.MediaPlayerVout               = EventType(274)
 EventType.MediaStateChanged             = EventType(5)
 EventType.MediaSubItemAdded             = EventType(1)
 EventType.MediaSubItemTreeAdded         = EventType(6)
-EventType.VlmMediaAdded                 = EventType(1536)
+EventType.VlmMediaAdded                 = EventType(0x600)
 EventType.VlmMediaChanged               = EventType(1538)
 EventType.VlmMediaInstanceStarted       = EventType(1539)
 EventType.VlmMediaInstanceStatusEnd     = EventType(1545)
@@ -666,17 +666,17 @@ class MediaParseFlag(_Enum):
 See libvlc_media_parse_with_options.
     '''
     _enum_names_ = {
-        0: 'local',
-        1: 'network',
-        2: 'local',
-        4: 'network',
-        8: 'interact',
+        0x00: 'local',
+        0x01: 'network',
+        0x02: 'local',
+        0x04: 'network',
+        0x08: 'interact',
     }
-MediaParseFlag.interact = MediaParseFlag(8)
-MediaParseFlag.local    = MediaParseFlag(0)
-MediaParseFlag.local    = MediaParseFlag(2)
-MediaParseFlag.network  = MediaParseFlag(1)
-MediaParseFlag.network  = MediaParseFlag(4)
+MediaParseFlag.interact = MediaParseFlag(0x08)
+MediaParseFlag.local    = MediaParseFlag(0x00)
+MediaParseFlag.local    = MediaParseFlag(0x02)
+MediaParseFlag.network  = MediaParseFlag(0x01)
+MediaParseFlag.network  = MediaParseFlag(0x04)
 
 class MediaDiscovererCategory(_Enum):
     '''Category of a media discoverer
