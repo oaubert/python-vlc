@@ -87,6 +87,8 @@ _blacklist = {
     'libvlc_audio_output_get_device_type': '',
     'libvlc_set_exit_handler':    '',
     'libvlc_printerr': '',
+    # Waiting for some structure wrapping
+    'libvlc_dialog_set_callbacks': '',
 }
 
 # Set of functions that return a string that the caller is
@@ -803,6 +805,7 @@ class PythonGenerator(_Generator):
         'libvlc_audio_output_t*':      'ctypes.POINTER(AudioOutput)',
         'libvlc_event_t*':              'ctypes.c_void_p',
         #'libvlc_callback_t':           'ctypes.c_void_p',
+        'libvlc_dialog_id*':            'ctypes.c_void_p',
         'libvlc_drawable_t':           'ctypes.c_uint',  # FIXME?
         'libvlc_event_type_t':         'ctypes.c_uint',
         'libvlc_event_manager_t*':     'EventManager',
@@ -815,6 +818,8 @@ class PythonGenerator(_Generator):
         'libvlc_media_track_t***':     'ctypes.POINTER(ctypes.POINTER(MediaTrack))',
         'libvlc_media_t*':             'Media',
         'libvlc_media_discoverer_t*':  'MediaDiscoverer',
+        'libvlc_media_discoverer_description**': 'ctypes.POINTER(MediaDiscovererDescription)',
+        'libvlc_media_discoverer_description***': 'ctypes.POINTER(ctypes.POINTER(MediaDiscovererDescription))',
         'libvlc_media_library_t*':     'MediaLibrary',
         'libvlc_media_list_t*':        'MediaList',
         'libvlc_media_list_player_t*': 'MediaListPlayer',
