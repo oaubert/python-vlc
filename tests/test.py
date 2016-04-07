@@ -29,12 +29,12 @@
 import unittest
 try:
     import urllib.parse as urllib # python3
-except:
+except ImportError:
     import urllib # python2
 
 try:
     import vlc
-except:
+except ImportError:
     import generated.vlc as vlc
 
 print ("Checking " + vlc.__file__)
