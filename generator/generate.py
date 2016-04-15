@@ -40,10 +40,11 @@ The C{#PYCHOK ...} comments direct the PyChecker/-Flakes post-
 processor, see U{http://code.activestate.com/recipes/546532}.
 
 This module and the generated Python bindings have been tested with
-32-bit Python 2.6, 2.7 and 3.1 on Linux, Windows XP SP3 and MacOS X 10.4.11
-(Intel) using the VLC 1.1.4.1 and 1.1.5 public API include files.
+32- and 64-bit Python 2.6, 2.7 and 3.1 on Linux, Windows XP SP3, MacOS
+X 10.4.11 (Intel) and MacOS X 10.11.3 using the public API include
+files from VLC 1.1.4.1, 1.1.5, 2.1.0 and 2.2.2.
 
-B{**)} The Java/JNA bindings for the VLC public API can be created
+B{**)} Java/JNA bindings for the VLC public API can be created
 in a similar manner and depend on 3 Java files: C{boilerplate.java},
 C{LibVlc-footer.java} and C{LibVlc-header.java}.
 
@@ -51,7 +52,7 @@ C{LibVlc-footer.java} and C{LibVlc-header.java}.
 __all__     = ('Parser',
                'PythonGenerator', 'JavaGenerator',
                'process')
-__version__ =  '20.16.02.01'
+__version__ =  '20.16.04.16'
 
 _debug = False
 
@@ -140,6 +141,7 @@ param_re     = re.compile('\s*(const\s*|unsigned\s*|struct\s*)?(\S+\s*\**)\s+(.+
 decllist_re  = re.compile('\s*;\s*')
 paramlist_re = re.compile('\s*,\s*')
 version_re   = re.compile('vlc[\-]\d+[.]\d+[.]\d+.*')
+LIBVLC_V_re  = re.compile('\s*#\s*define\s+LIBVLC_VERSION_([A-Z]+)\s+\(*(\d+)\)*')
 
 def endot(text):
     """Terminate string with a period.
@@ -438,6 +440,8 @@ class Parser(object):
                     if version_re.match(v):
                         self.version = v
                         break
+                else:
+                    self.parse_version(h)
             self.h_file = h
             self.typedefs.update(self.parse_typedefs())
             self.structs.extend(self.parse_structs())
@@ -570,7 +574,7 @@ class Parser(object):
 
         @return: a dict instance with typedef matches
         """
-        return dict( (new, original) 
+        return dict( (new, original)
             for original, new, docs, line in self.parse_groups(typedef_re.match, typedef_re.match) )
 
     def parse_groups(self, match_t, match_re, ends=';'):
@@ -651,6 +655,25 @@ class Parser(object):
             n = ''
         return Par(n, t.replace(' ', ''))
 
+    def parse_version(self, h_file):
+        """Get the libvlc version from the C header file:
+           LIBVLC_VERSION_MAJOR, _MINOR, _REVISION, _EXTRA
+        """
+        if h_file.lower().endswith('libvlc_version.h'):
+            f, v = opener(h_file), []
+            for t in f:
+                m = LIBVLC_V_re.match(t)
+                if m:
+                    t, m = m.groups()
+                    if t in ('MAJOR', 'MINOR', 'REVISION'):
+                        v.append((t, m))
+                    elif t == 'EXTRA' and m not in ('0', ''):
+                        v.append((t[1:], m))
+            if v:
+                v = '.'.join(m for _, m in sorted(v))
+                self.version = v
+            f.close()
+
 
 class _Generator(object):
     """Base class.
@@ -691,7 +714,7 @@ class _Generator(object):
 
     def convert_classnames(self, element_list):
         """Convert enum names to class names.
-        
+
         source is either 'enum' or 'struct'.
 
         """
@@ -751,7 +774,7 @@ class _Generator(object):
             elif t.startswith(_BUILD_DATE_):
                 v, t = _NA_, self.parser.version
                 if t:
-                    v, t = t, ' ' + t
+                    v, t = t, ' - ' + t
                 self.output('__version__ = "%s"' % (v,))
                 self.output('%s"%s%s"' % (_BUILD_DATE_, time.ctime(), t))
             else:
