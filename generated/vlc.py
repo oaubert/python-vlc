@@ -1,5 +1,5 @@
 #! /usr/bin/python
-# -*- coding: utf8 -*-
+# -*- coding: utf-8 -*-
 
 # Python ctypes bindings for VLC
 #
@@ -50,7 +50,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Apr 15 16:45:33 2016"
+build_date  = "Fri Apr 15 17:12:59 2016"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1560,8 +1560,9 @@ class Instance(_Ctype):
             args.insert(0, 'vlc')
 
         if plugin_path is not None:
-            # specify plugin_path if detected, win32 and MacOS
-            args.insert(1, '--plugin-path="%s"' % (plugin_path,))
+            # set plugin_path if detected, win32 and MacOS,
+            # if the user did not specify it itself.
+            os.environ.setdefault('VLC_PLUGIN_PATH', plugin_path)
 
         if PYTHON3:
             args = [ str_to_bytes(a) for a in args ]

@@ -29,8 +29,9 @@ class Instance:
             args.insert(0, 'vlc')
 
         if plugin_path is not None:
-            # specify plugin_path if detected, win32 and MacOS
-            args.insert(1, '--plugin-path="%s"' % (plugin_path,))
+            # set plugin_path if detected, win32 and MacOS,
+            # if the user did not specify it itself.
+            os.environ.setdefault('VLC_PLUGIN_PATH', plugin_path)
 
         if PYTHON3:
             args = [ str_to_bytes(a) for a in args ]
