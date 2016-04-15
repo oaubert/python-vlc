@@ -50,7 +50,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Thu Apr  7 23:45:57 2016"
+build_date  = "Fri Apr 15 16:45:33 2016"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -666,17 +666,17 @@ class MediaParseFlag(_Enum):
 See libvlc_media_parse_with_options.
     '''
     _enum_names_ = {
-        0x00: 'local',
-        0x01: 'network',
-        0x02: 'local',
-        0x04: 'network',
-        0x08: 'interact',
+        0x0: 'local',
+        0x1: 'network',
+        0x2: 'local',
+        0x4: 'network',
+        0x8: 'interact',
     }
-MediaParseFlag.interact = MediaParseFlag(0x08)
-MediaParseFlag.local    = MediaParseFlag(0x00)
-MediaParseFlag.local    = MediaParseFlag(0x02)
-MediaParseFlag.network  = MediaParseFlag(0x01)
-MediaParseFlag.network  = MediaParseFlag(0x04)
+MediaParseFlag.interact = MediaParseFlag(0x8)
+MediaParseFlag.local    = MediaParseFlag(0x0)
+MediaParseFlag.local    = MediaParseFlag(0x2)
+MediaParseFlag.network  = MediaParseFlag(0x1)
+MediaParseFlag.network  = MediaParseFlag(0x4)
 
 class MediaDiscovererCategory(_Enum):
     '''Category of a media discoverer
@@ -1548,14 +1548,21 @@ class Instance(_Ctype):
             elif isinstance(i, basestring):
                 args = i.strip().split()
             elif isinstance(i, _Seqs):
-                args = i
+                args = list(i)
             else:
                 raise VLCException('Instance %r' % (args,))
+        else:
+            args = list(args)
 
-        if not args and plugin_path is not None:
-             # no parameters passed, for win32 and MacOS,
-             # specify the plugin_path if detected earlier
-            args = ['vlc', '--plugin-path=' + plugin_path]
+        if not args:  # no parameters passed
+            args = ['vlc']
+        elif args[0] != 'vlc':
+            args.insert(0, 'vlc')
+
+        if plugin_path is not None:
+            # specify plugin_path if detected, win32 and MacOS
+            args.insert(1, '--plugin-path="%s"' % (plugin_path,))
+
         if PYTHON3:
             args = [ str_to_bytes(a) for a in args ]
         return libvlc_new(len(args), args)
@@ -2085,7 +2092,7 @@ class Instance(_Ctype):
 
 class Media(_Ctype):
     '''Create a new Media instance.
-    
+
     Usage: Media(MRL, *options)
 
     See vlc.Instance.media_new documentation for details.
@@ -2461,7 +2468,7 @@ class MediaLibrary(_Ctype):
 
 class MediaList(_Ctype):
     '''Create a new MediaList instance.
-    
+
     Usage: MediaList(list_of_MRLs)
 
     See vlc.Instance.media_list_new documentation for details.
@@ -2481,10 +2488,10 @@ class MediaList(_Ctype):
 
     def get_instance(self):
         return getattr(self, '_instance', None)
-    
+
     def add_media(self, mrl):
         """Add media instance to media list.
-        
+
         The L{lock} should be held upon entering this function.
         @param mrl: a media instance or a MRL.
         @return: 0 on success, -1 if the media list is read-only.
@@ -2768,7 +2775,7 @@ class MediaPlayer(_Ctype):
     def __new__(cls, *args):
         if len(args) == 1 and isinstance(args[0], _Ints):
             return _Constructor(cls, args[0])
-        
+
         if args and isinstance(args[0], Instance):
             instance = args[0]
             args = args[1:]
@@ -2865,13 +2872,13 @@ class MediaPlayer(_Ctype):
         Specify where the media player should render its video
         output. If LibVLC was built without Win32/Win64 API output
         support, then this has no effects.
-           
+
         @param drawable: windows handle of the drawable.
         """
         if not isinstance(drawable, ctypes.c_void_p):
             drawable = ctypes.c_void_p(int(drawable))
         libvlc_media_player_set_hwnd(self, drawable)
-            
+
     def video_get_width(self, num=0):
         """Get the width of a video in pixels.
 
@@ -7139,8 +7146,8 @@ if not hasattr(dll, 'libvlc_free'):
         def libvlc_free(p):
             pass
 
-    # ensure argtypes is right, because default type of int won't work
-    # on 64-bit systems
+    # ensure argtypes is right, because default type of int won't
+    # work on 64-bit systems
     libvlc_free.argtypes = [ ctypes.c_void_p ]
 
 # Version functions
@@ -7163,7 +7170,7 @@ def hex_version():
     """Return the version of these bindings in hex or 0 if unavailable.
     """
     try:
-        return _dot2int(__version__.split('-')[-1])
+        return _dot2int(__version__)
     except (NameError, ValueError):
         return 0
 
@@ -7175,7 +7182,6 @@ def libvlc_hex_version():
     except ValueError:
         return 0
 
-
 def debug_callback(event, *args, **kwds):
     '''Example callback, useful for debugging.
     '''
@@ -7185,6 +7191,7 @@ def debug_callback(event, *args, **kwds):
     if kwds:
         l.extend(sorted('%s=%s' % t for t in kwds.items()))
     print('Debug callback (%s)' % ', '.join(l))
+
 
 if __name__ == '__main__':
 
@@ -7217,7 +7224,7 @@ if __name__ == '__main__':
             sys.stdout.flush()
 
     def print_version():
-        """Print libvlc version"""
+        """Print version of this vlc.py and of the libvlc"""
         try:
             print('Build date: %s (%#x)' % (build_date, hex_version()))
             print('LibVLC version: %s (%#x)' % (bytes_to_str(libvlc_get_version()), libvlc_hex_version()))
@@ -7227,27 +7234,28 @@ if __name__ == '__main__':
         except:
             print('Error: %s' % sys.exc_info()[1])
 
-    if sys.argv[1:] and sys.argv[1] not in ('-h', '--help'):
+    if sys.argv[1:] and '-h' not in sys.argv[1:] and '--help' not in sys.argv[1:]:
 
-        movie = os.path.expanduser(sys.argv[1])
+        movie = os.path.expanduser(sys.argv.pop())
         if not os.access(movie, os.R_OK):
             print('Error: %s file not readable' % movie)
             sys.exit(1)
 
-        instance = Instance("--sub-source marq")
+        # Need --sub-source=marq in order to use marquee below
+        instance = Instance(["--sub-source=marq"] + sys.argv[1:])
         try:
             media = instance.media_new(movie)
-        except NameError:
-            print('NameError: %s (%s vs LibVLC %s)' % (sys.exc_info()[1],
-                                                       __version__,
-                                                       libvlc_get_version()))
+        except (AttributeError, NameError) as e:
+            print('%s: %s (%s %s vs LibVLC %s)' % (e.__class__.__name__, e,
+                                                   sys.argv[0], __version__,
+                                                   libvlc_get_version()))
             sys.exit(1)
         player = instance.media_player_new()
         player.set_media(media)
         player.play()
 
         # Some marquee examples.  Marquee requires '--sub-source marq' in the
-        # Instance() call above.  See <http://www.videolan.org/doc/play-howto/en/ch04.html>
+        # Instance() call above, see <http://www.videolan.org/doc/play-howto/en/ch04.html>
         player.video_set_marquee_int(VideoMarqueeOption.Enable, 1)
         player.video_set_marquee_int(VideoMarqueeOption.Size, 24)  # pixels
         player.video_set_marquee_int(VideoMarqueeOption.Position, Position.Bottom)
@@ -7270,7 +7278,7 @@ if __name__ == '__main__':
         event_manager.event_attach(EventType.MediaPlayerPositionChanged, pos_callback, player)
 
         def mspf():
-            """Milliseconds per frame."""
+            """Milliseconds per frame"""
             return int(1000 // (player.get_fps() or 25))
 
         def print_info():
@@ -7349,7 +7357,7 @@ if __name__ == '__main__':
                 player.set_position(float('0.'+k))
 
     else:
-        print('Usage: %s <movie_filename>' % sys.argv[0])
+        print('Usage: %s [options] <movie_filename>' % sys.argv[0])
         print('Once launched, type ? for help.')
         print('')
         print_version()
