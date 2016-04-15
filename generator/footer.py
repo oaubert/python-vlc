@@ -23,8 +23,8 @@ if not hasattr(dll, 'libvlc_free'):
         def libvlc_free(p):
             pass
 
-    # ensure argtypes is right, because default type of int won't work
-    # on 64-bit systems
+    # ensure argtypes is right, because default type of int won't
+    # work on 64-bit systems
     libvlc_free.argtypes = [ ctypes.c_void_p ]
 
 # Version functions
@@ -47,7 +47,7 @@ def hex_version():
     """Return the version of these bindings in hex or 0 if unavailable.
     """
     try:
-        return _dot2int(__version__.split('-')[-1])
+        return _dot2int(__version__)
     except (NameError, ValueError):
         return 0
 
@@ -59,7 +59,6 @@ def libvlc_hex_version():
     except ValueError:
         return 0
 
-
 def debug_callback(event, *args, **kwds):
     '''Example callback, useful for debugging.
     '''
@@ -69,6 +68,7 @@ def debug_callback(event, *args, **kwds):
     if kwds:
         l.extend(sorted('%s=%s' % t for t in kwds.items()))
     print('Debug callback (%s)' % ', '.join(l))
+
 
 if __name__ == '__main__':
 
@@ -101,7 +101,7 @@ if __name__ == '__main__':
             sys.stdout.flush()
 
     def print_version():
-        """Print libvlc version"""
+        """Print version of this vlc.py and of the libvlc"""
         try:
             print('Build date: %s (%#x)' % (build_date, hex_version()))
             print('LibVLC version: %s (%#x)' % (bytes_to_str(libvlc_get_version()), libvlc_hex_version()))
@@ -111,27 +111,28 @@ if __name__ == '__main__':
         except:
             print('Error: %s' % sys.exc_info()[1])
 
-    if sys.argv[1:] and sys.argv[1] not in ('-h', '--help'):
+    if sys.argv[1:] and '-h' not in sys.argv[1:] and '--help' not in sys.argv[1:]:
 
-        movie = os.path.expanduser(sys.argv[1])
+        movie = os.path.expanduser(sys.argv.pop())
         if not os.access(movie, os.R_OK):
             print('Error: %s file not readable' % movie)
             sys.exit(1)
 
-        instance = Instance("--sub-source marq")
+        # Need --sub-source=marq in order to use marquee below
+        instance = Instance(["--sub-source=marq"] + sys.argv[1:])
         try:
             media = instance.media_new(movie)
-        except NameError:
-            print('NameError: %s (%s vs LibVLC %s)' % (sys.exc_info()[1],
-                                                       __version__,
-                                                       libvlc_get_version()))
+        except (AttributeError, NameError) as e:
+            print('%s: %s (%s %s vs LibVLC %s)' % (e.__class__.__name__, e,
+                                                   sys.argv[0], __version__,
+                                                   libvlc_get_version()))
             sys.exit(1)
         player = instance.media_player_new()
         player.set_media(media)
         player.play()
 
         # Some marquee examples.  Marquee requires '--sub-source marq' in the
-        # Instance() call above.  See <http://www.videolan.org/doc/play-howto/en/ch04.html>
+        # Instance() call above, see <http://www.videolan.org/doc/play-howto/en/ch04.html>
         player.video_set_marquee_int(VideoMarqueeOption.Enable, 1)
         player.video_set_marquee_int(VideoMarqueeOption.Size, 24)  # pixels
         player.video_set_marquee_int(VideoMarqueeOption.Position, Position.Bottom)
@@ -154,7 +155,7 @@ if __name__ == '__main__':
         event_manager.event_attach(EventType.MediaPlayerPositionChanged, pos_callback, player)
 
         def mspf():
-            """Milliseconds per frame."""
+            """Milliseconds per frame"""
             return int(1000 // (player.get_fps() or 25))
 
         def print_info():
@@ -233,7 +234,7 @@ if __name__ == '__main__':
                 player.set_position(float('0.'+k))
 
     else:
-        print('Usage: %s <movie_filename>' % sys.argv[0])
+        print('Usage: %s [options] <movie_filename>' % sys.argv[0])
         print('Once launched, type ? for help.')
         print('')
         print_version()

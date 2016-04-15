@@ -17,14 +17,21 @@ class Instance:
             elif isinstance(i, basestring):
                 args = i.strip().split()
             elif isinstance(i, _Seqs):
-                args = i
+                args = list(i)
             else:
                 raise VLCException('Instance %r' % (args,))
+        else:
+            args = list(args)
 
-        if not args and plugin_path is not None:
-             # no parameters passed, for win32 and MacOS,
-             # specify the plugin_path if detected earlier
-            args = ['vlc', '--plugin-path=' + plugin_path]
+        if not args:  # no parameters passed
+            args = ['vlc']
+        elif args[0] != 'vlc':
+            args.insert(0, 'vlc')
+
+        if plugin_path is not None:
+            # specify plugin_path if detected, win32 and MacOS
+            args.insert(1, '--plugin-path="%s"' % (plugin_path,))
+
         if PYTHON3:
             args = [ str_to_bytes(a) for a in args ]
         return libvlc_new(len(args), args)
@@ -123,7 +130,7 @@ class Instance:
 
 class Media:
     """Create a new Media instance.
-    
+
     Usage: Media(MRL, *options)
 
     See vlc.Instance.media_new documentation for details.
@@ -170,7 +177,7 @@ class Media:
 
 class MediaList:
     """Create a new MediaList instance.
-    
+
     Usage: MediaList(list_of_MRLs)
 
     See vlc.Instance.media_list_new documentation for details.
@@ -188,10 +195,10 @@ class MediaList:
 
     def get_instance(self):
         return getattr(self, '_instance', None)
-    
+
     def add_media(self, mrl):
         """Add media instance to media list.
-        
+
         The L{lock} should be held upon entering this function.
         @param mrl: a media instance or a MRL.
         @return: 0 on success, -1 if the media list is read-only.
@@ -210,7 +217,7 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
     def __new__(cls, *args):
         if len(args) == 1 and isinstance(args[0], _Ints):
             return _Constructor(cls, args[0])
-        
+
         if args and isinstance(args[0], Instance):
             instance = args[0]
             args = args[1:]
@@ -307,13 +314,13 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         Specify where the media player should render its video
         output. If LibVLC was built without Win32/Win64 API output
         support, then this has no effects.
-           
+
         @param drawable: windows handle of the drawable.
         """
         if not isinstance(drawable, ctypes.c_void_p):
             drawable = ctypes.c_void_p(int(drawable))
         libvlc_media_player_set_hwnd(self, drawable)
-            
+
     def video_get_width(self, num=0):
         """Get the width of a video in pixels.
 
