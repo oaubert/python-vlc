@@ -50,7 +50,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Apr 15 17:12:59 2016"
+build_date  = "Tue Jul 19 12:42:59 2016"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -606,7 +606,7 @@ class State(_Enum):
 See mediacontrol_playerstatus, See input_state_e enums,
 and videolan.libvlc.state (at bindings/cil/src/media.cs).
 expected states by web plugins are:
-idle/close=0, opening=1, buffering=2, playing=3, paused=4,
+idle/close=0, opening=1, playing=3, paused=4,
 stopping=5, ended=6, error=7.
     '''
     _enum_names_ = {
@@ -677,6 +677,33 @@ MediaParseFlag.local    = MediaParseFlag(0x0)
 MediaParseFlag.local    = MediaParseFlag(0x2)
 MediaParseFlag.network  = MediaParseFlag(0x1)
 MediaParseFlag.network  = MediaParseFlag(0x4)
+
+class MediaParsedStatus(_Enum):
+    '''Parse status used sent by libvlc_media_parse_with_options() or returned by
+libvlc_media_get_parsed_status()
+See libvlc_media_parse_with_options
+See libvlc_media_get_parsed_status.
+    '''
+    _enum_names_ = {
+        1: 'skipped',
+        2: 'failed',
+        3: 'timeout',
+        4: 'done',
+    }
+MediaParsedStatus.done    = MediaParsedStatus(4)
+MediaParsedStatus.failed  = MediaParsedStatus(2)
+MediaParsedStatus.skipped = MediaParsedStatus(1)
+MediaParsedStatus.timeout = MediaParsedStatus(3)
+
+class MediaSlaveType(_Enum):
+    '''Type of a media slave: subtitle or audio.
+    '''
+    _enum_names_ = {
+        0: 'subtitle',
+        1: 'audio',
+    }
+MediaSlaveType.audio    = MediaSlaveType(1)
+MediaSlaveType.subtitle = MediaSlaveType(0)
 
 class MediaDiscovererCategory(_Enum):
     '''Category of a media discoverer
@@ -856,6 +883,34 @@ AudioOutputChannel.Left    = AudioOutputChannel(3)
 AudioOutputChannel.RStereo = AudioOutputChannel(2)
 AudioOutputChannel.Right   = AudioOutputChannel(4)
 AudioOutputChannel.Stereo  = AudioOutputChannel(1)
+
+class MediaPlayerRole(_Enum):
+    '''Media player roles.
+\version libvlc 3.0.0 and later.
+see \ref libvlc_media_player_set_role().
+    '''
+    _enum_names_ = {
+        0: '_None',
+        1: 'Music',
+        2: 'Video',
+        3: 'Communication',
+        4: 'Game',
+        5: 'Notification',
+        6: 'Animation',
+        7: 'Production',
+        8: 'Accessibility',
+        9: 'Test',
+    }
+MediaPlayerRole.Accessibility = MediaPlayerRole(8)
+MediaPlayerRole.Animation     = MediaPlayerRole(6)
+MediaPlayerRole.Communication = MediaPlayerRole(3)
+MediaPlayerRole.Game          = MediaPlayerRole(4)
+MediaPlayerRole.Music         = MediaPlayerRole(1)
+MediaPlayerRole.Notification  = MediaPlayerRole(5)
+MediaPlayerRole.Production    = MediaPlayerRole(7)
+MediaPlayerRole.Test          = MediaPlayerRole(9)
+MediaPlayerRole.Video         = MediaPlayerRole(2)
+MediaPlayerRole._None         = MediaPlayerRole(0)
 
 class Callback(ctypes.c_void_p):
     """Callback function notification.
@@ -1441,8 +1496,14 @@ class ChapterDescription(_Cstruct):
         ('name', ctypes.c_char_p),
     ]
 
- # End of header.py #
+class MediaSlave(_Cstruct):
+    _fields = [
+        ('psz_uri', ctypes.c_char_p),
+        ('i_type', MediaSlaveType),
+        ('i_priority', ctypes.c_uint)
+    ]
 
+# End of header.py #
 class EventManager(_Ctype):
     '''Create an event manager with callback handler.
 
@@ -1809,7 +1870,7 @@ class Instance(_Ctype):
         You need to call L{media_discoverer_start}() in order to start the
         discovery.
         See L{media_discoverer_media_list}
-        See L{media_discoverer_event_manager}
+        See libvlc_media_discoverer_event_manager
         See L{media_discoverer_start}.
         @param psz_name: service name; use L{media_discoverer_list_get}() to get a list of the discoverer names available in this libVLC instance.
         @return: media discover object or None in case of error.
@@ -2209,11 +2270,8 @@ class Media(_Ctype):
     def get_meta(self, e_meta):
         '''Read the meta of the media.
         If the media has not yet been parsed this will return None.
-        This methods automatically calls L{parse_async}(), so after calling
-        it you may receive a libvlc_MediaMetaChanged event. If you prefer a synchronous
-        version ensure that you call L{parse}() before get_meta().
         See L{parse}
-        See L{parse_async}
+        See L{parse_with_options}
         See libvlc_MediaMetaChanged.
         @param e_meta: the meta to read.
         @return: the media's meta.
@@ -2238,11 +2296,9 @@ class Media(_Ctype):
 
     
     def get_state(self):
-        '''Get current state of media descriptor object. Possible media states
-        are defined in libvlc_structures.c ( libvlc_NothingSpecial=0,
-        libvlc_Opening, libvlc_Buffering, libvlc_Playing, libvlc_Paused,
-        libvlc_Stopped, libvlc_Ended,
-        libvlc_Error).
+        '''Get current state of media descriptor object. Possible media states are
+        libvlc_NothingSpecial=0, libvlc_Opening, libvlc_Playing, libvlc_Paused,
+        libvlc_Stopped, libvlc_Ended, libvlc_Error.
         See libvlc_state_t.
         @return: state of media descriptor object.
         '''
@@ -2285,55 +2341,44 @@ class Media(_Ctype):
         '''Parse a media.
         This fetches (local) art, meta data and tracks information.
         The method is synchronous.
-        See L{parse_async}
+        See L{parse_with_options}
         See L{get_meta}
         See libvlc_media_get_tracks_info.
         '''
         return libvlc_media_parse(self)
 
     
-    def parse_async(self):
-        '''Parse a media.
-        This fetches (local) art, meta data and tracks information.
-        The method is the asynchronous of L{parse}().
-        To track when this is over you can listen to libvlc_MediaParsedChanged
-        event. However if the media was already parsed you will not receive this
-        event.
-        See L{parse}
-        See libvlc_MediaParsedChanged
-        See L{get_meta}
-        See libvlc_media_get_tracks_info.
-        '''
-        return libvlc_media_parse_async(self)
-
-    
-    def parse_with_options(self, parse_flag):
+    def parse_with_options(self, parse_flag, timeout):
         '''Parse the media asynchronously with options.
         This fetches (local or network) art, meta data and/or tracks information.
-        This method is the extended version of L{parse_async}().
+        This method is the extended version of L{parse_with_options}().
         To track when this is over you can listen to libvlc_MediaParsedChanged
-        event. However if this functions returns an error, you will not receive this
-        event.
+        event. However if this functions returns an error, you will not receive any
+        events.
         It uses a flag to specify parse options (see libvlc_media_parse_flag_t). All
         these flags can be combined. By default, media is parsed if it's a local
         file.
         See libvlc_MediaParsedChanged
         See L{get_meta}
         See L{tracks_get}
+        See L{get_parsed_status}
         See libvlc_media_parse_flag_t.
         @param parse_flag: parse options:
+        @param timeout: maximum time allowed to preparse the media. If -1, the default "preparse-timeout" option will be used as a timeout. If 0, it will wait indefinitely. If > 0, the timeout will be used (in milliseconds).
         @return: -1 in case of error, 0 otherwise.
         @version: LibVLC 3.0.0 or later.
         '''
-        return libvlc_media_parse_with_options(self, parse_flag)
+        return libvlc_media_parse_with_options(self, parse_flag, timeout)
 
     
-    def is_parsed(self):
+    def get_parsed_status(self):
         '''Get Parsed status for media descriptor object.
-        See libvlc_MediaParsedChanged.
-        @return: true if media object has been parsed otherwise it returns false \libvlc_return_bool.
+        See libvlc_MediaParsedChanged
+        See libvlc_media_parsed_status_t.
+        @return: a value of the libvlc_media_parsed_status_t enum.
+        @version: LibVLC 3.0.0 or later.
         '''
-        return libvlc_media_is_parsed(self)
+        return libvlc_media_get_parsed_status(self)
 
     
     def set_user_data(self, p_new_user_data):
@@ -2359,6 +2404,42 @@ class Media(_Ctype):
         @version: LibVLC 3.0.0 and later. See libvlc_media_type_t.
         '''
         return libvlc_media_get_type(self)
+
+    
+    def slaves_add(self, i_type, i_priority, psz_uri):
+        '''Add a slave to the current media.
+        A slave is an external input source that may contains an additional subtitle
+        track (like a .srt) or an additional audio track (like a .ac3).
+        @note: This function must be called before the media is parsed (via
+        L{parse_with_options}()) or before the media is played (via
+        L{player_play}()).
+        @param i_type: subtitle or audio.
+        @param i_priority: from 0 (low priority) to 4 (high priority).
+        @param psz_uri: Uri of the slave (should contain a valid scheme).
+        @return: 0 on success, -1 on error.
+        @version: LibVLC 3.0.0 and later.
+        '''
+        return libvlc_media_slaves_add(self, i_type, i_priority, str_to_bytes(psz_uri))
+
+    
+    def slaves_clear(self):
+        '''Clear all slaves previously added by L{slaves_add}() or
+        internally.
+        @version: LibVLC 3.0.0 and later.
+        '''
+        return libvlc_media_slaves_clear(self)
+
+    
+    def slaves_get(self, ppp_slaves):
+        '''Get a media descriptor's slave list
+        The list will contain slaves parsed by VLC or previously added by
+        L{slaves_add}(). The typical use case of this function is to save
+        a list of slave in a database for a later use.
+        @param ppp_slaves: address to store an allocated array of slaves (must be freed with L{slaves_release}()) [OUT].
+        @return: the number of slaves (zero on error).
+        @version: LibVLC 3.0.0 and later. See L{slaves_add}.
+        '''
+        return libvlc_media_slaves_get(self, ppp_slaves)
 
     
     def player_new_from_media(self):
@@ -2402,25 +2483,11 @@ class MediaDiscoverer(_Ctype):
         return libvlc_media_discoverer_release(self)
 
     
-    def localized_name(self):
-        '''Get media service discover object its localized name.
-        @return: localized name.
-        '''
-        return libvlc_media_discoverer_localized_name(self)
-
-    
     def media_list(self):
         '''Get media service discover media list.
         @return: list of media items.
         '''
         return libvlc_media_discoverer_media_list(self)
-
-    @memoize_parameterless
-    def event_manager(self):
-        '''Get event manager from media service discover object.
-        @return: event manager object.
-        '''
-        return libvlc_media_discoverer_event_manager(self)
 
     
     def is_running(self):
@@ -2920,6 +2987,29 @@ class MediaPlayer(_Ctype):
 
 
     
+    def get_fps(self):
+        '''Get movie fps rate
+        This function is provided for backward compatibility. It cannot deal with
+        multiple video tracks. In LibVLC versions prior to 3.0, it would also fail
+        if the file format did not convey the frame rate explicitly.
+        \deprecated Consider using L{media_tracks_get}() instead.
+        @return: frames per second (fps) for this playing movie, or 0 if unspecified.
+        '''
+        return libvlc_media_player_get_fps(self)
+
+    
+    def set_agl(self, drawable):
+        '''\deprecated Use L{set_nsobject}() instead.
+        '''
+        return libvlc_media_player_set_agl(self, drawable)
+
+    
+    def get_agl(self):
+        '''\deprecated Use L{get_nsobject}() instead.
+        '''
+        return libvlc_media_player_get_agl(self)
+
+    
     def release(self):
         '''Release a media_player after use
         Decrement the reference count of a media player object. If the
@@ -3064,18 +3154,6 @@ class MediaPlayer(_Ctype):
         @return: the NSView handler or 0 if none where set.
         '''
         return libvlc_media_player_get_nsobject(self)
-
-    
-    def set_agl(self, drawable):
-        '''\deprecated Use L{set_nsobject} instead.
-        '''
-        return libvlc_media_player_set_agl(self, drawable)
-
-    
-    def get_agl(self):
-        '''\deprecated Use L{get_nsobject} instead.
-        '''
-        return libvlc_media_player_get_agl(self)
 
     
     def set_xwindow(self, drawable):
@@ -3318,17 +3396,6 @@ class MediaPlayer(_Ctype):
         return libvlc_media_player_get_state(self)
 
     
-    def get_fps(self):
-        '''Get movie fps rate
-        This function is provided for backward compatibility. It cannot deal with
-        multiple video tracks. In LibVLC versions prior to 3.0, it would also fail
-        if the file format did not convey the frame rate explicitly.
-        \deprecated Consider using L{media_tracks_get}() instead.
-        @return: frames per second (fps) for this playing movie, or 0 if unspecified.
-        '''
-        return libvlc_media_player_get_fps(self)
-
-    
     def has_vout(self):
         '''How many video outputs does this media player have?
         @return: the number of video outputs.
@@ -3379,6 +3446,19 @@ class MediaPlayer(_Ctype):
         @version: libVLC 2.1.0 or later.
         '''
         return libvlc_media_player_set_video_title_display(self, position, timeout)
+
+    
+    def add_slave(self, i_type, psz_uri, b_select):
+        '''Add a slave to the current media player.
+        @note: If the player is playing, the slave will be added directly. This call
+        will also update the slave list of the attached L{Media}.
+        @param i_type: subtitle or audio.
+        @param psz_uri: Uri of the slave (should contain a valid scheme).
+        @param b_select: True if this slave should be selected when it's loaded.
+        @return: 0 on success, -1 on error.
+        @version: LibVLC 3.0.0 and later. See L{media_slaves_add}.
+        '''
+        return libvlc_media_player_add_slave(self, i_type, str_to_bytes(psz_uri), b_select)
 
     
     def toggle_fullscreen(self):
@@ -3487,14 +3567,6 @@ class MediaPlayer(_Ctype):
         @return: 0 on success, -1 if out of range.
         '''
         return libvlc_video_set_spu(self, i_spu)
-
-    
-    def video_set_subtitle_file(self, psz_subtitle):
-        '''Set new video subtitle file.
-        @param psz_subtitle: new video subtitle file.
-        @return: the success status (boolean).
-        '''
-        return libvlc_video_set_subtitle_file(self, str_to_bytes(psz_subtitle))
 
     
     def video_get_spu_delay(self):
@@ -3873,8 +3945,54 @@ class MediaPlayer(_Ctype):
         '''
         return libvlc_media_player_set_equalizer(self, p_equalizer)
 
+    
+    def get_role(self):
+        '''Gets the media role.
+        @return: the media player role (\ref libvlc_media_player_role_t).
+        @version: LibVLC 3.0.0 and later.
+        '''
+        return libvlc_media_player_get_role(self)
+
+    
+    def set_role(self, role):
+        '''Sets the media role.
+        @param role: the media player role (\ref libvlc_media_player_role_t).
+        @return: 0 on success, -1 on error.
+        '''
+        return libvlc_media_player_set_role(self, role)
+
 
  # LibVLC __version__ functions #
+
+def libvlc_media_player_get_fps(p_mi):
+    '''Get movie fps rate
+    This function is provided for backward compatibility. It cannot deal with
+    multiple video tracks. In LibVLC versions prior to 3.0, it would also fail
+    if the file format did not convey the frame rate explicitly.
+    \deprecated Consider using L{libvlc_media_tracks_get}() instead.
+    @param p_mi: the Media Player.
+    @return: frames per second (fps) for this playing movie, or 0 if unspecified.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_get_fps', None) or \
+        _Cfunction('libvlc_media_player_get_fps', ((1,),), None,
+                    ctypes.c_float, MediaPlayer)
+    return f(p_mi)
+
+def libvlc_media_player_set_agl(p_mi, drawable):
+    '''\deprecated Use L{libvlc_media_player_set_nsobject}() instead.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_set_agl', None) or \
+        _Cfunction('libvlc_media_player_set_agl', ((1,), (1,),), None,
+                    None, MediaPlayer, ctypes.c_uint32)
+    return f(p_mi, drawable)
+
+def libvlc_media_player_get_agl(p_mi):
+    '''\deprecated Use L{libvlc_media_player_get_nsobject}() instead.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_get_agl', None) or \
+        _Cfunction('libvlc_media_player_get_agl', ((1,),), None,
+                    ctypes.c_uint32, MediaPlayer)
+    return f(p_mi)
 
 def libvlc_errmsg():
     '''A human-readable error message for the last LibVLC error in the calling
@@ -4418,11 +4536,8 @@ def libvlc_media_duplicate(p_md):
 def libvlc_media_get_meta(p_md, e_meta):
     '''Read the meta of the media.
     If the media has not yet been parsed this will return None.
-    This methods automatically calls L{libvlc_media_parse_async}(), so after calling
-    it you may receive a libvlc_MediaMetaChanged event. If you prefer a synchronous
-    version ensure that you call L{libvlc_media_parse}() before get_meta().
     See L{libvlc_media_parse}
-    See L{libvlc_media_parse_async}
+    See L{libvlc_media_parse_with_options}
     See libvlc_MediaMetaChanged.
     @param p_md: the media descriptor.
     @param e_meta: the meta to read.
@@ -4456,11 +4571,9 @@ def libvlc_media_save_meta(p_md):
     return f(p_md)
 
 def libvlc_media_get_state(p_md):
-    '''Get current state of media descriptor object. Possible media states
-    are defined in libvlc_structures.c ( libvlc_NothingSpecial=0,
-    libvlc_Opening, libvlc_Buffering, libvlc_Playing, libvlc_Paused,
-    libvlc_Stopped, libvlc_Ended,
-    libvlc_Error).
+    '''Get current state of media descriptor object. Possible media states are
+    libvlc_NothingSpecial=0, libvlc_Opening, libvlc_Playing, libvlc_Paused,
+    libvlc_Stopped, libvlc_Ended, libvlc_Error.
     See libvlc_state_t.
     @param p_md: a media descriptor object.
     @return: state of media descriptor object.
@@ -4518,7 +4631,7 @@ def libvlc_media_parse(p_md):
     '''Parse a media.
     This fetches (local) art, meta data and tracks information.
     The method is synchronous.
-    See L{libvlc_media_parse_async}
+    See L{libvlc_media_parse_with_options}
     See L{libvlc_media_get_meta}
     See libvlc_media_get_tracks_info.
     @param p_md: media descriptor object.
@@ -4528,57 +4641,43 @@ def libvlc_media_parse(p_md):
                     None, Media)
     return f(p_md)
 
-def libvlc_media_parse_async(p_md):
-    '''Parse a media.
-    This fetches (local) art, meta data and tracks information.
-    The method is the asynchronous of L{libvlc_media_parse}().
-    To track when this is over you can listen to libvlc_MediaParsedChanged
-    event. However if the media was already parsed you will not receive this
-    event.
-    See L{libvlc_media_parse}
-    See libvlc_MediaParsedChanged
-    See L{libvlc_media_get_meta}
-    See libvlc_media_get_tracks_info.
-    @param p_md: media descriptor object.
-    '''
-    f = _Cfunctions.get('libvlc_media_parse_async', None) or \
-        _Cfunction('libvlc_media_parse_async', ((1,),), None,
-                    None, Media)
-    return f(p_md)
-
-def libvlc_media_parse_with_options(p_md, parse_flag):
+def libvlc_media_parse_with_options(p_md, parse_flag, timeout):
     '''Parse the media asynchronously with options.
     This fetches (local or network) art, meta data and/or tracks information.
-    This method is the extended version of L{libvlc_media_parse_async}().
+    This method is the extended version of L{libvlc_media_parse_with_options}().
     To track when this is over you can listen to libvlc_MediaParsedChanged
-    event. However if this functions returns an error, you will not receive this
-    event.
+    event. However if this functions returns an error, you will not receive any
+    events.
     It uses a flag to specify parse options (see libvlc_media_parse_flag_t). All
     these flags can be combined. By default, media is parsed if it's a local
     file.
     See libvlc_MediaParsedChanged
     See L{libvlc_media_get_meta}
     See L{libvlc_media_tracks_get}
+    See L{libvlc_media_get_parsed_status}
     See libvlc_media_parse_flag_t.
     @param p_md: media descriptor object.
     @param parse_flag: parse options:
+    @param timeout: maximum time allowed to preparse the media. If -1, the default "preparse-timeout" option will be used as a timeout. If 0, it will wait indefinitely. If > 0, the timeout will be used (in milliseconds).
     @return: -1 in case of error, 0 otherwise.
     @version: LibVLC 3.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_media_parse_with_options', None) or \
-        _Cfunction('libvlc_media_parse_with_options', ((1,), (1,),), None,
-                    ctypes.c_int, Media, MediaParseFlag)
-    return f(p_md, parse_flag)
+        _Cfunction('libvlc_media_parse_with_options', ((1,), (1,), (1,),), None,
+                    ctypes.c_int, Media, MediaParseFlag, ctypes.c_int)
+    return f(p_md, parse_flag, timeout)
 
-def libvlc_media_is_parsed(p_md):
+def libvlc_media_get_parsed_status(p_md):
     '''Get Parsed status for media descriptor object.
-    See libvlc_MediaParsedChanged.
+    See libvlc_MediaParsedChanged
+    See libvlc_media_parsed_status_t.
     @param p_md: media descriptor object.
-    @return: true if media object has been parsed otherwise it returns false \libvlc_return_bool.
+    @return: a value of the libvlc_media_parsed_status_t enum.
+    @version: LibVLC 3.0.0 or later.
     '''
-    f = _Cfunctions.get('libvlc_media_is_parsed', None) or \
-        _Cfunction('libvlc_media_is_parsed', ((1,),), None,
-                    ctypes.c_int, Media)
+    f = _Cfunctions.get('libvlc_media_get_parsed_status', None) or \
+        _Cfunction('libvlc_media_get_parsed_status', ((1,),), None,
+                    MediaParsedStatus, Media)
     return f(p_md)
 
 def libvlc_media_set_user_data(p_md, p_new_user_data):
@@ -4653,6 +4752,62 @@ def libvlc_media_get_type(p_md):
                     MediaType, Media)
     return f(p_md)
 
+def libvlc_media_slaves_add(p_md, i_type, i_priority, psz_uri):
+    '''Add a slave to the current media.
+    A slave is an external input source that may contains an additional subtitle
+    track (like a .srt) or an additional audio track (like a .ac3).
+    @note: This function must be called before the media is parsed (via
+    L{libvlc_media_parse_with_options}()) or before the media is played (via
+    L{libvlc_media_player_play}()).
+    @param p_md: media descriptor object.
+    @param i_type: subtitle or audio.
+    @param i_priority: from 0 (low priority) to 4 (high priority).
+    @param psz_uri: Uri of the slave (should contain a valid scheme).
+    @return: 0 on success, -1 on error.
+    @version: LibVLC 3.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_media_slaves_add', None) or \
+        _Cfunction('libvlc_media_slaves_add', ((1,), (1,), (1,), (1,),), None,
+                    ctypes.c_int, Media, MediaSlaveType, ctypes.c_int, ctypes.c_char_p)
+    return f(p_md, i_type, i_priority, psz_uri)
+
+def libvlc_media_slaves_clear(p_md):
+    '''Clear all slaves previously added by L{libvlc_media_slaves_add}() or
+    internally.
+    @param p_md: media descriptor object.
+    @version: LibVLC 3.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_media_slaves_clear', None) or \
+        _Cfunction('libvlc_media_slaves_clear', ((1,),), None,
+                    None, Media)
+    return f(p_md)
+
+def libvlc_media_slaves_get(p_md, ppp_slaves):
+    '''Get a media descriptor's slave list
+    The list will contain slaves parsed by VLC or previously added by
+    L{libvlc_media_slaves_add}(). The typical use case of this function is to save
+    a list of slave in a database for a later use.
+    @param p_md: media descriptor object.
+    @param ppp_slaves: address to store an allocated array of slaves (must be freed with L{libvlc_media_slaves_release}()) [OUT].
+    @return: the number of slaves (zero on error).
+    @version: LibVLC 3.0.0 and later. See L{libvlc_media_slaves_add}.
+    '''
+    f = _Cfunctions.get('libvlc_media_slaves_get', None) or \
+        _Cfunction('libvlc_media_slaves_get', ((1,), (1,),), None,
+                    ctypes.c_int, Media, ctypes.POINTER(ctypes.POINTER(MediaSlave)))
+    return f(p_md, ppp_slaves)
+
+def libvlc_media_slaves_release(pp_slaves, i_count):
+    '''Release a media descriptor's slave list.
+    @param pp_slaves: slave array to release.
+    @param i_count: number of elements in the array.
+    @version: LibVLC 3.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_media_slaves_release', None) or \
+        _Cfunction('libvlc_media_slaves_release', ((1,), (1,),), None,
+                    None, ctypes.POINTER(MediaSlave), ctypes.c_int)
+    return f(pp_slaves, i_count)
+
 def libvlc_media_discoverer_new(p_inst, psz_name):
     '''Create a media discoverer object by name.
     After this object is created, you should attach to events in order to be
@@ -4662,7 +4817,7 @@ def libvlc_media_discoverer_new(p_inst, psz_name):
     You need to call L{libvlc_media_discoverer_start}() in order to start the
     discovery.
     See L{libvlc_media_discoverer_media_list}
-    See L{libvlc_media_discoverer_event_manager}
+    See libvlc_media_discoverer_event_manager
     See L{libvlc_media_discoverer_start}.
     @param p_inst: libvlc instance.
     @param psz_name: service name; use L{libvlc_media_discoverer_list_get}() to get a list of the discoverer names available in this libVLC instance.
@@ -4709,16 +4864,6 @@ def libvlc_media_discoverer_release(p_mdis):
                     None, MediaDiscoverer)
     return f(p_mdis)
 
-def libvlc_media_discoverer_localized_name(p_mdis):
-    '''Get media service discover object its localized name.
-    @param p_mdis: media discover object.
-    @return: localized name.
-    '''
-    f = _Cfunctions.get('libvlc_media_discoverer_localized_name', None) or \
-        _Cfunction('libvlc_media_discoverer_localized_name', ((1,),), string_result,
-                    ctypes.c_void_p, MediaDiscoverer)
-    return f(p_mdis)
-
 def libvlc_media_discoverer_media_list(p_mdis):
     '''Get media service discover media list.
     @param p_mdis: media service discover object.
@@ -4726,16 +4871,6 @@ def libvlc_media_discoverer_media_list(p_mdis):
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_media_list', None) or \
         _Cfunction('libvlc_media_discoverer_media_list', ((1,),), class_result(MediaList),
-                    ctypes.c_void_p, MediaDiscoverer)
-    return f(p_mdis)
-
-def libvlc_media_discoverer_event_manager(p_mdis):
-    '''Get event manager from media service discover object.
-    @param p_mdis: media service discover object.
-    @return: event manager object.
-    '''
-    f = _Cfunctions.get('libvlc_media_discoverer_event_manager', None) or \
-        _Cfunction('libvlc_media_discoverer_event_manager', ((1,),), class_result(EventManager),
                     ctypes.c_void_p, MediaDiscoverer)
     return f(p_mdis)
 
@@ -5373,22 +5508,6 @@ def libvlc_media_player_get_nsobject(p_mi):
                     ctypes.c_void_p, MediaPlayer)
     return f(p_mi)
 
-def libvlc_media_player_set_agl(p_mi, drawable):
-    '''\deprecated Use L{libvlc_media_player_set_nsobject} instead.
-    '''
-    f = _Cfunctions.get('libvlc_media_player_set_agl', None) or \
-        _Cfunction('libvlc_media_player_set_agl', ((1,), (1,),), None,
-                    None, MediaPlayer, ctypes.c_uint32)
-    return f(p_mi, drawable)
-
-def libvlc_media_player_get_agl(p_mi):
-    '''\deprecated Use L{libvlc_media_player_get_nsobject} instead.
-    '''
-    f = _Cfunctions.get('libvlc_media_player_get_agl', None) or \
-        _Cfunction('libvlc_media_player_get_agl', ((1,),), None,
-                    ctypes.c_uint32, MediaPlayer)
-    return f(p_mi)
-
 def libvlc_media_player_set_xwindow(p_mi, drawable):
     '''Set an X Window System drawable where the media player should render its
     video output. The call takes effect when the playback starts. If it is
@@ -5722,20 +5841,6 @@ def libvlc_media_player_get_state(p_mi):
                     State, MediaPlayer)
     return f(p_mi)
 
-def libvlc_media_player_get_fps(p_mi):
-    '''Get movie fps rate
-    This function is provided for backward compatibility. It cannot deal with
-    multiple video tracks. In LibVLC versions prior to 3.0, it would also fail
-    if the file format did not convey the frame rate explicitly.
-    \deprecated Consider using L{libvlc_media_tracks_get}() instead.
-    @param p_mi: the Media Player.
-    @return: frames per second (fps) for this playing movie, or 0 if unspecified.
-    '''
-    f = _Cfunctions.get('libvlc_media_player_get_fps', None) or \
-        _Cfunction('libvlc_media_player_get_fps', ((1,),), None,
-                    ctypes.c_float, MediaPlayer)
-    return f(p_mi)
-
 def libvlc_media_player_has_vout(p_mi):
     '''How many video outputs does this media player have?
     @param p_mi: the media player.
@@ -5808,6 +5913,22 @@ def libvlc_media_player_set_video_title_display(p_mi, position, timeout):
         _Cfunction('libvlc_media_player_set_video_title_display', ((1,), (1,), (1,),), None,
                     None, MediaPlayer, Position, ctypes.c_int)
     return f(p_mi, position, timeout)
+
+def libvlc_media_player_add_slave(p_mi, i_type, psz_uri, b_select):
+    '''Add a slave to the current media player.
+    @note: If the player is playing, the slave will be added directly. This call
+    will also update the slave list of the attached L{Media}.
+    @param p_mi: the media player.
+    @param i_type: subtitle or audio.
+    @param psz_uri: Uri of the slave (should contain a valid scheme).
+    @param b_select: True if this slave should be selected when it's loaded.
+    @return: 0 on success, -1 on error.
+    @version: LibVLC 3.0.0 and later. See L{libvlc_media_slaves_add}.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_add_slave', None) or \
+        _Cfunction('libvlc_media_player_add_slave', ((1,), (1,), (1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, MediaSlaveType, ctypes.c_char_p, ctypes.c_bool)
+    return f(p_mi, i_type, psz_uri, b_select)
 
 def libvlc_track_description_list_release(p_track_description):
     '''Release (free) L{TrackDescription}.
@@ -6003,17 +6124,6 @@ def libvlc_video_set_spu(p_mi, i_spu):
         _Cfunction('libvlc_video_set_spu', ((1,), (1,),), None,
                     ctypes.c_int, MediaPlayer, ctypes.c_int)
     return f(p_mi, i_spu)
-
-def libvlc_video_set_subtitle_file(p_mi, psz_subtitle):
-    '''Set new video subtitle file.
-    @param p_mi: the media player.
-    @param psz_subtitle: new video subtitle file.
-    @return: the success status (boolean).
-    '''
-    f = _Cfunctions.get('libvlc_video_set_subtitle_file', None) or \
-        _Cfunction('libvlc_video_set_subtitle_file', ((1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, ctypes.c_char_p)
-    return f(p_mi, psz_subtitle)
 
 def libvlc_video_get_spu_delay(p_mi):
     '''Get the current subtitle delay. Positive values means subtitles are being
@@ -6771,6 +6881,28 @@ def libvlc_media_player_set_equalizer(p_mi, p_equalizer):
                     ctypes.c_int, MediaPlayer, ctypes.c_void_p)
     return f(p_mi, p_equalizer)
 
+def libvlc_media_player_get_role(p_mi):
+    '''Gets the media role.
+    @param p_mi: media player.
+    @return: the media player role (\ref libvlc_media_player_role_t).
+    @version: LibVLC 3.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_get_role', None) or \
+        _Cfunction('libvlc_media_player_get_role', ((1,),), None,
+                    ctypes.c_int, MediaPlayer)
+    return f(p_mi)
+
+def libvlc_media_player_set_role(p_mi, role):
+    '''Sets the media role.
+    @param p_mi: media player.
+    @param role: the media player role (\ref libvlc_media_player_role_t).
+    @return: 0 on success, -1 on error.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_set_role', None) or \
+        _Cfunction('libvlc_media_player_set_role', ((1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, ctypes.c_uint)
+    return f(p_mi, role)
+
 def libvlc_vlm_release(p_instance):
     '''Release the vlm instance related to the given L{Instance}.
     @param p_instance: the instance.
@@ -7084,7 +7216,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_printerr
 #  libvlc_set_exit_handler
 
-# 37 function(s) not wrapped as methods:
+# 38 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_amp_at_index
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
@@ -7116,6 +7248,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_log_get_object
 #  libvlc_media_discoverer_list_release
 #  libvlc_media_get_codec_description
+#  libvlc_media_slaves_release
 #  libvlc_media_tracks_release
 #  libvlc_module_description_list_release
 #  libvlc_new

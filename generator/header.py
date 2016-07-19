@@ -621,5 +621,11 @@ class ChapterDescription(_Cstruct):
         ('name', ctypes.c_char_p),
     ]
 
- # End of header.py #
+class MediaSlave(_Cstruct):
+    _fields = [
+        ('psz_uri', ctypes.c_char_p),
+        ('i_type', MediaSlaveType),
+        ('i_priority', ctypes.c_uint)
+    ]
 
+# End of header.py #

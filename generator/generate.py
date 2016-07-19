@@ -142,6 +142,7 @@ decllist_re  = re.compile('\s*;\s*')
 paramlist_re = re.compile('\s*,\s*')
 version_re   = re.compile('vlc[\-]\d+[.]\d+[.]\d+.*')
 LIBVLC_V_re  = re.compile('\s*#\s*define\s+LIBVLC_VERSION_([A-Z]+)\s+\(*(\d+)\)*')
+define_re    = re.compile('^\s*#\s*define\s+\w+\s+.+?$')
 
 def endot(text):
     """Terminate string with a period.
@@ -415,6 +416,8 @@ class Val(object):
             n = '_'.join( t[-2:] )  # some use 1_1, 5_1, etc.
         if n[0].isdigit():  # can't start with a number
             n = '_' + n
+        if n == 'None': # can't use a reserved python keyword
+            n = '_' + n
         self.name = n
         self.value = value
 
@@ -591,6 +594,8 @@ class Parser(object):
         f = opener(self.h_file)
         for t in f:
             n += 1
+            if define_re.match(t):
+                continue
             # collect doc lines
             if t.startswith('/**'):
                 d =     [t[3:].rstrip()]
@@ -867,6 +872,8 @@ class PythonGenerator(_Generator):
         'libvlc_module_description_t*': 'ctypes.POINTER(ModuleDescription)',
         'libvlc_audio_output_device_t*': 'ctypes.POINTER(AudioOutputDevice)',
         'libvlc_equalizer_t*':         'ctypes.c_void_p',
+        'libvlc_media_slave_t**':    'ctypes.POINTER(MediaSlave)',
+        'libvlc_media_slave_t***':    'ctypes.POINTER(ctypes.POINTER(MediaSlave))',
 
         'FILE*':                       'FILE_ptr',
 
