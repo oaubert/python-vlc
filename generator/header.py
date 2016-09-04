@@ -113,7 +113,8 @@ def find_lib():
         except OSError:  # may fail
             dll = ctypes.CDLL('libvlc.so.5')
     elif sys.platform.startswith('win'):
-        p = find_library('libvlc.dll')
+        libname = 'libvlc.dll'
+        p = find_library(libname)
         if p is None:
             try:  # some registry settings
                 # leaner than win32api, win32con
@@ -132,10 +133,14 @@ def find_lib():
             except ImportError:  # no PyWin32
                 pass
             if plugin_path is None:
-                 # try some standard locations.
-                for p in ('Program Files\\VideoLan\\', 'VideoLan\\',
-                          'Program Files\\',           ''):
-                    p = 'C:\\' + p + 'VLC\\libvlc.dll'
+                # try some standard locations.
+                programfiles = os.environ["ProgramFiles"]
+                homedir = os.environ["HOMEDRIVE"]
+                for p in ('{programfiles}\\VideoLan{libname}', '{homedir}:\\VideoLan{libname}',
+                          '{programfiles}{libname}',           '{homedir}:{libname}'):
+                    p = p.format(homedir = homedir,
+                                 programfiles = programfiles,
+                                 libname = '\\VLC\\' + libname)
                     if os.path.exists(p):
                         plugin_path = os.path.dirname(p)
                         break
@@ -143,11 +148,11 @@ def find_lib():
                 p = os.getcwd()
                 os.chdir(plugin_path)
                  # if chdir failed, this will raise an exception
-                dll = ctypes.CDLL('libvlc.dll')
+                dll = ctypes.CDLL(libname)
                  # restore cwd after dll has been loaded
                 os.chdir(p)
             else:  # may fail
-                dll = ctypes.CDLL('libvlc.dll')
+                dll = ctypes.CDLL(libname)
         else:
             plugin_path = os.path.dirname(p)
             dll = ctypes.CDLL(p)
