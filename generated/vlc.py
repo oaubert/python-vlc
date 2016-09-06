@@ -50,7 +50,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Tue Jul 19 12:42:59 2016"
+build_date  = "Tue Sep  6 12:16:33 2016"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -114,7 +114,8 @@ def find_lib():
         except OSError:  # may fail
             dll = ctypes.CDLL('libvlc.so.5')
     elif sys.platform.startswith('win'):
-        p = find_library('libvlc.dll')
+        libname = 'libvlc.dll'
+        p = find_library(libname)
         if p is None:
             try:  # some registry settings
                 # leaner than win32api, win32con
@@ -133,10 +134,14 @@ def find_lib():
             except ImportError:  # no PyWin32
                 pass
             if plugin_path is None:
-                 # try some standard locations.
-                for p in ('Program Files\\VideoLan\\', 'VideoLan\\',
-                          'Program Files\\',           ''):
-                    p = 'C:\\' + p + 'VLC\\libvlc.dll'
+                # try some standard locations.
+                programfiles = os.environ["ProgramFiles"]
+                homedir = os.environ["HOMEDRIVE"]
+                for p in ('{programfiles}\\VideoLan{libname}', '{homedir}:\\VideoLan{libname}',
+                          '{programfiles}{libname}',           '{homedir}:{libname}'):
+                    p = p.format(homedir = homedir,
+                                 programfiles = programfiles,
+                                 libname = '\\VLC\\' + libname)
                     if os.path.exists(p):
                         plugin_path = os.path.dirname(p)
                         break
@@ -144,11 +149,11 @@ def find_lib():
                 p = os.getcwd()
                 os.chdir(plugin_path)
                  # if chdir failed, this will raise an exception
-                dll = ctypes.CDLL('libvlc.dll')
+                dll = ctypes.CDLL(libname)
                  # restore cwd after dll has been loaded
                 os.chdir(p)
             else:  # may fail
-                dll = ctypes.CDLL('libvlc.dll')
+                dll = ctypes.CDLL(libname)
         else:
             plugin_path = os.path.dirname(p)
             dll = ctypes.CDLL(p)
@@ -1863,10 +1868,8 @@ class Instance(_Ctype):
     
     def media_discoverer_new(self, psz_name):
         '''Create a media discoverer object by name.
-        After this object is created, you should attach to events in order to be
-        notified of the discoverer state.
-        You should also attach to media_list events in order to be notified of new
-        items discovered.
+        After this object is created, you should attach to media_list events in
+        order to be notified of new items discovered.
         You need to call L{media_discoverer_start}() in order to start the
         discovery.
         See L{media_discoverer_media_list}
@@ -1883,7 +1886,7 @@ class Instance(_Ctype):
         '''Get media discoverer services by category.
         @param i_cat: category of services to fetch.
         @param ppp_services: address to store an allocated array of media discoverer services (must be freed with L{media_discoverer_list_release}() by the caller) [OUT].
-        @return: the number of media discoverer services (zero on error).
+        @return: the number of media discoverer services or -1 on error.
         @version: LibVLC 3.0.0 and later.
         '''
         return libvlc_media_discoverer_list_get(self, i_cat, ppp_services)
@@ -4051,8 +4054,9 @@ def libvlc_new(argc, argv):
     Also on POSIX systems, it is recommended that the SIGPIPE signal be blocked,
     even if it is not, in principles, necessary.
     On Microsoft Windows Vista/2008, the process error mode
-    SEM_FAILCRITICALERRORS flag B{must} with the SetErrorMode() function
-    before using LibVLC. On later versions, it is optional and unnecessary.
+    SEM_FAILCRITICALERRORS flag B{must} be set with the SetErrorMode()
+    function before using LibVLC. On later versions, it is optional and
+    unnecessary.
     @param argc: the number of arguments (should be 0).
     @param argv: list of arguments (should be None).
     @return: the libvlc instance or None in case of error.
@@ -4810,10 +4814,8 @@ def libvlc_media_slaves_release(pp_slaves, i_count):
 
 def libvlc_media_discoverer_new(p_inst, psz_name):
     '''Create a media discoverer object by name.
-    After this object is created, you should attach to events in order to be
-    notified of the discoverer state.
-    You should also attach to media_list events in order to be notified of new
-    items discovered.
+    After this object is created, you should attach to media_list events in
+    order to be notified of new items discovered.
     You need to call L{libvlc_media_discoverer_start}() in order to start the
     discovery.
     See L{libvlc_media_discoverer_media_list}
@@ -4889,12 +4891,12 @@ def libvlc_media_discoverer_list_get(p_inst, i_cat, ppp_services):
     @param p_inst: libvlc instance.
     @param i_cat: category of services to fetch.
     @param ppp_services: address to store an allocated array of media discoverer services (must be freed with L{libvlc_media_discoverer_list_release}() by the caller) [OUT].
-    @return: the number of media discoverer services (zero on error).
+    @return: the number of media discoverer services or -1 on error.
     @version: LibVLC 3.0.0 and later.
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_list_get', None) or \
         _Cfunction('libvlc_media_discoverer_list_get', ((1,), (1,), (1,),), None,
-                    ctypes.c_int, Instance, MediaDiscovererCategory, ctypes.POINTER(ctypes.POINTER(MediaDiscovererDescription)))
+                    ctypes.c_ssize_t, Instance, MediaDiscovererCategory, ctypes.POINTER(ctypes.POINTER(MediaDiscovererDescription)))
     return f(p_inst, i_cat, ppp_services)
 
 def libvlc_media_discoverer_list_release(pp_services, i_count):
@@ -4905,7 +4907,7 @@ def libvlc_media_discoverer_list_release(pp_services, i_count):
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_list_release', None) or \
         _Cfunction('libvlc_media_discoverer_list_release', ((1,), (1,),), None,
-                    None, ctypes.POINTER(MediaDiscovererDescription), ctypes.c_int)
+                    None, ctypes.POINTER(MediaDiscovererDescription), ctypes.c_size_t)
     return f(pp_services, i_count)
 
 def libvlc_media_library_new(p_instance):
