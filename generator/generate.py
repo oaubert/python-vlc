@@ -861,6 +861,10 @@ class PythonGenerator(_Generator):
         'libvlc_media_list_view_t*':   'MediaListView',
         'libvlc_media_player_t*':      'MediaPlayer',
         'libvlc_media_stats_t*':       'ctypes.POINTER(MediaStats)',
+        'libvlc_renderer_item_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
+        'libvlc_renderer_discoverer_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
+        'libvlc_rd_description_t**': 'ctypes.POINTER(RDDescription)',
+        'libvlc_rd_description_t***': 'ctypes.POINTER(ctypes.POINTER(RDDescription))',
         'libvlc_media_track_info_t**': 'ctypes.POINTER(ctypes.c_void_p)',
         'libvlc_rectangle_t*':         'ctypes.POINTER(Rectangle)',
         'libvlc_time_t':               'ctypes.c_longlong',

@@ -633,4 +633,10 @@ class MediaSlave(_Cstruct):
         ('i_priority', ctypes.c_uint)
     ]
 
+class RDDescription(_Cstruct):
+    _fields = [
+        ('name', ctypes.c_char_p),
+        ('longname', ctypes.c_char_p)
+    ]
+
 # End of header.py #
