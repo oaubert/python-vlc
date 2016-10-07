@@ -3,8 +3,9 @@ Python ctypes-based bindings for libvlc
 
 The bindings use ctypes to directly call the libvlc dynamic lib, and
 the code is generated from the include files defining the public
-API. The same module is compatible with various versions of libvlc
-2.*.
+API. The same module should be compatible with various versions of
+libvlc 2.*. However, there may be incompatible changes between major
+versions. A 2.2 specific binding is provided.
 
 License
 -------

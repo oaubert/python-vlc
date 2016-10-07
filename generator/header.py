@@ -626,12 +626,15 @@ class ChapterDescription(_Cstruct):
         ('name', ctypes.c_char_p),
     ]
 
-class MediaSlave(_Cstruct):
-    _fields = [
-        ('psz_uri', ctypes.c_char_p),
-        ('i_type', MediaSlaveType),
-        ('i_priority', ctypes.c_uint)
-    ]
+# This struct depends on the MediaSlaveType enum that is defined only
+# in > 2.2
+if 'MediaSlaveType' in locals():
+    class MediaSlave(_Cstruct):
+        _fields = [
+            ('psz_uri', ctypes.c_char_p),
+            ('i_type', MediaSlaveType),
+            ('i_priority', ctypes.c_uint)
+        ]
 
 class RDDescription(_Cstruct):
     _fields = [
