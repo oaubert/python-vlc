@@ -626,6 +626,14 @@ class ChapterDescription(_Cstruct):
         ('name', ctypes.c_char_p),
     ]
 
+class VideoViewpoint(_Cstruct):
+    _fields = [
+        ('yaw', ctypes.c_float),
+        ('pitch', ctypes.c_float),
+        ('roll', ctypes.c_float),
+        ('field_of_view', ctypes.c_float),
+    ]
+
 # This struct depends on the MediaSlaveType enum that is defined only
 # in > 2.2
 if 'MediaSlaveType' in locals():

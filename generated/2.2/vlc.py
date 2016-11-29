@@ -50,7 +50,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "2.2.4"
-build_date  = "Fri Oct  7 12:04:48 2016 - 2.2.4"
+build_date  = "Tue Nov 29 10:26:54 2016 - 2.2.4"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1267,6 +1267,14 @@ class ChapterDescription(_Cstruct):
         ('name', ctypes.c_char_p),
     ]
 
+class VideoViewpoint(_Cstruct):
+    _fields = [
+        ('yaw', ctypes.c_float),
+        ('pitch', ctypes.c_float),
+        ('roll', ctypes.c_float),
+        ('field_of_view', ctypes.c_float),
+    ]
+
 # This struct depends on the MediaSlaveType enum that is defined only
 # in > 2.2
 if 'MediaSlaveType' in locals():
@@ -1946,7 +1954,14 @@ class Media(_Ctype):
         mediaTrack_pp = ctypes.POINTER(MediaTrack)()
         n = libvlc_media_tracks_get(self, ctypes.byref(mediaTrack_pp))
         info = ctypes.cast(mediaTrack_pp, ctypes.POINTER(ctypes.POINTER(MediaTrack) * n))
-        return info
+        try:
+            contents = info.contents
+        except ValueError:
+            # Media not parsed, no info.
+            return None
+        tracks = ( contents[i].contents for i in range(len(contents)) )
+        # libvlc_media_tracks_release(mediaTrack_pp, n)
+        return tracks
 
 
     

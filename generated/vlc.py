@@ -50,7 +50,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Fri Oct  7 12:04:48 2016"
+build_date  = "Tue Nov 29 10:26:53 2016"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -650,6 +650,40 @@ TrackType.audio   = TrackType(0)
 TrackType.text    = TrackType(2)
 TrackType.unknown = TrackType(-1)
 TrackType.video   = TrackType(1)
+
+class VideoOrient(_Enum):
+    '''N/A
+    '''
+    _enum_names_ = {
+        0: 'left',
+        1: 'right',
+        2: 'left',
+        3: 'right',
+        4: 'top',
+        5: 'bottom',
+        6: 'top',
+        7: 'bottom',
+    }
+VideoOrient.bottom = VideoOrient(5)
+VideoOrient.bottom = VideoOrient(7)
+VideoOrient.left   = VideoOrient(0)
+VideoOrient.left   = VideoOrient(2)
+VideoOrient.right  = VideoOrient(1)
+VideoOrient.right  = VideoOrient(3)
+VideoOrient.top    = VideoOrient(4)
+VideoOrient.top    = VideoOrient(6)
+
+class VideoProjection(_Enum):
+    '''N/A
+    '''
+    _enum_names_ = {
+        0: 'rectangular',
+        1: 'equirectangular',
+        0x100: 'standard',
+    }
+VideoProjection.equirectangular = VideoProjection(1)
+VideoProjection.rectangular     = VideoProjection(0)
+VideoProjection.standard        = VideoProjection(0x100)
 
 class MediaType(_Enum):
     '''Media type
@@ -1505,6 +1539,14 @@ class ChapterDescription(_Cstruct):
         ('name', ctypes.c_char_p),
     ]
 
+class VideoViewpoint(_Cstruct):
+    _fields = [
+        ('yaw', ctypes.c_float),
+        ('pitch', ctypes.c_float),
+        ('roll', ctypes.c_float),
+        ('field_of_view', ctypes.c_float),
+    ]
+
 # This struct depends on the MediaSlaveType enum that is defined only
 # in > 2.2
 if 'MediaSlaveType' in locals():
@@ -2240,7 +2282,14 @@ class Media(_Ctype):
         mediaTrack_pp = ctypes.POINTER(MediaTrack)()
         n = libvlc_media_tracks_get(self, ctypes.byref(mediaTrack_pp))
         info = ctypes.cast(mediaTrack_pp, ctypes.POINTER(ctypes.POINTER(MediaTrack) * n))
-        return info
+        try:
+            contents = info.contents
+        except ValueError:
+            # Media not parsed, no info.
+            return None
+        tracks = ( contents[i].contents for i in range(len(contents)) )
+        # libvlc_media_tracks_release(mediaTrack_pp, n)
+        return tracks
 
 
     
@@ -2311,7 +2360,7 @@ class Media(_Ctype):
     def get_meta(self, e_meta):
         '''Read the meta of the media.
         If the media has not yet been parsed this will return None.
-        See L{parse}
+        See libvlc_media_parse
         See L{parse_with_options}
         See libvlc_MediaMetaChanged.
         @param e_meta: the meta to read.
@@ -2378,17 +2427,6 @@ class Media(_Ctype):
         return libvlc_media_get_duration(self)
 
     
-    def parse(self):
-        '''Parse a media.
-        This fetches (local) art, meta data and tracks information.
-        The method is synchronous.
-        See L{parse_with_options}
-        See L{get_meta}
-        See libvlc_media_get_tracks_info.
-        '''
-        return libvlc_media_parse(self)
-
-    
     def parse_with_options(self, parse_flag, timeout):
         '''Parse the media asynchronously with options.
         This fetches (local or network) art, meta data and/or tracks information.
@@ -2399,6 +2437,7 @@ class Media(_Ctype):
         It uses a flag to specify parse options (see libvlc_media_parse_flag_t). All
         these flags can be combined. By default, media is parsed if it's a local
         file.
+        @note: Parsing can be aborted with L{parse_stop}().
         See libvlc_MediaParsedChanged
         See L{get_meta}
         See L{tracks_get}
@@ -2410,6 +2449,16 @@ class Media(_Ctype):
         @version: LibVLC 3.0.0 or later.
         '''
         return libvlc_media_parse_with_options(self, parse_flag, timeout)
+
+    
+    def parse_stop(self):
+        '''Stop the parsing of the media
+        When the media parsing is stopped, the libvlc_MediaParsedChanged event will
+        be sent with the libvlc_media_parsed_status_timeout status.
+        See L{parse_with_options}.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_media_parse_stop(self)
 
     
     def get_parsed_status(self):
@@ -3620,6 +3669,17 @@ class MediaPlayer(_Ctype):
         return libvlc_video_set_aspect_ratio(self, str_to_bytes(psz_aspect))
 
     
+    def video_update_viewpoint(self, p_viewpoint, b_absolute):
+        '''Update the video viewpoint information.
+        @note: It is safe to call this function before the media player is started.
+        @param p_viewpoint: video viewpoint allocated via L{video_new_viewpoint}().
+        @param b_absolute: if true replace the old viewpoint with the new one. If false, increase/decrease it.
+        @return: -1 in case of error, 0 otherwise @note the values are set asynchronously, it will be used by the next frame displayed.
+        @version: LibVLC 3.0.0 and later.
+        '''
+        return libvlc_video_update_viewpoint(self, p_viewpoint, b_absolute)
+
+    
     def video_get_spu(self):
         '''Get current video subtitle.
         @return: the video subtitle selected, or -1 if none.
@@ -4610,7 +4670,7 @@ def libvlc_media_duplicate(p_md):
 def libvlc_media_get_meta(p_md, e_meta):
     '''Read the meta of the media.
     If the media has not yet been parsed this will return None.
-    See L{libvlc_media_parse}
+    See libvlc_media_parse
     See L{libvlc_media_parse_with_options}
     See libvlc_MediaMetaChanged.
     @param p_md: the media descriptor.
@@ -4701,20 +4761,6 @@ def libvlc_media_get_duration(p_md):
                     ctypes.c_longlong, Media)
     return f(p_md)
 
-def libvlc_media_parse(p_md):
-    '''Parse a media.
-    This fetches (local) art, meta data and tracks information.
-    The method is synchronous.
-    See L{libvlc_media_parse_with_options}
-    See L{libvlc_media_get_meta}
-    See libvlc_media_get_tracks_info.
-    @param p_md: media descriptor object.
-    '''
-    f = _Cfunctions.get('libvlc_media_parse', None) or \
-        _Cfunction('libvlc_media_parse', ((1,),), None,
-                    None, Media)
-    return f(p_md)
-
 def libvlc_media_parse_with_options(p_md, parse_flag, timeout):
     '''Parse the media asynchronously with options.
     This fetches (local or network) art, meta data and/or tracks information.
@@ -4725,6 +4771,7 @@ def libvlc_media_parse_with_options(p_md, parse_flag, timeout):
     It uses a flag to specify parse options (see libvlc_media_parse_flag_t). All
     these flags can be combined. By default, media is parsed if it's a local
     file.
+    @note: Parsing can be aborted with L{libvlc_media_parse_stop}().
     See libvlc_MediaParsedChanged
     See L{libvlc_media_get_meta}
     See L{libvlc_media_tracks_get}
@@ -4740,6 +4787,19 @@ def libvlc_media_parse_with_options(p_md, parse_flag, timeout):
         _Cfunction('libvlc_media_parse_with_options', ((1,), (1,), (1,),), None,
                     ctypes.c_int, Media, MediaParseFlag, ctypes.c_int)
     return f(p_md, parse_flag, timeout)
+
+def libvlc_media_parse_stop(p_md):
+    '''Stop the parsing of the media
+    When the media parsing is stopped, the libvlc_MediaParsedChanged event will
+    be sent with the libvlc_media_parsed_status_timeout status.
+    See L{libvlc_media_parse_with_options}.
+    @param p_md: media descriptor object.
+    @version: LibVLC 3.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_media_parse_stop', None) or \
+        _Cfunction('libvlc_media_parse_stop', ((1,),), None,
+                    None, Media)
+    return f(p_md)
 
 def libvlc_media_get_parsed_status(p_md):
     '''Get Parsed status for media descriptor object.
@@ -4779,7 +4839,7 @@ def libvlc_media_get_user_data(p_md):
 
 def libvlc_media_tracks_get(p_md, tracks):
     '''Get media descriptor's elementary streams description
-    Note, you need to call L{libvlc_media_parse}() or play the media at least once
+    Note, you need to call libvlc_media_parse() or play the media at least once
     before calling this function.
     Not doing this will result in an empty array.
     @param p_md: media descriptor object.
@@ -6191,6 +6251,30 @@ def libvlc_video_set_aspect_ratio(p_mi, psz_aspect):
                     None, MediaPlayer, ctypes.c_char_p)
     return f(p_mi, psz_aspect)
 
+def libvlc_video_new_viewpoint():
+    '''Create a video viewpoint structure.
+    @return: video viewpoint or None (the result must be released with free() or L{libvlc_free}()).
+    @version: LibVLC 3.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_video_new_viewpoint', None) or \
+        _Cfunction('libvlc_video_new_viewpoint', (), None,
+                    VideoViewpoint)
+    return f()
+
+def libvlc_video_update_viewpoint(p_mi, p_viewpoint, b_absolute):
+    '''Update the video viewpoint information.
+    @note: It is safe to call this function before the media player is started.
+    @param p_mi: the media player.
+    @param p_viewpoint: video viewpoint allocated via L{libvlc_video_new_viewpoint}().
+    @param b_absolute: if true replace the old viewpoint with the new one. If false, increase/decrease it.
+    @return: -1 in case of error, 0 otherwise @note the values are set asynchronously, it will be used by the next frame displayed.
+    @version: LibVLC 3.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_video_update_viewpoint', None) or \
+        _Cfunction('libvlc_video_update_viewpoint', ((1,), (1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, VideoViewpoint, ctypes.c_bool)
+    return f(p_mi, p_viewpoint, b_absolute)
+
 def libvlc_video_get_spu(p_mi):
     '''Get current video subtitle.
     @param p_mi: the media player.
@@ -7460,7 +7544,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_printerr
 #  libvlc_set_exit_handler
 
-# 47 function(s) not wrapped as methods:
+# 48 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_amp_at_index
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
@@ -7507,6 +7591,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_renderer_item_type
 #  libvlc_title_descriptions_release
 #  libvlc_track_description_list_release
+#  libvlc_video_new_viewpoint
 #  libvlc_vprinterr
 
 # Start of footer.py #

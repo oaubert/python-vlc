@@ -174,7 +174,14 @@ class Media:
         mediaTrack_pp = ctypes.POINTER(MediaTrack)()
         n = libvlc_media_tracks_get(self, ctypes.byref(mediaTrack_pp))
         info = ctypes.cast(mediaTrack_pp, ctypes.POINTER(ctypes.POINTER(MediaTrack) * n))
-        return info
+        try:
+            contents = info.contents
+        except ValueError:
+            # Media not parsed, no info.
+            return None
+        tracks = ( contents[i].contents for i in range(len(contents)) )
+        # libvlc_media_tracks_release(mediaTrack_pp, n)
+        return tracks
 
 class MediaList:
     """Create a new MediaList instance.
