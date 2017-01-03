@@ -32,7 +32,7 @@ import vlc
 
 # import standard libraries
 import os
-import user
+import sys
 
 class Player(wx.Frame):
     """The main window has to deal with events.
@@ -120,7 +120,7 @@ class Player(wx.Frame):
 
         # Create a file dialog opened in the current home directory, where
         # you can display all kind of files, having as title "Choose a file".
-        dlg = wx.FileDialog(self, "Choose a file", user.home, "",
+        dlg = wx.FileDialog(self, "Choose a file", os.path.expanduser('~'), "",
                             "*.*", wx.OPEN)
         if dlg.ShowModal() == wx.ID_OK:
             dirname = dlg.GetDirectory()
@@ -137,8 +137,13 @@ class Player(wx.Frame):
             self.SetTitle("%s - wxVLCplayer" % title)
 
             # set the window id where to render VLC's video output
-            self.player.set_xwindow(self.videopanel.GetHandle())
-            # FIXME: this should be made cross-platform
+            handle = self.videopanel.GetHandle()
+            if sys.platform.startswith('linux'): # for Linux using the X Server
+                self.player.set_xwindow(handle)
+            elif sys.platform == "win32": # for Windows
+                self.player.set_hwnd(handle)
+            elif sys.platform == "darwin": # for MacOS
+                self.player.set_nsobject(handle)
             self.OnPlay(None)
 
             # set the volume slider to the current volume
