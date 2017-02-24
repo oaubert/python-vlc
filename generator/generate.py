@@ -52,7 +52,7 @@ C{LibVlc-footer.java} and C{LibVlc-header.java}.
 __all__     = ('Parser',
                'PythonGenerator', 'JavaGenerator',
                'process')
-__version__ =  '20.16.04.16'
+__version__ =  '20.17.02.24'
 
 _debug = False
 
@@ -903,7 +903,7 @@ class PythonGenerator(_Generator):
         'unsigned*': 'ctypes.POINTER(ctypes.c_uint)',  # _video_get_size
         'void':      'None',
         'void*':     'ctypes.c_void_p',
-        'void**':    'ListPOINTER(ctypes.c_void_p)',
+        'void**':    'ctypes.POINTER(ctypes.c_void_p)',
 
         'WINDOWHANDLE': 'ctypes.c_ulong',
     }

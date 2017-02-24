@@ -50,7 +50,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "N/A"
-build_date  = "Tue Nov 29 10:26:53 2016"
+build_date  = "Fri Feb 24 23:38:10 2017"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1138,7 +1138,7 @@ class CallbackDecorators(object):
         @param fmt: printf() format string (as defined by ISO C11).
         @param args: variable argument list for the format @note Log message handlers B{must} be thread-safe. @warning The message context pointer, the format string parameters and the variable arguments are only valid until the callback returns.
     ''' 
-    MediaOpenCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ctypes.c_void_p, ListPOINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64))
+    MediaOpenCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64))
     MediaOpenCb.__doc__ = '''Callback prototype to open a custom bitstream input media.
         The same media item can be opened multiple times. Each time, this callback
         is invoked. It should allocate and initialize any instance-specific
@@ -1164,7 +1164,7 @@ class CallbackDecorators(object):
     MediaCloseCb.__doc__ = '''Callback prototype to close a custom bitstream input media.
         @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
     ''' 
-    VideoLockCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ListPOINTER(ctypes.c_void_p))
+    VideoLockCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p))
     VideoLockCb.__doc__ = '''Callback prototype to allocate and lock a picture buffer.
         Whenever a new video frame needs to be decoded, the lock callback is
         invoked. Depending on the video chroma, one or three pixel planes of
@@ -1174,7 +1174,7 @@ class CallbackDecorators(object):
         @param planes: start address of the pixel planes (LibVLC allocates the array of void pointers, this callback must initialize the array) [OUT].
         @return: a private pointer for the display and unlock callbacks to identify the picture buffers.
     ''' 
-    VideoUnlockCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ListPOINTER(ctypes.c_void_p))
+    VideoUnlockCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p))
     VideoUnlockCb.__doc__ = '''Callback prototype to unlock a picture buffer.
         When the video frame decoding is complete, the unlock callback is invoked.
         This callback might not be needed at all. It is only an indication that the
@@ -1192,7 +1192,7 @@ class CallbackDecorators(object):
         @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
         @param picture: private pointer returned from the @ref libvlc_video_lock_cb callback [IN].
     ''' 
-    VideoFormatCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_uint), ListPOINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
+    VideoFormatCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
     VideoFormatCb.__doc__ = '''Callback prototype to configure picture buffers format.
         This callback gets the format of the video as output by the video decoder
         and the chain of video filters (if any). It can opt to change any parameter
@@ -1262,7 +1262,7 @@ class CallbackDecorators(object):
         @param volume: software volume (1. = nominal, 0. = mute).
         @param mute: muted flag.
     ''' 
-    AudioSetupCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ListPOINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
+    AudioSetupCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
     AudioSetupCb.__doc__ = '''Callback prototype to setup the audio playback.
         This is called when the media player needs to create a new audio output.
         @param opaque: pointer to the data pointer passed to L{libvlc_audio_set_callbacks}() [IN/OUT].
@@ -1827,10 +1827,12 @@ class Instance(_Ctype):
 
     
     def log_unset(self):
-        '''Unsets the logging callback for a LibVLC instance. This is rarely needed:
-        the callback is implicitly unset when the instance is destroyed.
-        This function will wait for any pending callbacks invocation to complete
-        (causing a deadlock if called from within the callback).
+        '''Unsets the logging callback.
+        This function deregisters the logging callback for a LibVLC instance.
+        This is rarely needed as the callback is implicitly unset when the instance
+        is destroyed.
+        @note: This function will wait for any pending callbacks invocation to
+        complete (causing a deadlock if called from within the callback).
         @version: LibVLC 2.1.0 or later.
         '''
         return libvlc_log_unset(self)
@@ -3322,7 +3324,7 @@ class MediaPlayer(_Ctype):
     
     def set_android_context(self, p_awindow_handler):
         '''Set the android context.
-        @param p_awindow_handler: org.videolan.libvlc.IAWindowNativeHandler jobject implemented by the org.videolan.libvlc.MediaPlayer class from the libvlc-android project.
+        @param p_awindow_handler: org.videolan.libvlc.AWindow jobject owned by the org.videolan.libvlc.MediaPlayer class from the libvlc-android project.
         @version: LibVLC 3.0.0 and later.
         '''
         return libvlc_media_player_set_android_context(self, p_awindow_handler)
@@ -4331,8 +4333,11 @@ def libvlc_event_type_name(event_type):
     return f(event_type)
 
 def libvlc_log_get_context(ctx):
-    '''Gets debugging information about a log message: the name of the VLC module
-    emitting the message and the message location within the source code.
+    '''Gets log message debug infos.
+    This function retrieves self-debug information about a log message:
+    - the name of the VLC module emitting the message,
+    - the name of the source code module (i.e. file) and
+    - the line number within the source code module.
     The returned module name and file name will be None if unknown.
     The returned line number will similarly be zero if unknown.
     @param ctx: message context (as passed to the @ref libvlc_log_cb callback).
@@ -4345,10 +4350,12 @@ def libvlc_log_get_context(ctx):
     return f(ctx)
 
 def libvlc_log_get_object(ctx, id):
-    '''Gets VLC object information about a log message: the type name of the VLC
-    object emitting the message, the object header if any and a temporaly-unique
-    object identifier. This information is mainly meant for B{manual}
-    troubleshooting.
+    '''Gets log message info.
+    This function retrieves meta-information about a log message:
+    - the type name of the VLC object emitting the message,
+    - the object header if any, and
+    - a temporaly-unique object identifier.
+    This information is mainly meant for B{manual} troubleshooting.
     The returned type name may be "generic" if unknown, but it cannot be None.
     The returned header will be None if unset; in current versions, the header
     is used to distinguish for VLM inputs.
@@ -4364,10 +4371,12 @@ def libvlc_log_get_object(ctx, id):
     return f(ctx, id)
 
 def libvlc_log_unset(p_instance):
-    '''Unsets the logging callback for a LibVLC instance. This is rarely needed:
-    the callback is implicitly unset when the instance is destroyed.
-    This function will wait for any pending callbacks invocation to complete
-    (causing a deadlock if called from within the callback).
+    '''Unsets the logging callback.
+    This function deregisters the logging callback for a LibVLC instance.
+    This is rarely needed as the callback is implicitly unset when the instance
+    is destroyed.
+    @note: This function will wait for any pending callbacks invocation to
+    complete (causing a deadlock if called from within the callback).
     @param p_instance: libvlc instance.
     @version: LibVLC 2.1.0 or later.
     '''
@@ -5741,7 +5750,7 @@ def libvlc_media_player_get_hwnd(p_mi):
 def libvlc_media_player_set_android_context(p_mi, p_awindow_handler):
     '''Set the android context.
     @param p_mi: the media player.
-    @param p_awindow_handler: org.videolan.libvlc.IAWindowNativeHandler jobject implemented by the org.videolan.libvlc.MediaPlayer class from the libvlc-android project.
+    @param p_awindow_handler: org.videolan.libvlc.AWindow jobject owned by the org.videolan.libvlc.MediaPlayer class from the libvlc-android project.
     @version: LibVLC 3.0.0 and later.
     '''
     f = _Cfunctions.get('libvlc_media_player_set_android_context', None) or \
