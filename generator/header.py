@@ -300,6 +300,8 @@ class ListPOINTER(object):
     def from_param(self, param):
         if isinstance(param, _Seqs):
             return (self.etype * len(param))(*param)
+        else:
+            return ctypes.POINTER(param)
 
 # errcheck functions for some native functions.
 def string_result(result, func, arguments):
