@@ -21,9 +21,20 @@ You can get the latest version of the code generator from
 <https://github.com/oaubert/python-vlc/> or
 <http://git.videolan.org/?p=vlc/bindings/python.git>.
 
-To generate the vlc.py module and its documentation, use
+The code expects to be placed inside a VLC source tree, in
+vlc/bindings/python, so that it finds the development include files,
+or to find the installed include files in /usr/include (on Debian,
+install libvlc-dev).
+
+To generate the vlc.py module and its documentation, for both the
+development version and the installed VLC version, use
 
     make
+
+If you want to generate the bindings from an installed version of the
+VLC includes, use the 'installed' target:
+
+    make installed
 
 To install it for development purposes (add a symlink to your Python
 library) simply do
