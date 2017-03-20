@@ -50,7 +50,7 @@ import functools
 from inspect import getargspec
 
 __version__ = "2.2.4"
-build_date  = "Wed Mar  1 18:12:01 2017 - 2.2.4"
+build_date  = "Mon Mar 20 11:04:27 2017 - 2.2.4"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1535,6 +1535,13 @@ class Instance(_Ctype):
         return libvlc_add_intf(self, str_to_bytes(name))
 
     
+    def wait(self):
+        '''Waits until an interface causes the instance to exit.
+        You should start at least one interface first, using L{add_intf}().
+        '''
+        return libvlc_wait(self)
+
+    
     def set_user_agent(self, name, http):
         '''Sets the application name. LibVLC passes this as the user agent string
         when a protocol requires it.
@@ -1583,6 +1590,30 @@ class Instance(_Ctype):
         @version: LibVLC 2.1.0 or later.
         '''
         return libvlc_log_set_file(self, stream)
+
+    
+    def get_log_verbosity(self):
+        '''Always returns minus one.
+        This function is only provided for backward compatibility.
+        @return: always -1.
+        '''
+        return libvlc_get_log_verbosity(self)
+
+    
+    def set_log_verbosity(self, level):
+        '''This function does nothing.
+        It is only provided for backward compatibility.
+        @param level: ignored.
+        '''
+        return libvlc_set_log_verbosity(self, level)
+
+    
+    def log_open(self):
+        '''This function does nothing useful.
+        It is only provided for backward compatibility.
+        @return: an unique pointer or None on error.
+        '''
+        return libvlc_log_open(self)
 
     
     def media_discoverer_new_from_name(self, psz_name):
@@ -1886,11 +1917,46 @@ class Instance(_Ctype):
         return libvlc_media_new_as_node(self, str_to_bytes(psz_name))
 
     
+    def playlist_play(self, i_id, i_options, ppsz_options):
+        '''Start playing (if there is any item in the playlist).
+        Additionnal playlist item options can be specified for addition to the
+        item before it is played.
+        @param i_id: the item to play. If this is a negative number, the next item will be selected. Otherwise, the item with the given ID will be played.
+        @param i_options: the number of options to add to the item.
+        @param ppsz_options: the options to add to the item.
+        '''
+        return libvlc_playlist_play(self, i_id, i_options, ppsz_options)
+
+    
     def audio_output_list_get(self):
         '''Gets the list of available audio output modules.
         @return: list of available audio outputs. It must be freed it with In case of error, None is returned.
         '''
         return libvlc_audio_output_list_get(self)
+
+    
+    def audio_output_device_count(self, psz_name):
+        '''Backward compatibility stub. Do not use in new code.
+        Use L{audio_output_device_list_get}() instead.
+        @return: always 0.
+        '''
+        return libvlc_audio_output_device_count(self, str_to_bytes(psz_name))
+
+    
+    def audio_output_device_longname(self, psz_name, i_device):
+        '''Backward compatibility stub. Do not use in new code.
+        Use L{audio_output_device_list_get}() instead.
+        @return: always None.
+        '''
+        return libvlc_audio_output_device_longname(self, str_to_bytes(psz_name), i_device)
+
+    
+    def audio_output_device_id(self, psz_name, i_device):
+        '''Backward compatibility stub. Do not use in new code.
+        Use L{audio_output_device_list_get}() instead.
+        @return: always None.
+        '''
+        return libvlc_audio_output_device_id(self, str_to_bytes(psz_name), i_device)
 
     
     def audio_output_device_list_get(self, aout):
@@ -1908,6 +1974,44 @@ class Instance(_Ctype):
         @version: LibVLC 2.1.0 or later.
         '''
         return libvlc_audio_output_device_list_get(self, str_to_bytes(aout))
+
+class LogIterator(_Ctype):
+    '''Create a new VLC log iterator.
+    
+    '''
+
+    def __new__(cls, ptr=_internal_guard):
+        '''(INTERNAL) ctypes wrapper constructor.
+        '''
+        return _Constructor(cls, ptr)
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.has_next():
+            b = LogMessage()
+            i = libvlc_log_iterator_next(self, b)
+            return i.contents
+        raise StopIteration
+
+    def __next__(self):
+        return self.next()
+
+
+    
+    def free(self):
+        '''Frees memory allocated by L{log_get_iterator}().
+        '''
+        return libvlc_log_iterator_free(self)
+
+    
+    def has_next(self):
+        '''Always returns zero.
+        This function is only provided for backward compatibility.
+        @return: always zero.
+        '''
+        return libvlc_log_iterator_has_next(self)
 
 class Media(_Ctype):
     '''Create a new Media instance.
@@ -2112,7 +2216,7 @@ class Media(_Ctype):
         The method is synchronous.
         See L{parse_async}
         See L{get_meta}
-        See libvlc_media_get_tracks_info.
+        See L{get_tracks_info}.
         '''
         return libvlc_media_parse(self)
 
@@ -2127,7 +2231,7 @@ class Media(_Ctype):
         See L{parse}
         See libvlc_MediaParsedChanged
         See L{get_meta}
-        See libvlc_media_get_tracks_info.
+        See L{get_tracks_info}.
         '''
         return libvlc_media_parse_async(self)
 
@@ -2155,6 +2259,18 @@ class Media(_Ctype):
         an native object that references a L{Media} pointer.
         '''
         return libvlc_media_get_user_data(self)
+
+    
+    def get_tracks_info(self):
+        '''Get media descriptor's elementary streams description
+        Note, you need to call L{parse}() or play the media at least once
+        before calling this function.
+        Not doing this will result in an empty array.
+        \deprecated Use L{tracks_get} instead.
+        @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) [OUT].
+        @return: the number of Elementary Streams.
+        '''
+        return libvlc_media_get_tracks_info(self)
 
     
     def player_new_from_media(self):
@@ -3598,18 +3714,6 @@ class MediaPlayer(_Ctype):
 
  # LibVLC __version__ functions #
 
-def libvlc_errmsg():
-    '''A human-readable error message for the last LibVLC error in the calling
-    thread. The resulting string is valid until another error occurs (at least
-    until the next LibVLC call).
-    @warning
-    This will be None if there was no error.
-    '''
-    f = _Cfunctions.get('libvlc_errmsg', None) or \
-        _Cfunction('libvlc_errmsg', (), None,
-                    ctypes.c_char_p)
-    return f()
-
 def libvlc_clearerr():
     '''Clears the LibVLC error status for the current thread. This is optional.
     By default, the error status is automatically overridden when a new error
@@ -3676,6 +3780,16 @@ def libvlc_add_intf(p_instance, name):
         _Cfunction('libvlc_add_intf', ((1,), (1,),), None,
                     ctypes.c_int, Instance, ctypes.c_char_p)
     return f(p_instance, name)
+
+def libvlc_wait(p_instance):
+    '''Waits until an interface causes the instance to exit.
+    You should start at least one interface first, using L{libvlc_add_intf}().
+    @param p_instance: the instance @warning This function wastes one thread doing basically nothing. libvlc_set_exit_handler() should be used instead.
+    '''
+    f = _Cfunctions.get('libvlc_wait', None) or \
+        _Cfunction('libvlc_wait', ((1,),), None,
+                    None, Instance)
+    return f(p_instance)
 
 def libvlc_set_user_agent(p_instance, name, http):
     '''Sets the application name. LibVLC passes this as the user agent string
@@ -3849,6 +3963,112 @@ def libvlc_log_set_file(p_instance, stream):
         _Cfunction('libvlc_log_set_file', ((1,), (1,),), None,
                     None, Instance, FILE_ptr)
     return f(p_instance, stream)
+
+def libvlc_get_log_verbosity(p_instance):
+    '''Always returns minus one.
+    This function is only provided for backward compatibility.
+    @param p_instance: ignored.
+    @return: always -1.
+    '''
+    f = _Cfunctions.get('libvlc_get_log_verbosity', None) or \
+        _Cfunction('libvlc_get_log_verbosity', ((1,),), None,
+                    ctypes.c_uint, Instance)
+    return f(p_instance)
+
+def libvlc_set_log_verbosity(p_instance, level):
+    '''This function does nothing.
+    It is only provided for backward compatibility.
+    @param p_instance: ignored.
+    @param level: ignored.
+    '''
+    f = _Cfunctions.get('libvlc_set_log_verbosity', None) or \
+        _Cfunction('libvlc_set_log_verbosity', ((1,), (1,),), None,
+                    None, Instance, ctypes.c_uint)
+    return f(p_instance, level)
+
+def libvlc_log_open(p_instance):
+    '''This function does nothing useful.
+    It is only provided for backward compatibility.
+    @param p_instance: libvlc instance.
+    @return: an unique pointer or None on error.
+    '''
+    f = _Cfunctions.get('libvlc_log_open', None) or \
+        _Cfunction('libvlc_log_open', ((1,),), None,
+                    Log_ptr, Instance)
+    return f(p_instance)
+
+def libvlc_log_close(p_log):
+    '''Frees memory allocated by L{libvlc_log_open}().
+    @param p_log: libvlc log instance or None.
+    '''
+    f = _Cfunctions.get('libvlc_log_close', None) or \
+        _Cfunction('libvlc_log_close', ((1,),), None,
+                    None, Log_ptr)
+    return f(p_log)
+
+def libvlc_log_count(p_log):
+    '''Always returns zero.
+    This function is only provided for backward compatibility.
+    @param p_log: ignored.
+    @return: always zero.
+    '''
+    f = _Cfunctions.get('libvlc_log_count', None) or \
+        _Cfunction('libvlc_log_count', ((1,),), None,
+                    ctypes.c_uint, Log_ptr)
+    return f(p_log)
+
+def libvlc_log_clear(p_log):
+    '''This function does nothing.
+    It is only provided for backward compatibility.
+    @param p_log: ignored.
+    '''
+    f = _Cfunctions.get('libvlc_log_clear', None) or \
+        _Cfunction('libvlc_log_clear', ((1,),), None,
+                    None, Log_ptr)
+    return f(p_log)
+
+def libvlc_log_get_iterator(p_log):
+    '''This function does nothing useful.
+    It is only provided for backward compatibility.
+    @param p_log: ignored.
+    @return: an unique pointer or None on error or if the parameter was None.
+    '''
+    f = _Cfunctions.get('libvlc_log_get_iterator', None) or \
+        _Cfunction('libvlc_log_get_iterator', ((1,),), class_result(LogIterator),
+                    ctypes.c_void_p, Log_ptr)
+    return f(p_log)
+
+def libvlc_log_iterator_free(p_iter):
+    '''Frees memory allocated by L{libvlc_log_get_iterator}().
+    @param p_iter: libvlc log iterator or None.
+    '''
+    f = _Cfunctions.get('libvlc_log_iterator_free', None) or \
+        _Cfunction('libvlc_log_iterator_free', ((1,),), None,
+                    None, LogIterator)
+    return f(p_iter)
+
+def libvlc_log_iterator_has_next(p_iter):
+    '''Always returns zero.
+    This function is only provided for backward compatibility.
+    @param p_iter: ignored.
+    @return: always zero.
+    '''
+    f = _Cfunctions.get('libvlc_log_iterator_has_next', None) or \
+        _Cfunction('libvlc_log_iterator_has_next', ((1,),), None,
+                    ctypes.c_int, LogIterator)
+    return f(p_iter)
+
+def libvlc_log_iterator_next(p_iter, p_buf):
+    '''Always returns None.
+    This function is only provided for backward compatibility.
+    @param p_iter: libvlc log iterator or None.
+    @param p_buf: ignored.
+    @return: always None.
+    '''
+    f = _Cfunctions.get('libvlc_log_iterator_next', None) or \
+        _Cfunction('libvlc_log_iterator_next', ((1,), (1,),), None,
+                    ctypes.POINTER(LogMessage), LogIterator, ctypes.POINTER(LogMessage))
+    return f(p_iter, p_buf)
 
 def libvlc_module_description_list_release(p_list):
     '''Release a list of module descriptions.
@@ -4562,7 +4782,7 @@ def libvlc_media_parse(p_md):
     The method is synchronous.
     See L{libvlc_media_parse_async}
     See L{libvlc_media_get_meta}
-    See libvlc_media_get_tracks_info.
+    See L{libvlc_media_get_tracks_info}.
     @param p_md: media descriptor object.
     '''
     f = _Cfunctions.get('libvlc_media_parse', None) or \
@@ -4580,7 +4800,7 @@ def libvlc_media_parse_async(p_md):
     See L{libvlc_media_parse}
     See libvlc_MediaParsedChanged
     See L{libvlc_media_get_meta}
-    See libvlc_media_get_tracks_info.
+    See L{libvlc_media_get_tracks_info}.
     @param p_md: media descriptor object.
     '''
     f = _Cfunctions.get('libvlc_media_parse_async', None) or \
@@ -4620,6 +4840,21 @@ def libvlc_media_get_user_data(p_md):
     f = _Cfunctions.get('libvlc_media_get_user_data', None) or \
         _Cfunction('libvlc_media_get_user_data', ((1,),), None,
                     ctypes.c_void_p, Media)
+    return f(p_md)
+
+def libvlc_media_get_tracks_info(p_md):
+    '''Get media descriptor's elementary streams description
+    Note, you need to call L{libvlc_media_parse}() or play the media at least once
+    before calling this function.
+    Not doing this will result in an empty array.
+    \deprecated Use L{libvlc_media_tracks_get} instead.
+    @param p_md: media descriptor object.
+    @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) [OUT].
+    @return: the number of Elementary Streams.
+    '''
+    f = _Cfunctions.get('libvlc_media_get_tracks_info', None) or \
+        _Cfunction('libvlc_media_get_tracks_info', ((1,), (2,),), None,
+                    ctypes.c_int, Media, ctypes.POINTER(ctypes.c_void_p))
     return f(p_md)
 
 def libvlc_media_tracks_get(p_md, tracks):
@@ -4812,6 +5047,20 @@ def libvlc_media_list_event_manager(p_ml):
         _Cfunction('libvlc_media_list_event_manager', ((1,),), class_result(EventManager),
                     ctypes.c_void_p, MediaList)
     return f(p_ml)
+
+def libvlc_playlist_play(p_instance, i_id, i_options, ppsz_options):
+    '''Start playing (if there is any item in the playlist).
+    Additionnal playlist item options can be specified for addition to the
+    item before it is played.
+    @param p_instance: the playlist instance.
+    @param i_id: the item to play. If this is a negative number, the next item will be selected. Otherwise, the item with the given ID will be played.
+    @param i_options: the number of options to add to the item.
+    @param ppsz_options: the options to add to the item.
+    '''
+    f = _Cfunctions.get('libvlc_playlist_play', None) or \
+        _Cfunction('libvlc_playlist_play', ((1,), (1,), (1,), (1,),), None,
+                    None, Instance, ctypes.c_int, ctypes.c_int, ListPOINTER(ctypes.c_char_p))
+    return f(p_instance, i_id, i_options, ppsz_options)
 
 def libvlc_media_player_new(p_libvlc_instance):
     '''Create an empty Media Player object.
@@ -5435,6 +5684,14 @@ def libvlc_track_description_list_release(p_track_description):
                     None, ctypes.POINTER(TrackDescription))
     return f(p_track_description)
 
+def libvlc_track_description_release(p_track_description):
+    '''\deprecated Use L{libvlc_track_description_list_release} instead.
+    '''
+    f = _Cfunctions.get('libvlc_track_description_release', None) or \
+        _Cfunction('libvlc_track_description_release', ((1,),), None,
+                    None, ctypes.POINTER(TrackDescription))
+    return f(p_track_description)
+
 def libvlc_toggle_fullscreen(p_mi):
     '''Toggle fullscreen status on non-embedded video outputs.
     @warning: The same limitations applies to this function
@@ -5513,6 +5770,28 @@ def libvlc_video_get_size(p_mi, num):
         _Cfunction('libvlc_video_get_size', ((1,), (1,), (2,), (2,),), None,
                     ctypes.c_int, MediaPlayer, ctypes.c_uint, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
     return f(p_mi, num)
+
+def libvlc_video_get_height(p_mi):
+    '''Get current video height.
+    \deprecated Use L{libvlc_video_get_size}() instead.
+    @param p_mi: the media player.
+    @return: the video pixel height or 0 if not applicable.
+    '''
+    f = _Cfunctions.get('libvlc_video_get_height', None) or \
+        _Cfunction('libvlc_video_get_height', ((1,),), None,
+                    ctypes.c_int, MediaPlayer)
+    return f(p_mi)
+
+def libvlc_video_get_width(p_mi):
+    '''Get current video width.
+    \deprecated Use L{libvlc_video_get_size}() instead.
+    @param p_mi: the media player.
+    @return: the video pixel width or 0 if not applicable.
+    '''
+    f = _Cfunctions.get('libvlc_video_get_width', None) or \
+        _Cfunction('libvlc_video_get_width', ((1,),), None,
+                    ctypes.c_int, MediaPlayer)
+    return f(p_mi)
 
 def libvlc_video_get_cursor(p_mi, num):
     '''Get the mouse pointer coordinates over a video.
@@ -5957,6 +6236,36 @@ def libvlc_audio_output_set(p_mi, psz_name):
         _Cfunction('libvlc_audio_output_set', ((1,), (1,),), None,
                     ctypes.c_int, MediaPlayer, ctypes.c_char_p)
     return f(p_mi, psz_name)
+
+def libvlc_audio_output_device_count(p_instance, psz_name):
+    '''Backward compatibility stub. Do not use in new code.
+    Use L{libvlc_audio_output_device_list_get}() instead.
+    @return: always 0.
+    '''
+    f = _Cfunctions.get('libvlc_audio_output_device_count', None) or \
+        _Cfunction('libvlc_audio_output_device_count', ((1,), (1,),), None,
+                    ctypes.c_int, Instance, ctypes.c_char_p)
+    return f(p_instance, psz_name)
+
+def libvlc_audio_output_device_longname(p_instance, psz_name, i_device):
+    '''Backward compatibility stub. Do not use in new code.
+    Use L{libvlc_audio_output_device_list_get}() instead.
+    @return: always None.
+    '''
+    f = _Cfunctions.get('libvlc_audio_output_device_longname', None) or \
+        _Cfunction('libvlc_audio_output_device_longname', ((1,), (1,), (1,),), string_result,
+                    ctypes.c_void_p, Instance, ctypes.c_char_p, ctypes.c_int)
+    return f(p_instance, psz_name, i_device)
+
+def libvlc_audio_output_device_id(p_instance, psz_name, i_device):
+    '''Backward compatibility stub. Do not use in new code.
+    Use L{libvlc_audio_output_device_list_get}() instead.
+    @return: always None.
+    '''
+    f = _Cfunctions.get('libvlc_audio_output_device_id', None) or \
+        _Cfunction('libvlc_audio_output_device_id', ((1,), (1,), (1,),), string_result,
+                    ctypes.c_void_p, Instance, ctypes.c_char_p, ctypes.c_int)
+    return f(p_instance, psz_name, i_device)
 
 def libvlc_audio_output_device_enum(mp):
     '''Gets a list of potential audio output devices,
@@ -6510,7 +6819,7 @@ def libvlc_media_list_player_set_playback_mode(p_mlp, e_mode):
 #  libvlc_printerr
 #  libvlc_set_exit_handler
 
-# 28 function(s) not wrapped as methods:
+# 32 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_amp_at_index
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
@@ -6526,18 +6835,22 @@ def libvlc_media_list_player_set_playback_mode(p_mlp, e_mode):
 #  libvlc_audio_output_list_release
 #  libvlc_clearerr
 #  libvlc_clock
-#  libvlc_errmsg
 #  libvlc_event_type_name
 #  libvlc_free
 #  libvlc_get_changeset
 #  libvlc_get_compiler
 #  libvlc_get_version
+#  libvlc_log_clear
+#  libvlc_log_close
+#  libvlc_log_count
 #  libvlc_log_get_context
+#  libvlc_log_get_iterator
 #  libvlc_log_get_object
 #  libvlc_media_tracks_release
 #  libvlc_module_description_list_release
 #  libvlc_new
 #  libvlc_track_description_list_release
+#  libvlc_track_description_release
 #  libvlc_vprinterr
 
 # Start of footer.py #

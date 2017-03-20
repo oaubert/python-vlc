@@ -122,7 +122,7 @@ _VLC_FORWARD_     = 'VLC_FORWARD'
 _VLC_PUBLIC_API_  = 'LIBVLC_API'
 
 # Precompiled regexps
-api_re       = re.compile(_VLC_PUBLIC_API_ + '\s+(\S+\s+.+?)\s*\(\s*(.+?)\s*\)')
+api_re       = re.compile('(?:LIBVLC_DEPRECATED\s+)?' + _VLC_PUBLIC_API_ + '\s+(\S+\s+.+?)\s*\(\s*(.+?)\s*\)')
 at_param_re  = re.compile('(@param\s+\S+)(.+)')
 bs_param_re  = re.compile('\\param\s+(\S+)')
 class_re     = re.compile('class\s+(\S+):')
@@ -543,7 +543,7 @@ class Parser(object):
         @return: yield a Func instance for each function, unless blacklisted.
         """
         def match_t(t):
-            return t.startswith(_VLC_PUBLIC_API_)
+            return _VLC_PUBLIC_API_ in t
 
         for name, pars, docs, line in self.parse_groups(match_t, api_re.match, ');'):
 
