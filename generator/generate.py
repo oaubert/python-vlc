@@ -492,6 +492,10 @@ class Parser(object):
                 n = t.split('/*')[0].strip()
                 if '=' in n:  # has value
                     n, v = enum_pair_re.split(n)
+                    # Bit-shifted characters cannot be directly evaluated in python
+                    m = re.search("'(.)'\s*(<<|>>)\s*(.+)", v.strip())
+                    if m:
+                        v = "%s %s %s" % (ord(m.group(1)), m.group(2), m.group(3))
                     try:  # handle expressions
                         e = eval(v, locs)
                     except (SyntaxError, TypeError, ValueError):
