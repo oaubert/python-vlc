@@ -49,6 +49,9 @@ import functools
 # Used by EventManager in override.py
 from inspect import getargspec
 
+import logging
+logger = logging.getLogger(__name__)
+
 build_date  = ''  # build time stamp and __version__, see generate.py
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
@@ -105,7 +108,19 @@ _internal_guard = object()
 
 def find_lib():
     dll = None
-    plugin_path = None
+    plugin_path = os.environ.get('PYTHON_VLC_MODULE_PATH', None)
+    if 'PYTHON_VLC_LIB_PATH' in os.environ:
+        try:
+            dll = ctypes.CDLL(os.environ['PYTHON_VLC_LIB_PATH'])
+        except OSError:
+            logger.error("Cannot load lib specified by PYTHON_VLC_LIB_PATH env. variable")
+            sys.exit(1)
+    if plugin_path and not os.path.isdir(plugin_path):
+        logger.error("Invalid PYTHON_VLC_MODULE_PATH specified. Please fix.")
+        sys.exit(1)
+    if dll is not None:
+        return dll, plugin_path
+
     if sys.platform.startswith('linux'):
         p = find_library('vlc')
         try:
