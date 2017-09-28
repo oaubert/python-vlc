@@ -71,7 +71,7 @@ def debug_callback(event, *args, **kwds):
 
 
 if __name__ == '__main__':
-
+    logging.basicConfig(level=logging.DEBUG)
     try:
         from msvcrt import getch
     except ImportError:

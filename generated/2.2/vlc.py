@@ -53,7 +53,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 __version__ = "2.2.6"
-build_date  = "Thu Sep 28 21:14:55 2017 - 2.2.6"
+build_date  = "Thu Sep 28 22:09:06 2017 - 2.2.6"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -6953,7 +6953,7 @@ def debug_callback(event, *args, **kwds):
 
 
 if __name__ == '__main__':
-
+    logging.basicConfig(level=logging.DEBUG)
     try:
         from msvcrt import getch
     except ImportError:
