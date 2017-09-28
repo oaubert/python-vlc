@@ -49,8 +49,11 @@ import functools
 # Used by EventManager in override.py
 from inspect import getargspec
 
+import logging
+logger = logging.getLogger(__name__)
+
 __version__ = "N/A"
-build_date  = "Mon Mar 20 11:04:27 2017"
+build_date  = "Thu Sep 28 21:14:55 2017"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -106,7 +109,19 @@ _internal_guard = object()
 
 def find_lib():
     dll = None
-    plugin_path = None
+    plugin_path = os.environ.get('PYTHON_VLC_MODULE_PATH', None)
+    if 'PYTHON_VLC_LIB_PATH' in os.environ:
+        try:
+            dll = ctypes.CDLL(os.environ['PYTHON_VLC_LIB_PATH'])
+        except OSError:
+            logger.error("Cannot load lib specified by PYTHON_VLC_LIB_PATH env. variable")
+            sys.exit(1)
+    if plugin_path and not os.path.isdir(plugin_path):
+        logger.error("Invalid PYTHON_VLC_MODULE_PATH specified. Please fix.")
+        sys.exit(1)
+    if dll is not None:
+        return dll, plugin_path
+
     if sys.platform.startswith('linux'):
         p = find_library('vlc')
         try:
@@ -835,6 +850,23 @@ Position.right   = Position(5)
 Position.right   = Position(8)
 Position.top     = Position(3)
 
+class TeletextKey(_Enum):
+    '''Enumeration of teletext keys than can be passed via
+libvlc_video_set_teletext().
+    '''
+    _enum_names_ = {
+        7471104: 'red',
+        6750208: 'green',
+        7929856: 'yellow',
+        6422528: 'blue',
+        6881280: 'index',
+    }
+TeletextKey.blue   = TeletextKey(6422528)
+TeletextKey.green  = TeletextKey(6750208)
+TeletextKey.index  = TeletextKey(6881280)
+TeletextKey.red    = TeletextKey(7471104)
+TeletextKey.yellow = TeletextKey(7929856)
+
 class VideoLogoOption(_Enum):
     '''Option values for libvlc_video_{get,set}_logo_{int,string}.
     '''
@@ -1062,7 +1094,7 @@ class AudioPlayCb(ctypes.c_void_p):
     The exact format of audio samples is determined by L{libvlc_audio_set_format}()
     or L{libvlc_audio_set_format_callbacks}() as is the channels layout.
     Note that the number of samples is per channel. For instance, if the audio
-    track sampling rate is 48000 Hz, then 1200 samples represent 25 milliseconds
+    track sampling rate is 48000 Hz, then 1200 samples represent 25 milliseconds
     of audio signal - regardless of the number of audio channels.
     @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
     @param samples: pointer to a table of audio samples to play back [IN].
@@ -1222,7 +1254,7 @@ class CallbackDecorators(object):
         The exact format of audio samples is determined by L{libvlc_audio_set_format}()
         or L{libvlc_audio_set_format_callbacks}() as is the channels layout.
         Note that the number of samples is per channel. For instance, if the audio
-        track sampling rate is 48000 Hz, then 1200 samples represent 25 milliseconds
+        track sampling rate is 48000 Hz, then 1200 samples represent 25 milliseconds
         of audio signal - regardless of the number of audio channels.
         @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
         @param samples: pointer to a table of audio samples to play back [IN].
@@ -3294,6 +3326,13 @@ class MediaPlayer(_Ctype):
         return libvlc_video_set_subtitle_file(self, str_to_bytes(psz_subtitle))
 
     
+    def toggle_teletext(self):
+        '''Toggle teletext transparent status on video output.
+        \deprecated use L{video_set_teletext}() instead.
+        '''
+        return libvlc_toggle_teletext(self)
+
+    
     def release(self):
         '''Release a media_player after use
         Decrement the reference count of a media player object. If the
@@ -3932,7 +3971,9 @@ class MediaPlayer(_Ctype):
 
     
     def video_get_teletext(self):
-        '''Get current teletext page requested.
+        '''Get current teletext page requested or 0 if it's disabled.
+        Teletext is disabled by default, call L{video_set_teletext}() to enable
+        it.
         @return: the current teletext page requested.
         '''
         return libvlc_video_get_teletext(self)
@@ -3940,15 +3981,10 @@ class MediaPlayer(_Ctype):
     
     def video_set_teletext(self, i_page):
         '''Set new teletext page to retrieve.
-        @param i_page: teletex page number requested.
+        This function can also be used to send a teletext key.
+        @param i_page: teletex page number requested. This value can be 0 to disable teletext, a number in the range ]0;1000[ to show the requested page, or a \ref libvlc_teletext_key_t. 100 is the default teletext page.
         '''
         return libvlc_video_set_teletext(self, i_page)
-
-    
-    def toggle_teletext(self):
-        '''Toggle teletext transparent status on video output.
-        '''
-        return libvlc_toggle_teletext(self)
 
     
     def video_get_track_count(self):
@@ -3978,7 +4014,7 @@ class MediaPlayer(_Ctype):
         If i_width AND i_height is 0, original size is used.
         If i_width XOR i_height is 0, original aspect-ratio is preserved.
         @param num: number of video output (typically 0 for the first/only one).
-        @param psz_filepath: the path where to save the screenshot to.
+        @param psz_filepath: the path of a file or a folder to save the screenshot into.
         @param i_width: the snapshot's width.
         @param i_height: the snapshot's height.
         @return: 0 on success, -1 if the video was not found.
@@ -5562,6 +5598,28 @@ def libvlc_media_slaves_release(pp_slaves, i_count):
                     None, ctypes.POINTER(MediaSlave), ctypes.c_int)
     return f(pp_slaves, i_count)
 
+def libvlc_renderer_item_hold(p_item):
+    '''Hold a renderer item, i.e. creates a new reference
+    This functions need to called from the libvlc_RendererDiscovererItemAdded
+    callback if the libvlc user wants to use this item after. (for display or
+    for passing it to the mediaplayer for example).
+    @return: the current item.
+    @version: LibVLC 3.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_renderer_item_hold', None) or \
+        _Cfunction('libvlc_renderer_item_hold', ((1,),), None,
+                    ctypes.c_void_p, ctypes.c_void_p)
+    return f(p_item)
+
+def libvlc_renderer_item_release(p_item):
+    '''Releases a renderer item, i.e. decrements its reference counter.
+    @version: LibVLC 3.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_renderer_item_release', None) or \
+        _Cfunction('libvlc_renderer_item_release', ((1,),), None,
+                    None, ctypes.c_void_p)
+    return f(p_item)
+
 def libvlc_renderer_item_name(p_item):
     '''Get the human readable name of a renderer item.
     @return: the name of the item (can't be None, must *not* be freed).
@@ -5663,7 +5721,8 @@ def libvlc_renderer_discoverer_event_manager(p_rd):
     The possible events to attach are @ref libvlc_RendererDiscovererItemAdded
     and @ref libvlc_RendererDiscovererItemDeleted.
     The @ref libvlc_renderer_item_t struct passed to event callbacks is owned by
-    VLC, users should take care of copying this struct for their internal usage.
+    VLC, users should take care of holding/releasing this struct for their
+    internal usage.
     See libvlc_event_t.u.renderer_discoverer_item_added.item
     See libvlc_event_t.u.renderer_discoverer_item_removed.item.
     @return: a valid event manager (can't fail).
@@ -5956,6 +6015,16 @@ def libvlc_video_set_subtitle_file(p_mi, psz_subtitle):
         _Cfunction('libvlc_video_set_subtitle_file', ((1,), (1,),), None,
                     ctypes.c_int, MediaPlayer, ctypes.c_char_p)
     return f(p_mi, psz_subtitle)
+
+def libvlc_toggle_teletext(p_mi):
+    '''Toggle teletext transparent status on video output.
+    \deprecated use L{libvlc_video_set_teletext}() instead.
+    @param p_mi: the media player.
+    '''
+    f = _Cfunctions.get('libvlc_toggle_teletext', None) or \
+        _Cfunction('libvlc_toggle_teletext', ((1,),), None,
+                    None, MediaPlayer)
+    return f(p_mi)
 
 def libvlc_audio_output_device_count(p_instance, psz_audio_output):
     '''Backward compatibility stub. Do not use in new code.
@@ -7196,7 +7265,9 @@ def libvlc_video_set_crop_geometry(p_mi, psz_geometry):
     return f(p_mi, psz_geometry)
 
 def libvlc_video_get_teletext(p_mi):
-    '''Get current teletext page requested.
+    '''Get current teletext page requested or 0 if it's disabled.
+    Teletext is disabled by default, call L{libvlc_video_set_teletext}() to enable
+    it.
     @param p_mi: the media player.
     @return: the current teletext page requested.
     '''
@@ -7207,22 +7278,14 @@ def libvlc_video_get_teletext(p_mi):
 
 def libvlc_video_set_teletext(p_mi, i_page):
     '''Set new teletext page to retrieve.
+    This function can also be used to send a teletext key.
     @param p_mi: the media player.
-    @param i_page: teletex page number requested.
+    @param i_page: teletex page number requested. This value can be 0 to disable teletext, a number in the range ]0;1000[ to show the requested page, or a \ref libvlc_teletext_key_t. 100 is the default teletext page.
     '''
     f = _Cfunctions.get('libvlc_video_set_teletext', None) or \
         _Cfunction('libvlc_video_set_teletext', ((1,), (1,),), None,
                     None, MediaPlayer, ctypes.c_int)
     return f(p_mi, i_page)
-
-def libvlc_toggle_teletext(p_mi):
-    '''Toggle teletext transparent status on video output.
-    @param p_mi: the media player.
-    '''
-    f = _Cfunctions.get('libvlc_toggle_teletext', None) or \
-        _Cfunction('libvlc_toggle_teletext', ((1,),), None,
-                    None, MediaPlayer)
-    return f(p_mi)
 
 def libvlc_video_get_track_count(p_mi):
     '''Get number of available video tracks.
@@ -7271,7 +7334,7 @@ def libvlc_video_take_snapshot(p_mi, num, psz_filepath, i_width, i_height):
     If i_width XOR i_height is 0, original aspect-ratio is preserved.
     @param p_mi: media player instance.
     @param num: number of video output (typically 0 for the first/only one).
-    @param psz_filepath: the path where to save the screenshot to.
+    @param psz_filepath: the path of a file or a folder to save the screenshot into.
     @param i_width: the snapshot's width.
     @param i_height: the snapshot's height.
     @return: 0 on success, -1 if the video was not found.
@@ -8059,7 +8122,7 @@ def libvlc_media_list_player_set_playback_mode(p_mlp, e_mode):
 #  libvlc_printerr
 #  libvlc_set_exit_handler
 
-# 52 function(s) not wrapped as methods:
+# 54 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_amp_at_index
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
@@ -8104,8 +8167,10 @@ def libvlc_media_list_player_set_playback_mode(p_mlp, e_mode):
 #  libvlc_renderer_discoverer_start
 #  libvlc_renderer_discoverer_stop
 #  libvlc_renderer_item_flags
+#  libvlc_renderer_item_hold
 #  libvlc_renderer_item_icon_uri
 #  libvlc_renderer_item_name
+#  libvlc_renderer_item_release
 #  libvlc_renderer_item_type
 #  libvlc_title_descriptions_release
 #  libvlc_track_description_list_release

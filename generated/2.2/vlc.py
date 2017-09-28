@@ -49,8 +49,11 @@ import functools
 # Used by EventManager in override.py
 from inspect import getargspec
 
-__version__ = "2.2.4"
-build_date  = "Mon Mar 20 11:04:27 2017 - 2.2.4"
+import logging
+logger = logging.getLogger(__name__)
+
+__version__ = "2.2.6"
+build_date  = "Thu Sep 28 21:14:55 2017 - 2.2.6"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -106,7 +109,19 @@ _internal_guard = object()
 
 def find_lib():
     dll = None
-    plugin_path = None
+    plugin_path = os.environ.get('PYTHON_VLC_MODULE_PATH', None)
+    if 'PYTHON_VLC_LIB_PATH' in os.environ:
+        try:
+            dll = ctypes.CDLL(os.environ['PYTHON_VLC_LIB_PATH'])
+        except OSError:
+            logger.error("Cannot load lib specified by PYTHON_VLC_LIB_PATH env. variable")
+            sys.exit(1)
+    if plugin_path and not os.path.isdir(plugin_path):
+        logger.error("Invalid PYTHON_VLC_MODULE_PATH specified. Please fix.")
+        sys.exit(1)
+    if dll is not None:
+        return dll, plugin_path
+
     if sys.platform.startswith('linux'):
         p = find_library('vlc')
         try:
@@ -1573,7 +1588,7 @@ class Instance(_Ctype):
         return libvlc_log_unset(self)
 
     
-    def log_set(self, cb, data):
+    def log_set(self, data, p_instance):
         '''Sets the logging callback for a LibVLC instance.
         This function is thread-safe: it will wait for any pending callbacks
         invocation to complete.
@@ -1581,7 +1596,7 @@ class Instance(_Ctype):
         @param p_instance: libvlc instance.
         @version: LibVLC 2.1.0 or later.
         '''
-        return libvlc_log_set(self, cb, data)
+        return libvlc_log_set(self, data, p_instance)
 
     
     def log_set_file(self, stream):
@@ -1938,25 +1953,30 @@ class Instance(_Ctype):
     def audio_output_device_count(self, psz_name):
         '''Backward compatibility stub. Do not use in new code.
         Use L{audio_output_device_list_get}() instead.
+        @param psz_name: name.
         @return: always 0.
         '''
         return libvlc_audio_output_device_count(self, str_to_bytes(psz_name))
 
     
-    def audio_output_device_longname(self, psz_name, i_device):
+    def audio_output_device_longname(self, psz_name, int):
         '''Backward compatibility stub. Do not use in new code.
         Use L{audio_output_device_list_get}() instead.
+        @param psz_name: name.
+        @param int: index.
         @return: always None.
         '''
-        return libvlc_audio_output_device_longname(self, str_to_bytes(psz_name), i_device)
+        return libvlc_audio_output_device_longname(self, str_to_bytes(psz_name), int)
 
     
-    def audio_output_device_id(self, psz_name, i_device):
+    def audio_output_device_id(self, psz_name, int):
         '''Backward compatibility stub. Do not use in new code.
         Use L{audio_output_device_list_get}() instead.
+        @param psz_name: name.
+        @param int: index.
         @return: always None.
         '''
-        return libvlc_audio_output_device_id(self, str_to_bytes(psz_name), i_device)
+        return libvlc_audio_output_device_id(self, str_to_bytes(psz_name), int)
 
     
     def audio_output_device_list_get(self, aout):
@@ -3939,7 +3959,7 @@ def libvlc_log_unset(p_instance):
                     None, Instance)
     return f(p_instance)
 
-def libvlc_log_set(p_instance, cb, data):
+def libvlc_log_set(cb, data, p_instance):
     '''Sets the logging callback for a LibVLC instance.
     This function is thread-safe: it will wait for any pending callbacks
     invocation to complete.
@@ -3951,7 +3971,7 @@ def libvlc_log_set(p_instance, cb, data):
     f = _Cfunctions.get('libvlc_log_set', None) or \
         _Cfunction('libvlc_log_set', ((1,), (1,), (1,),), None,
                     None, Instance, LogCb, ctypes.c_void_p)
-    return f(p_instance, cb, data)
+    return f(cb, data, p_instance)
 
 def libvlc_log_set_file(p_instance, stream):
     '''Sets up logging to a file.
@@ -6240,6 +6260,8 @@ def libvlc_audio_output_set(p_mi, psz_name):
 def libvlc_audio_output_device_count(p_instance, psz_name):
     '''Backward compatibility stub. Do not use in new code.
     Use L{libvlc_audio_output_device_list_get}() instead.
+    @param p_instance: vlc instance.
+    @param psz_name: name.
     @return: always 0.
     '''
     f = _Cfunctions.get('libvlc_audio_output_device_count', None) or \
@@ -6247,25 +6269,31 @@ def libvlc_audio_output_device_count(p_instance, psz_name):
                     ctypes.c_int, Instance, ctypes.c_char_p)
     return f(p_instance, psz_name)
 
-def libvlc_audio_output_device_longname(p_instance, psz_name, i_device):
+def libvlc_audio_output_device_longname(p_instance, psz_name, int):
     '''Backward compatibility stub. Do not use in new code.
     Use L{libvlc_audio_output_device_list_get}() instead.
+    @param p_instance: vlc instance.
+    @param psz_name: name.
+    @param int: index.
     @return: always None.
     '''
     f = _Cfunctions.get('libvlc_audio_output_device_longname', None) or \
         _Cfunction('libvlc_audio_output_device_longname', ((1,), (1,), (1,),), string_result,
                     ctypes.c_void_p, Instance, ctypes.c_char_p, ctypes.c_int)
-    return f(p_instance, psz_name, i_device)
+    return f(p_instance, psz_name, int)
 
-def libvlc_audio_output_device_id(p_instance, psz_name, i_device):
+def libvlc_audio_output_device_id(p_instance, psz_name, int):
     '''Backward compatibility stub. Do not use in new code.
     Use L{libvlc_audio_output_device_list_get}() instead.
+    @param p_instance: vlc instance.
+    @param psz_name: name.
+    @param int: index.
     @return: always None.
     '''
     f = _Cfunctions.get('libvlc_audio_output_device_id', None) or \
         _Cfunction('libvlc_audio_output_device_id', ((1,), (1,), (1,),), string_result,
                     ctypes.c_void_p, Instance, ctypes.c_char_p, ctypes.c_int)
-    return f(p_instance, psz_name, i_device)
+    return f(p_instance, psz_name, int)
 
 def libvlc_audio_output_device_enum(mp):
     '''Gets a list of potential audio output devices,
