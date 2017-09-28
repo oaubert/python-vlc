@@ -52,7 +52,7 @@ C{LibVlc-footer.java} and C{LibVlc-header.java}.
 __all__     = ('Parser',
                'PythonGenerator', 'JavaGenerator',
                'process')
-__version__ =  '20.17.02.24'
+__version__ =  '20.17.09.25'
 
 _debug = False
 
