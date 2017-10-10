@@ -3,7 +3,7 @@
 
 # Python ctypes bindings for VLC
 #
-# Copyright (C) 2009-2012 the VideoLAN team
+# Copyright (C) 2009-2017 the VideoLAN team
 # $Id: $
 #
 # Authors: Olivier Aubert <contact at olivieraubert.net>
@@ -28,7 +28,7 @@
 U{http://wiki.videolan.org/LibVLC}.
 
 You can find the documentation and a README file with some examples
-at U{http://www.advene.org/download/python-ctypes/}.
+at U{http://www.olivieraubert.net/vlc/python-ctypes/}.
 
 Basically, the most important class is L{Instance}, which is used
 to create a libvlc instance.  From this instance, you then create
@@ -52,8 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "N/A"
-build_date  = "Thu Sep 28 22:09:06 2017"
+__version__ = "2.2.0-git-14816-gda488a7751100"
+__libvlc_version__ = "2.2.0-git-14816-gda488a7751"
+__generator_version__ = "1.0"
+build_date  = "Tue Oct 10 18:56:50 2017 2.2.0-git-14816-gda488a7751"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,

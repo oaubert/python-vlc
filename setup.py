@@ -1,36 +1,40 @@
 from distribute_setup import use_setuptools
 use_setuptools()
 
-import logging
 import os
-import shutil
+import re
 from setuptools import setup
+import sys
 
-vlc_include_path = os.path.join("..", "..", "include", "vlc")
-if os.path.exists(vlc_include_path):
-    files = [ os.path.join(vlc_include_path, filename)
-              for filename in os.listdir(vlc_include_path) ]
-    from generator import generate
-    generate.process('vlc.py', files)
-else:
-    logging.warning("This script should be run from a VLC tree. "
-                    "Falling back to pre-generated file.")
-    shutil.copy(os.path.join('generated', 'vlc.py'), 'vlc.py')
+version = None
+with open(os.path.join(os.path.dirname(__file__),
+                       'generator',
+                       'generate.py'), 'r') as f:
+    for l in f:
+        m = re.search('''__version__\s*=\s*["'](.+)["']''', l)
+        if m:
+            version = m.group(1)
 
-setup(name='python-vlc',
-      version = '1.1.2',
+if not version:
+    sys.stderr.write("Cannot determine module version number")
+    sys.exit(1)
+
+setup(name='python-vlc-generator',
+      version = version,
       author='Olivier Aubert',
       author_email='contact@olivieraubert.net',
       maintainer='Olivier Aubert',
       maintainer_email='contact@olivieraubert.net',
       url='http://wiki.videolan.org/PythonBinding',
-      py_modules=['vlc'],
-      keywords = [ 'vlc', 'video' ],
+      # FIXME: setup.py is not yet complete. There should be the
+      # template files, etc.
+      py_modules=['generator/generate.py'],
+      keywords = [ 'vlc', 'video', 'bindings' ],
       license = "GPL",
       classifiers = [
           "Development Status :: 5 - Production/Stable",
           "Intended Audience :: Developers",
-          "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+          "License :: OSI Approved :: GNU General Public License v2 or later (LGPLv2+)",
           "Operating System :: MacOS :: MacOS X",
           "Operating System :: Microsoft :: Windows",
           "Operating System :: POSIX :: Linux",
@@ -44,11 +48,9 @@ setup(name='python-vlc',
           "Topic :: Software Development :: Code Generators"
       ],
       description = "VLC bindings for python.",
-      long_description = """VLC bindings for python.
+      long_description = """VLC bindings generator for python.
 
-This module provides ctypes-based bindings for the native libvlc API
-(see http://wiki.videolan.org/LibVLC) of the VLC video player.
-
-It is automatically generated from the include files if they are available.
-"""
-      )
+      This module provides the bindings generator for the native
+      libvlc API (see http://wiki.videolan.org/LibVLC) of the VLC
+      video player.
+      """)

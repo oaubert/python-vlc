@@ -1,8 +1,8 @@
-#! /usr/bin/python
+#! /usr/bin/env python3
 
 # Code generator for python ctypes bindings for VLC
 #
-# Copyright (C) 2009-2012 the VideoLAN team
+# Copyright (C) 2009-2017 the VideoLAN team
 # $Id: $
 #
 # Authors: Olivier Aubert <contact at olivieraubert.net>
@@ -44,23 +44,30 @@ This module and the generated Python bindings have been tested with
 X 10.4.11 (Intel) and MacOS X 10.11.3 using the public API include
 files from VLC 1.1.4.1, 1.1.5, 2.1.0 and 2.2.2.
 
-B{**)} Java/JNA bindings for the VLC public API can be created
-in a similar manner and depend on 3 Java files: C{boilerplate.java},
-C{LibVlc-footer.java} and C{LibVlc-header.java}.
+B{**)} Java/JNA bindings for the VLC public API can be created in a
+similar manner and depend on 3 Java files: C{boilerplate.java},
+C{LibVlc-footer.java} and C{LibVlc-header.java}. Note that this code
+has not be maintained for a while...
 
 """
 __all__     = ('Parser',
                'PythonGenerator', 'JavaGenerator',
                'process')
-__version__ =  '20.17.09.25'
+
+# Version number MUST have a major < 10 and a minor < 99 so that the
+# generated dist version can be correctly generated.
+__version__ =  '1.0'
 
 _debug = False
 
-import sys
-import os
-import re
-import time
 import operator
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import time
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATEDIR = os.path.join(BASEDIR, 'templates')
@@ -438,20 +445,26 @@ class Parser(object):
         self.typedefs = {}
         self.version = version
 
+        if not self.version:
+            self.version = self.parse_version(h_files)
         for h in h_files:
-            if not self.version:  # find vlc-... version
-                for v in h.replace('\\', '/').split('/'):
-                    if version_re.match(v):
-                        self.version = v
-                        break
-                else:
-                    self.parse_version(h)
             self.h_file = h
             self.typedefs.update(self.parse_typedefs())
             self.structs.extend(self.parse_structs())
             self.enums.extend(self.parse_enums())
             self.callbacks.extend(self.parse_callbacks())
             self.funcs.extend(self.parse_funcs())
+
+    def bindings_version(self):
+        """Return the bindings version number.
+
+        It is built from the VLC version number and the generator
+        version number as:
+        vlc_major.vlc_minor.(1000 * vlc_micro + 100 * generator_major + generator_minor)
+        """
+        major, minor = [ int(i) for i in __version__.split(".") ]
+        bindings_version = "%s%d%02d" % (self.version, major, minor)
+        return bindings_version
 
     def check(self):
         """Perform some consistency checks.
@@ -665,12 +678,16 @@ class Parser(object):
             n = ''
         return Par(n, t.replace(' ', ''))
 
-    def parse_version(self, h_file):
-        """Get the libvlc version from the C header file:
+    def parse_version(self, h_files):
+        """Get the libvlc version from the C header files:
            LIBVLC_VERSION_MAJOR, _MINOR, _REVISION, _EXTRA
         """
-        if h_file.lower().endswith('libvlc_version.h'):
-            f, v = opener(h_file), []
+        version = None
+        version_file = [ h for h in h_files if
+                         h.lower().endswith('libvlc_version.h') ]
+        if version_file:
+            # Version file exists. Parse the version number.
+            f, v = opener(version_file[0]), []
             for t in f:
                 m = LIBVLC_V_re.match(t)
                 if m:
@@ -679,11 +696,22 @@ class Parser(object):
                         v.append((t, m))
                     elif t == 'EXTRA' and m not in ('0', ''):
                         v.append((t[1:], m))
-            if v:
-                v = '.'.join(m for _, m in sorted(v))
-                self.version = v
             f.close()
-
+            if v:
+                version = '.'.join(m for _, m in sorted(v))
+        # Version was not found in include files themselves. Try other
+        # approaches.
+        if version is None:
+            # Try to get version information from git describe
+            git_dir = Path(h_files[0]).parents[2].joinpath('.git')
+            if git_dir.is_dir():
+                # We are in a git tree. Let's get the version information
+                # from there if we can call git
+                try:
+                    version = subprocess.check_output(["git", "--git-dir=%s" % git_dir.as_posix(), "describe"]).strip().decode('utf-8')
+                except:
+                    pass
+        return version
 
 class _Generator(object):
     """Base class.
@@ -749,7 +777,7 @@ class _Generator(object):
         for n in ('type2class', 'prefixes', 'links'):
             d = getattr(self, n, None)
             if d:
-                n = ['%s==== %s ==== %s' % (_NL_, n, self.parser.version)]
+                n = ['%s==== %s ==== %s' % (_NL_, n, self.parser.bindings_version())]
                 sys.stderr.write(s.join(n + sorted('%s: %s\n' % t for t in d.items())))
 
     def epylink(self, docs, striprefix=None):
@@ -782,12 +810,11 @@ class _Generator(object):
                 self.generate_enums()
                 self.generate_callbacks()
             elif t.startswith(_BUILD_DATE_):
-                v, t = _NA_, self.parser.version
-                if t:
-                    v, t = t, ' - ' + t
-                self.output('__version__ = "%s"' % (v,))
+                v = self.parser.version or _NA_
+                self.output('__version__ = "%s"' % (self.parser.bindings_version(),))
+                self.output('__libvlc_version__ = "%s"' % (v,))
                 self.output('__generator_version__ = "%s"' % (__version__,))
-                self.output('%s"%s%s"' % (_BUILD_DATE_, time.ctime(), t))
+                self.output('%s"%s %s"' % (_BUILD_DATE_, time.ctime(), v))
             else:
                 self.output(t, nt=0)
         f.close()
@@ -1363,6 +1390,51 @@ def process(output, h_files):
     g.save(output)
 
 
+def prepare_package(output):
+    """Prepare a python-vlc package for the designated module.
+
+    output is the location of the generated vlc.py file.
+    """
+    # Parse the module for VLC version number
+    bindings_version = None
+    libvlc_version = None
+    with open(output, 'r') as f:
+        for l in f:
+            m = re.search('__version__\s*=\s*"(.+)"', l)
+            if m:
+                bindings_version = m.group(1)
+            m = re.search('__libvlc_version__\s*=\s*"(.+)"', l)
+            if m:
+                libvlc_version = m.group(1)
+            if bindings_version and libvlc_version:
+                break
+
+    if bindings_version is None:
+        sys.stderr.write("Unable to determine bindings version.")
+        sys.exit(1)
+
+    # Write the versioned setup.py file
+    outdir = os.path.dirname(output)
+    with open(os.path.join(TEMPLATEDIR, 'setup.py')) as f:
+        setup = f.read()
+    # Fill in the template fields
+    setup = setup.format(libvlc_version=libvlc_version,
+                         generator_version=__version__,
+                         bindings_version=bindings_version)
+    with open(os.path.join(outdir, 'setup.py'), 'w') as f:
+        f.write(setup)
+
+    # Copy other files for distribution
+    shutil.copyfile(os.path.join(TEMPLATEDIR, 'MANIFEST.in'),
+                    os.path.join(outdir, 'MANIFEST.in'))
+    examples = os.path.join(outdir, 'examples')
+    if os.path.isdir(examples):
+        shutil.rmtree(examples)
+    shutil.copytree(os.path.join(BASEDIR, '..', 'examples'), examples)
+    for fname in ('COPYING', 'README.module', 'distribute_setup.py'):
+        shutil.copyfile(os.path.join(BASEDIR, '..', fname),
+                        os.path.join(outdir, fname))
+
 if __name__ == '__main__':
 
     from optparse import OptionParser
@@ -1391,15 +1463,22 @@ Parse VLC include files and generate bindings code for Python or Java.""")
                    default='',
                    help='Version string for __version__ global')
 
+    opt.add_option('-p', '--package', dest='package', action='store', type='str',
+                   default='',
+                   help='Prepare a package for the given python module.')
+
     opts, args = opt.parse_args()
 
     if '--debug' in sys.argv:
        _debug = True  # show source
 
+    if opts.package:
+        prepare_package(opts.package)
+        sys.exit(0)
+
     if not args:
         opt.print_help()
         sys.exit(1)
-
     elif len(args) == 1:  # get .h files
         # get .h files from .../include/vlc dir
         # or .../include/vlc/*.h (especially
