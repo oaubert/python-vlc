@@ -29,10 +29,10 @@ dev: $(MODULE_NAME)
 installed: $(VERSIONED_NAME)
 	@if [ ! -d $(INSTALLED_INCLUDE_DIR) ]; then echo "Cannot find the necessary VLC include files in $(INSTALLED_INCLUDE_DIR). Make sure a full VLC install is present on the system." ; exit 1 ; fi
 
-$(MODULE_NAME): generator/generate.py generator/header.py generator/footer.py generator/override.py $(DEV_INCLUDES)
+$(MODULE_NAME): generator/generate.py generator/templates/header.py generator/templates/footer.py generator/templates/override.py $(DEV_INCLUDES)
 	python generator/generate.py $(DEV_INCLUDES) -o $@
 
-$(VERSIONED_NAME): generator/generate.py generator/header.py generator/footer.py generator/override.py $(INSTALLED_INCLUDES)
+$(VERSIONED_NAME): generator/generate.py generator/templates/header.py generator/templates/footer.py generator/templates/override.py $(INSTALLED_INCLUDES)
 	python generator/generate.py $(INSTALLED_INCLUDES) -o $@
 
 doc: $(MODULE_NAME)

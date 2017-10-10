@@ -63,6 +63,7 @@ import time
 import operator
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
+TEMPLATEDIR = os.path.join(BASEDIR, 'templates')
 
 if sys.version_info[0] < 3:
     PYTHON3 = False
@@ -785,6 +786,7 @@ class _Generator(object):
                 if t:
                     v, t = t, ' - ' + t
                 self.output('__version__ = "%s"' % (v,))
+                self.output('__generator_version__ = "%s"' % (__version__,))
                 self.output('%s"%s%s"' % (_BUILD_DATE_, time.ctime(), t))
             else:
                 self.output(t, nt=0)
@@ -1104,7 +1106,7 @@ class _Enum(ctypes.c_uint):
         def striprefix(name):
             return name.replace(x, '').replace('libvlc_', '')
 
-        codes, methods, docstrs = self.parse_override(os.path.join(BASEDIR, 'override.py'))
+        codes, methods, docstrs = self.parse_override(os.path.join(TEMPLATEDIR, 'override.py'))
 
         # sort functions on the type/class
         # of their first parameter
@@ -1222,14 +1224,14 @@ class _Enum(ctypes.c_uint):
         """Write Python bindings to a file or C{stdout}.
         """
         self.outopen(path or '-')
-        self.insert_code(os.path.join(BASEDIR, 'header.py'), genums=True)
+        self.insert_code(os.path.join(TEMPLATEDIR, 'header.py'), genums=True)
 
         self.generate_wrappers()
         self.generate_ctypes()
 
         self.unwrapped()
 
-        self.insert_code(os.path.join(BASEDIR, 'footer.py'))
+        self.insert_code(os.path.join(TEMPLATEDIR, 'footer.py'))
         self.outclose()
 
 
@@ -1292,7 +1294,7 @@ class JavaGenerator(_Generator):
             j = self.class4(e.name)
             self.outopen(j + '.java')
 
-            self.insert_code(os.path.join(BASEDIR, 'boilerplate.java'))
+            self.insert_code(os.path.join(TEMPLATEDIR, 'boilerplate.java'))
             self.output("""package org.videolan.jvlc.internal;
 
 public enum %s
@@ -1322,8 +1324,8 @@ public enum %s
         """
         self.outopen('LibVlc.java')
 
-        self.insert_code(os.path.join(BASEDIR, 'boilerplate.java'))
-        self.insert_code(os.path.join(BASEDIR, 'LibVlc-header.java'))
+        self.insert_code(os.path.join(TEMPLATEDIR, 'boilerplate.java'))
+        self.insert_code(os.path.join(TEMPLATEDIR, 'LibVlc-header.java'))
 
         self.generate_header()
         for f in self.parser.funcs:
@@ -1331,7 +1333,7 @@ public enum %s
             p =    ', '.join('%s %s' % (self.class4(p.type), p.name) for p in f.pars)
             self.output('%s %s(%s);' % (self.class4(f.type), f.name, p), nt=2)
 
-        self.insert_code(os.path.join(BASEDIR, 'LibVlc-footer.java'))
+        self.insert_code(os.path.join(TEMPLATEDIR, 'LibVlc-footer.java'))
 
         self.unwrapped()
         self.outclose()
