@@ -29,10 +29,10 @@ setup(name='python-vlc',
           "Topic :: Multimedia :: Video",
       ],
       description = "VLC bindings for python.",
-      long_description = """VLC bindings for python.
-
-      This module provides ctypes-based bindings for the native libvlc API
-      (see http://wiki.videolan.org/LibVLC) of the VLC video player.
+      long_description = """This module provides ctypes-based bindings (see
+      http://wiki.videolan.org/PythonBinding) for the native libvlc
+      API (see http://wiki.videolan.org/LibVLC) of the VLC video
+      player.
 
       It has been automatically generated from the include files of
       vlc {libvlc_version}, using generator {generator_version}.

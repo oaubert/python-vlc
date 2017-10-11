@@ -38,7 +38,7 @@ dist: $(VERSIONED_NAME)
 	$(GENERATE) -p $<
 
 deb: dist
-	cd $(VERSIONED_PATH) ; python setup.py --command-packages=stdeb.command sdist_dsc --with-python2=true --with-python3=true bdist_deb
+	cd $(VERSIONED_PATH) ; python setup.py --command-packages=stdeb.command sdist_dsc --with-python2=true --with-python3=true --copyright-file=COPYING bdist_deb
 
 $(MODULE_NAME): generator/generate.py generator/templates/header.py generator/templates/footer.py generator/templates/override.py $(DEV_INCLUDES)
 	-mkdir -p $(DEV_PATH)
