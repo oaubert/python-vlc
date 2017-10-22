@@ -47,10 +47,8 @@ setup(name='python-vlc-generator',
           "Topic :: Multimedia :: Video",
           "Topic :: Software Development :: Code Generators"
       ],
-      description = "VLC bindings for python.",
-      long_description = """VLC bindings generator for python.
-
-      This module provides the bindings generator for the native
+      description = "VLC python bindings generator.",
+      long_description = """This module provides the bindings generator for the native
       libvlc API (see http://wiki.videolan.org/LibVLC) of the VLC
       video player.
       """)
