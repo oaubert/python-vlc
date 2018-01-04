@@ -8,9 +8,9 @@ file.
 
 The bindings generator generates ctypes-bindings from the include
 files defining the public API. The same generated module should be
-compatible with various versions of libvlc 2.*. However, there may be
-incompatible changes between major versions. A 2.2 specific binding is
-provided.
+compatible with various versions of libvlc 2.* and 3.*. However, there
+may be incompatible changes between major versions. Versioned bindings
+for 2.2 and 3.0 are provided in the repository.
 
 License
 -------

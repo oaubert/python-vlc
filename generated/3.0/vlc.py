@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-602-gde421537d9101"
-__libvlc_version__ = "4.0.0-dev-602-gde421537d9"
+__version__ = "3.0.0101"
+__libvlc_version__ = "3.0.0"
 __generator_version__ = "1.1"
-build_date  = "Thu Jan  4 23:33:14 2018 4.0.0-dev-602-gde421537d9"
+build_date  = "Thu Jan  4 23:45:25 2018 3.0.0"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -4383,8 +4383,12 @@ def libvlc_new(argc, argv):
     even if it is not, in principles, necessary, e.g.:
     @code
     @endcode
-    On Microsoft Windows, setting the default DLL directories to SYSTEM32
-    exclusively is strongly recommended for security reasons:
+    On Microsoft Windows Vista/2008, the process error mode
+    SEM_FAILCRITICALERRORS flag B{must} be set before using LibVLC.
+    On later versions, that is optional and unnecessary.
+    Also on Microsoft Windows (Vista and any later version), setting the default
+    DLL directories to SYSTEM32 exclusively is strongly recommended for
+    security reasons:
     @code
     @endcode.
     @param argc: the number of arguments (should be 0).

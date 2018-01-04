@@ -3,7 +3,7 @@ DEV_INCLUDE_DIR=../../include/vlc
 INSTALLED_INCLUDE_DIR=/usr/include/vlc
 
 DEV_PATH=generated/dev
-VERSIONED_PATH=generated/2.2
+VERSIONED_PATH=generated/3.0
 
 MODULE_NAME=$(DEV_PATH)/vlc.py
 VERSIONED_NAME=$(VERSIONED_PATH)/vlc.py
