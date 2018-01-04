@@ -56,7 +56,7 @@ __all__     = ('Parser',
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ =  '1.0'
+__version__ =  '1.1'
 
 _debug = False
 
@@ -111,6 +111,7 @@ free_string_funcs = set((
         'libvlc_video_get_marquee_string',
         'libvlc_audio_output_device_longname',
         'libvlc_audio_output_device_id',
+        'libvlc_audio_output_device_get',
         'libvlc_vlm_show_media',
     ))
 
@@ -132,7 +133,7 @@ _VLC_PUBLIC_API_  = 'LIBVLC_API'
 # Precompiled regexps
 api_re       = re.compile('(?:LIBVLC_DEPRECATED\s+)?' + _VLC_PUBLIC_API_ + '\s+(\S+\s+.+?)\s*\(\s*(.+?)\s*\)')
 at_param_re  = re.compile('(@param\s+\S+)(.+)')
-bs_param_re  = re.compile('\\param\s+(\S+)')
+bs_param_re  = re.compile(r'\\param\s+(\S+)')
 class_re     = re.compile('class\s+(\S+):')
 def_re       = re.compile('^\s+def\s+(\w+)', re.MULTILINE)
 enum_type_re = re.compile('^(?:typedef\s+)?enum')
