@@ -32,7 +32,7 @@ setup(name='python-vlc',
       long_description = """This module provides ctypes-based bindings (see
       http://wiki.videolan.org/PythonBinding) for the native libvlc
       API (see http://wiki.videolan.org/LibVLC) of the VLC video
-      player.
+      player. Note that it relies on an already present install of VLC.
 
       It has been automatically generated from the include files of
       vlc {libvlc_version}, using generator {generator_version}.

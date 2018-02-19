@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-602-gde421537d9101"
-__libvlc_version__ = "4.0.0-dev-602-gde421537d9"
-__generator_version__ = "1.1"
-build_date  = "Thu Jan  4 23:33:14 2018 4.0.0-dev-602-gde421537d9"
+__version__ = "4.0.0-dev-1124-g10db447e00102"
+__libvlc_version__ = "4.0.0-dev-1124-g10db447e00"
+__generator_version__ = "1.2"
+build_date  = "Mon Feb 19 18:13:20 2018 4.0.0-dev-1124-g10db447e00"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -178,15 +178,20 @@ def find_lib():
     elif sys.platform.startswith('darwin'):
         # FIXME: should find a means to configure path
         d = '/Applications/VLC.app/Contents/MacOS/'
+        c = d + 'lib/libvlccore.dylib'
         p = d + 'lib/libvlc.dylib'
-        if os.path.exists(p):
+        if os.path.exists(p) and os.path.exists(c):
+            # pre-load libvlccore VLC 2.2.8+
+            ctypes.CDLL(c)
             dll = ctypes.CDLL(p)
             for p in ('modules', 'plugins'):
                 p = d + p
                 if os.path.isdir(p):
                     plugin_path = p
                     break
-        else:  # hope, some PATH is set...
+        else:  # hope, some [DY]LD_LIBRARY_PATH is set...
+            # pre-load libvlccore VLC 2.2.8+
+            ctypes.CDLL('libvlccore.dylib')
             dll = ctypes.CDLL('libvlc.dylib')
 
     else:
@@ -3571,15 +3576,6 @@ class MediaPlayer(_Ctype):
         return libvlc_media_player_set_android_context(self, p_awindow_handler)
 
     
-    def set_evas_object(self, p_evas_object):
-        '''Set the EFL Evas Object.
-        @param p_evas_object: a valid EFL Evas Object (Evas_Object).
-        @return: -1 if an error was detected, 0 otherwise.
-        @version: LibVLC 3.0.0 and later.
-        '''
-        return libvlc_media_player_set_evas_object(self, p_evas_object)
-
-    
     def audio_set_callbacks(self, play, pause, resume, flush, drain, opaque):
         '''Sets callbacks and private data for decoded audio.
         Use L{audio_set_format}() or L{audio_set_format_callbacks}()
@@ -6608,18 +6604,6 @@ def libvlc_media_player_set_android_context(p_mi, p_awindow_handler):
         _Cfunction('libvlc_media_player_set_android_context', ((1,), (1,),), None,
                     None, MediaPlayer, ctypes.c_void_p)
     return f(p_mi, p_awindow_handler)
-
-def libvlc_media_player_set_evas_object(p_mi, p_evas_object):
-    '''Set the EFL Evas Object.
-    @param p_mi: the media player.
-    @param p_evas_object: a valid EFL Evas Object (Evas_Object).
-    @return: -1 if an error was detected, 0 otherwise.
-    @version: LibVLC 3.0.0 and later.
-    '''
-    f = _Cfunctions.get('libvlc_media_player_set_evas_object', None) or \
-        _Cfunction('libvlc_media_player_set_evas_object', ((1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, ctypes.c_void_p)
-    return f(p_mi, p_evas_object)
 
 def libvlc_audio_set_callbacks(mp, play, pause, resume, flush, drain, opaque):
     '''Sets callbacks and private data for decoded audio.

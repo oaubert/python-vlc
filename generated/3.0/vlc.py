@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.0101"
+__version__ = "3.0.0102"
 __libvlc_version__ = "3.0.0"
-__generator_version__ = "1.1"
-build_date  = "Thu Jan  4 23:45:25 2018 3.0.0"
+__generator_version__ = "1.2"
+build_date  = "Mon Feb 19 18:13:20 2018 3.0.0"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -178,15 +178,20 @@ def find_lib():
     elif sys.platform.startswith('darwin'):
         # FIXME: should find a means to configure path
         d = '/Applications/VLC.app/Contents/MacOS/'
+        c = d + 'lib/libvlccore.dylib'
         p = d + 'lib/libvlc.dylib'
-        if os.path.exists(p):
+        if os.path.exists(p) and os.path.exists(c):
+            # pre-load libvlccore VLC 2.2.8+
+            ctypes.CDLL(c)
             dll = ctypes.CDLL(p)
             for p in ('modules', 'plugins'):
                 p = d + p
                 if os.path.isdir(p):
                     plugin_path = p
                     break
-        else:  # hope, some PATH is set...
+        else:  # hope, some [DY]LD_LIBRARY_PATH is set...
+            # pre-load libvlccore VLC 2.2.8+
+            ctypes.CDLL('libvlccore.dylib')
             dll = ctypes.CDLL('libvlc.dylib')
 
     else:
