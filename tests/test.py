@@ -116,5 +116,24 @@ class TestVLCAPI(unittest.TestCase):
         url_encoded_mrl = urllib.quote(mrl.encode('utf-8'))
         self.assertEqual(m.get_mrl(), 'file://' + url_encoded_mrl)
 
+    def test_new_libvlc_viewpoint(self):
+        view = vlc.libvlc_video_new_viewpoint()
+        self.assertEqual(str(view.contents), 'VideoViewpoint')
+
+    def no_test_callback(self):
+
+        @vlc.CallbackDecorators.LogCb
+        def log_handler(instance, log_level, ctx, fmt, va_list):
+            try:
+                module, _file, _line = vlc.libvlc_log_get_context(ctx)
+            except TypeError:
+                print("vlc.libvlc_log_get_context(ctx)")
+
+        url = '/tmp/foo.mp4'
+
+        instance = vlc.Instance('--vout dummy --aout dummy')
+        instance.log_set(log_handler, None)
+        player = instance.media_player_new()
+
 if __name__ == '__main__':
     unittest.main()

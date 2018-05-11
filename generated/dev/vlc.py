@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-1124-g10db447e00102"
-__libvlc_version__ = "4.0.0-dev-1124-g10db447e00"
+__version__ = "4.0.0-dev-2548-g1a5afc2114102"
+__libvlc_version__ = "4.0.0-dev-2548-g1a5afc2114"
 __generator_version__ = "1.2"
-build_date  = "Mon Feb 19 18:13:20 2018 4.0.0-dev-1124-g10db447e00"
+build_date  = "Fri May 11 18:17:40 2018 4.0.0-dev-2548-g1a5afc2114"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -723,6 +723,27 @@ class VideoProjection(_Enum):
 VideoProjection.equirectangular = VideoProjection(1)
 VideoProjection.rectangular     = VideoProjection(0)
 VideoProjection.standard        = VideoProjection(0x100)
+
+class VideoMultiview(_Enum):
+    '''Viewpoint
+\warning allocate using libvlc_video_new_viewpoint().
+    '''
+    _enum_names_ = {
+        0: '_2d',
+        1: 'sbs',
+        2: 'tb',
+        3: 'row',
+        4: 'col',
+        5: 'frame',
+        6: 'checkerboard',
+    }
+VideoMultiview._2d          = VideoMultiview(0)
+VideoMultiview.checkerboard = VideoMultiview(6)
+VideoMultiview.col          = VideoMultiview(4)
+VideoMultiview.frame        = VideoMultiview(5)
+VideoMultiview.row          = VideoMultiview(3)
+VideoMultiview.sbs          = VideoMultiview(1)
+VideoMultiview.tb           = VideoMultiview(2)
 
 class MediaType(_Enum):
     '''Media type
@@ -7102,7 +7123,7 @@ def libvlc_video_new_viewpoint():
     '''
     f = _Cfunctions.get('libvlc_video_new_viewpoint', None) or \
         _Cfunction('libvlc_video_new_viewpoint', (), None,
-                    VideoViewpoint)
+                    ctypes.POINTER(VideoViewpoint))
     return f()
 
 def libvlc_video_update_viewpoint(p_mi, p_viewpoint, b_absolute):
@@ -7116,7 +7137,7 @@ def libvlc_video_update_viewpoint(p_mi, p_viewpoint, b_absolute):
     '''
     f = _Cfunctions.get('libvlc_video_update_viewpoint', None) or \
         _Cfunction('libvlc_video_update_viewpoint', ((1,), (1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, VideoViewpoint, ctypes.c_bool)
+                    ctypes.c_int, MediaPlayer, ctypes.POINTER(VideoViewpoint), ctypes.c_bool)
     return f(p_mi, p_viewpoint, b_absolute)
 
 def libvlc_video_get_spu(p_mi):

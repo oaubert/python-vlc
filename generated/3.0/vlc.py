@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.0102"
-__libvlc_version__ = "3.0.0"
+__version__ = "3.0.2102"
+__libvlc_version__ = "3.0.2"
 __generator_version__ = "1.2"
-build_date  = "Mon Feb 19 18:13:20 2018 3.0.0"
+build_date  = "Fri May 11 18:17:40 2018 3.0.2"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -7127,7 +7127,7 @@ def libvlc_video_new_viewpoint():
     '''
     f = _Cfunctions.get('libvlc_video_new_viewpoint', None) or \
         _Cfunction('libvlc_video_new_viewpoint', (), None,
-                    VideoViewpoint)
+                    ctypes.POINTER(VideoViewpoint))
     return f()
 
 def libvlc_video_update_viewpoint(p_mi, p_viewpoint, b_absolute):
@@ -7141,7 +7141,7 @@ def libvlc_video_update_viewpoint(p_mi, p_viewpoint, b_absolute):
     '''
     f = _Cfunctions.get('libvlc_video_update_viewpoint', None) or \
         _Cfunction('libvlc_video_update_viewpoint', ((1,), (1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, VideoViewpoint, ctypes.c_bool)
+                    ctypes.c_int, MediaPlayer, ctypes.POINTER(VideoViewpoint), ctypes.c_bool)
     return f(p_mi, p_viewpoint, b_absolute)
 
 def libvlc_video_get_spu(p_mi):
