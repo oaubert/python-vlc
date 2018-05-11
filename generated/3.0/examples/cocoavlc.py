@@ -42,29 +42,26 @@ import sys
 from time import strftime, strptime
 
 try:  # the imports listed explicitly to help PyChecker
-    from pycocoa import App, aspect_ratio, closeTables, Item, \
-                        MediaWindow, Menu, MenuBar, OpenPanel, printf, \
-                        Table, z1000str, zSIstr, \
+    from pycocoa import App, app_title, aspect_ratio, bytes2str, \
+                        closeTables, Item, MediaWindow, Menu, OpenPanel, \
+                        printf, str2bytes, Table, z1000str, zSIstr, \
                         __version__ as __PyCocoa__  # PYCHOK false
 except ImportError:
-    raise ImportError('no %s module, see %s' % ('pycocoa',
+    raise ImportError('no %s module, see %s?' % ('pycocoa',
                       '<http://PyPI.Python.org/pypi/PyCocoa>'))
 try:
     import vlc
 except ImportError:
-    raise ImportError('no %s module, see %s' % ('vlc.py',
+    raise ImportError('no %s module, see %s?' % ('vlc.py',
                       '<http://PyPI.Python.org/pypi/python-vlc>'))
 
 __all__  = ('AppVLC',)
-__version__ = '18.04.26'
+__version__ = '18.04.29'
 
 _macOS  = platform.mac_ver()[0:3:2]  # PYCHOK false
-_Movies = '.mov', '.mp4'  # lower-case file types for movies, videos
+_Movies = '.m4v', '.mov', '.mp4'  # lower-case file types for movies, videos
 _Python = sys.version.split()[0], platform.architecture()[0]  # PYCHOK false
-_Title  = os.path.basename(__file__)
-
-_b2str = vlc.bytes_to_str  # pycocoa.bytes2str
-_str2b = vlc.str_to_bytes  # pycocoa.str2bytes
+_Select = 'Select a video file from the panel'
 
 
 def _mspf(fps):
@@ -72,35 +69,61 @@ def _mspf(fps):
     return 1000.0 / (fps or 25)
 
 
-class AppVLC(App):
-    '''The application with callback methods for app..._, menu..._
-    and window..._ events.  Set things up inside the __init__ and
-    appLauched_ methods, start by calling the run method.
-    '''
-    ratio  = 2  # number of retries to get media aspect ratio
-    scale  = 1  # media zoom factor
-    video  = None  # media file name
-    window = None
+def _VLCplayer(marquee, size=24):  # video.height / 24
+    if marquee:
+        # <http://wiki.videolan.org/Documentation:Modules/marq/>
+        v = vlc.VideoMarqueeOption
+        i = vlc.Instance('--sub-source=marq')
+        p = i.media_player_new()
+        p.video_set_marquee_int(v.Enable, 1)
+        p.video_set_marquee_int(v.Size, int(size))  # pixels
+        p.video_set_marquee_int(v.Position, vlc.Position.Bottom)
+        p.video_set_marquee_int(v.Opacity, 255)  # 0-255
+        p.video_set_marquee_int(v.Timeout, 0)  # millisec, 0==forever
+        p.video_set_marquee_int(v.Refresh, 1000)  # millisec (or sec?)
+        p.video_set_marquee_string(v.Text, str2bytes('%Y-%m-%d  %T  %z'))
+    else:
+        p = vlc.MediaPlayer()
+    return p
 
-    def __init__(self, title=_Title, video=None, **attrs):
-        super(AppVLC, self).__init__(title=title, **attrs)
-        self.panel  = OpenPanel('Select a video file')
-        self.player = vlc.MediaPlayer(video) if video else None
+
+class AppVLC(App):
+    '''The application with callback methods for C{app..._},
+       C{menu..._} and C{window..._} events.
+
+       Set things up inside the C{.__init__} and C{.appLauched_}
+       methods, start by calling the C{.run} method.
+    '''
+    marquee = None
+    panel   = None
+    player  = None
+    resized = False
+    scale   = 1  # media zoom factor
+    video   = None
+    window  = None
+
+    def __init__(self, video=None, marquee=False, **kwds):
+        super(AppVLC, self).__init__(**kwds)
+        self.marquee = marquee
+        self.panel   = OpenPanel(_Select)
+        self.player  = _VLCplayer(marquee)
+        self.video   = video
 
     def appLaunched_(self, app):
-        App.appLaunched_(self, app)  # super(AppVLC, self)...
+        super(AppVLC, self).appLaunched_(app)
         self.window = MediaWindow(title=self.video or self.title)
 
         if self.player:
-            # the player needs an NSView object
+            # the VLC player on macOS needs an NSView
             self.player.set_nsobject(self.window.NSview)
+            self.player.set_mrl(self.video)
 
             menu = Menu('VLC')
             menu.append(
                 # the action/method for each item is
                 # 'menu' + item.title + '_', with
                 # spaces and dots removed, see the
-                # method Item.title2action.
+                # function pycocoa.title2action.
                 menu.item('Open...', key='o'),
                 menu.separator(),
                 menu.item('Info', key='i'),
@@ -118,9 +141,8 @@ class AppVLC(App):
             self.append(menu)
 
         self.menuPlay_(None)
-        # adjust the contents' aspect ratio
-        self.windowResize_(self.window)
         self.window.front()
+        self._resize(True)
 
     def menuCloseWindows_(self, item):  # PYCHOK expected
         # close window(s) from menu Cmd+W
@@ -149,11 +171,11 @@ class AppVLC(App):
             b = ' '.join(vlc.build_date.split()[:5])
             t.append('built', strftime('%x', strptime(b, '%c')), vlc.build_date)
             t.separator()
-            t.append('libVLC', _b2str(vlc.libvlc_get_version()), hex(vlc.libvlc_hex_version()))
-            t.append('libVLC', *_b2str(vlc.libvlc_get_compiler()).split(None, 1))
+            t.append('libVLC', bytes2str(vlc.libvlc_get_version()), hex(vlc.libvlc_hex_version()))
+            t.append('libVLC', *bytes2str(vlc.libvlc_get_compiler()).split(None, 1))
             t.separator()
 
-            f = _b2str(m.get_mrl())
+            f = bytes2str(m.get_mrl())
             t.append('media', os.path.basename(f), f)
             if f.startswith('file:///'):
                 z = os.path.getsize(f[7:])
@@ -188,10 +210,10 @@ class AppVLC(App):
         self.badge.label = 'O'
         video = self.panel.pick(_Movies)
         if video:
-            inst = self.player.get_instance()
-            media = inst.media_new(video)
-            self.player.set_media(media)
-            self.window.title = video
+            self.window.title = self.video = video
+            self.player.set_mrl(video)
+            self.ratio = 3
+            self._resize(True)
 
     def menuPause_(self, item):  # PYCHOK expected
         # note, .pause() pauses and un-pauses the video,
@@ -209,6 +231,7 @@ class AppVLC(App):
         # can't re-play once at the end
         # self.player.play()
         self.badge.label = 'R'
+        self._resize(False)
 
     def menuSlower_(self, item):
         self._rate(item, 0.80)
@@ -223,42 +246,66 @@ class AppVLC(App):
         # quit or click of window close button
         if window is self.window:
             self.terminate()
-        App.windowClose_(self, window)  # super(AppVLC, self)...
+        super(AppVLC, self).windowClose_(window)
 
     def windowResize_(self, window):
-        if window is self.window and self.ratio:
-            # get and maintain the aspect ratio
-            # (the first player.video_get_size()
-            #  call returns (0, 0), subsequent
-            #  calls return (w, h) correctly)
-            self.window.ratio = self.player.video_get_size(0)
-            self.ratio -= 1
-        App.windowResize_(self, window)  # super(AppVLC, self)...
+        if window is self.window:
+            self._resize(False)
+        super(AppVLC, self).windowResize_(window)
 
     def _rate(self, unused, factor):
+        # change the video rate
         r = self.player.get_rate() * factor
         if 0.2 < r < 10.0:
             self.player.set_rate(r)
 
+    def _resize(self, force):
+        # adjust aspect ratio and marquee height
+        if force or not self.resized:
+            w, h = self.player.video_get_size()
+            # the first call returns (0, 0),
+            # subsequent calls return (w, h)
+            if h > 0 and w > 0:
+                self.window.ratio = w, h
+                if self.marquee:
+                    h /= 24
+                    if h > 0:
+                        self.player.video_set_marquee_int(
+                                vlc.VideoMarqueeOption.Size, h)
+                self.resized = True
+            else:
+                self.resized = False
+
     def _zoom(self, unused, factor):
+        # zoom the video rate in/out
         self.scale *= factor
         self.player.video_set_scale(self.scale)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # MCCABE 13
 
     _argv0   = os.path.basename(sys.argv[0])  # _Title
+    _marquee = False
     _raiser  = False
     _timeout = None
     _title   = os.path.splitext(_argv0)[0]
+    _video   = None
 
     args = sys.argv[1:]
     while args and args[0].startswith('-'):
         o = args.pop(0)
         t = o.lower()
         if t in ('-h', '--help'):
-            printf('usage:  [-h|--help]  [-raiser]  [-timeout <secs>]  [-title <string>]  [video_file_name]')
+            printf('usage:  [%s]', ']  ['.join(('-h|--help',
+                                                '-marquee',
+                                                '-raiser',
+                                                '-timeout <secs>',
+                                                '-title <string>',
+                                                'video_file_name')),
+                                  argv0=_argv0)
             sys.exit(0)
+        elif '-marquee'.startswith(t) and len(t) > 1:
+            _marquee = True
         elif '-raiser'.startswith(t) and len(t) > 1:
             _raiser = True
         elif '-timeout'.startswith(t) and len(t) > 3 and args:
@@ -266,7 +313,7 @@ if __name__ == '__main__':
         elif '-title'.startswith(t) and len(t) > 3 and args:
             _title = args.pop(0).strip()
         else:
-            printf('invalid option: %s', o)
+            printf('invalid option: %s', o, argv0=_argv0)
             sys.exit(1)
 
     if _raiser:  # get traceback at SIG- faults or ...
@@ -277,11 +324,12 @@ if __name__ == '__main__':
             pass
 
     if args:
-        video = args.pop(0)
+        _video = args.pop(0)
     else:
-        printf('- select a video from the files panel', nl=1, nt=1)
-        video = OpenPanel('Select a video file').pick(_Movies)
+        printf('- %s', _Select.lower(), argv0=_argv0, nl=1, nt=1)
+        app_title(_title)  # App.title when there's no App yet
+        _video = OpenPanel('Select a video file').pick(_Movies)
 
-    if video:
-        app = AppVLC(title=_title, raiser=_raiser, video=video)
+    if _video:
+        app = AppVLC(title=_title, marquee=_marquee, raiser=_raiser, video=_video)
         app.run(timeout=_timeout)  # never returns
