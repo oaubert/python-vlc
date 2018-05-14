@@ -291,8 +291,14 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         '''
         titleDescription_pp = ctypes.POINTER(TitleDescription)()
         n = libvlc_media_player_get_full_title_descriptions(self, ctypes.byref(titleDescription_pp))
-        info = ctypes.cast(ctypes.titleDescription_pp, ctypes.POINTER(ctypes.POINTER(TitleDescription) * n))
-        return info
+        info = ctypes.cast(titleDescription_pp, ctypes.POINTER(ctypes.POINTER(TitleDescription) * n))
+        try:
+            contents = info.contents
+        except ValueError:
+            # Media not parsed, no info.
+            return None
+        descr = ( contents[i].contents for i in range(len(contents)) )
+        return descr
 
     def get_full_chapter_descriptions(self, i_chapters_of_title):
         '''Get the full description of available chapters.
@@ -302,8 +308,14 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         '''
         chapterDescription_pp = ctypes.POINTER(ChapterDescription)()
         n = libvlc_media_player_get_full_chapter_descriptions(self, ctypes.byref(chapterDescription_pp))
-        info = ctypes.cast(ctypes.chapterDescription_pp, ctypes.POINTER(ctypes.POINTER(ChapterDescription) * n))
-        return info
+        info = ctypes.cast(chapterDescription_pp, ctypes.POINTER(ctypes.POINTER(ChapterDescription) * n))
+        try:
+            contents = info.contents
+        except ValueError:
+            # Media not parsed, no info.
+            return None
+        descr = ( contents[i].contents for i in range(len(contents)) )
+        return descr
 
     def video_get_size(self, num=0):
         """Get the video size in pixels as 2-tuple (width, height).
