@@ -116,9 +116,10 @@ class TestVLCAPI(unittest.TestCase):
         url_encoded_mrl = urllib.quote(mrl.encode('utf-8'))
         self.assertEqual(m.get_mrl(), 'file://' + url_encoded_mrl)
 
-    def test_new_libvlc_viewpoint(self):
-        view = vlc.libvlc_video_new_viewpoint()
-        self.assertEqual(str(view.contents), 'VideoViewpoint')
+    def test_libvlc_video_new_viewpoint(self):
+        vp = vlc.libvlc_video_new_viewpoint()
+        vp.contents.yaw = 2
+        self.assertEqual(vp.contents.yaw, 2)
 
     def no_test_callback(self):
 

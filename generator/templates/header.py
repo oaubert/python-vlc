@@ -635,21 +635,21 @@ AudioOutputDevice._fields_ = [  # recursive struct
     ]
 
 class TitleDescription(_Cstruct):
-    _fields = [
+    _fields_ = [
         ('duration', ctypes.c_longlong),
         ('name', ctypes.c_char_p),
         ('menu', ctypes.c_bool),
     ]
 
 class ChapterDescription(_Cstruct):
-    _fields = [
+    _fields_ = [
         ('time_offset', ctypes.c_longlong),
         ('duration', ctypes.c_longlong),
         ('name', ctypes.c_char_p),
     ]
 
 class VideoViewpoint(_Cstruct):
-    _fields = [
+    _fields_ = [
         ('yaw', ctypes.c_float),
         ('pitch', ctypes.c_float),
         ('roll', ctypes.c_float),
@@ -660,14 +660,14 @@ class VideoViewpoint(_Cstruct):
 # in > 2.2
 if 'MediaSlaveType' in locals():
     class MediaSlave(_Cstruct):
-        _fields = [
+        _fields_ = [
             ('psz_uri', ctypes.c_char_p),
             ('i_type', MediaSlaveType),
             ('i_priority', ctypes.c_uint)
         ]
 
 class RDDescription(_Cstruct):
-    _fields = [
+    _fields_ = [
         ('name', ctypes.c_char_p),
         ('longname', ctypes.c_char_p)
     ]

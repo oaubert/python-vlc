@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 __version__ = "4.0.0-dev-2548-g1a5afc2114102"
 __libvlc_version__ = "4.0.0-dev-2548-g1a5afc2114"
 __generator_version__ = "1.2"
-build_date  = "Fri May 11 18:17:40 2018 4.0.0-dev-2548-g1a5afc2114"
+build_date  = "Mon May 14 17:58:40 2018 4.0.0-dev-2548-g1a5afc2114"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1588,21 +1588,21 @@ AudioOutputDevice._fields_ = [  # recursive struct
     ]
 
 class TitleDescription(_Cstruct):
-    _fields = [
+    _fields_ = [
         ('duration', ctypes.c_longlong),
         ('name', ctypes.c_char_p),
         ('menu', ctypes.c_bool),
     ]
 
 class ChapterDescription(_Cstruct):
-    _fields = [
+    _fields_ = [
         ('time_offset', ctypes.c_longlong),
         ('duration', ctypes.c_longlong),
         ('name', ctypes.c_char_p),
     ]
 
 class VideoViewpoint(_Cstruct):
-    _fields = [
+    _fields_ = [
         ('yaw', ctypes.c_float),
         ('pitch', ctypes.c_float),
         ('roll', ctypes.c_float),
@@ -1613,14 +1613,14 @@ class VideoViewpoint(_Cstruct):
 # in > 2.2
 if 'MediaSlaveType' in locals():
     class MediaSlave(_Cstruct):
-        _fields = [
+        _fields_ = [
             ('psz_uri', ctypes.c_char_p),
             ('i_type', MediaSlaveType),
             ('i_priority', ctypes.c_uint)
         ]
 
 class RDDescription(_Cstruct):
-    _fields = [
+    _fields_ = [
         ('name', ctypes.c_char_p),
         ('longname', ctypes.c_char_p)
     ]
@@ -3252,8 +3252,14 @@ class MediaPlayer(_Ctype):
         '''
         titleDescription_pp = ctypes.POINTER(TitleDescription)()
         n = libvlc_media_player_get_full_title_descriptions(self, ctypes.byref(titleDescription_pp))
-        info = ctypes.cast(ctypes.titleDescription_pp, ctypes.POINTER(ctypes.POINTER(TitleDescription) * n))
-        return info
+        info = ctypes.cast(titleDescription_pp, ctypes.POINTER(ctypes.POINTER(TitleDescription) * n))
+        try:
+            contents = info.contents
+        except ValueError:
+            # Media not parsed, no info.
+            return None
+        descr = ( contents[i].contents for i in range(len(contents)) )
+        return descr
 
     def get_full_chapter_descriptions(self, i_chapters_of_title):
         '''Get the full description of available chapters.
@@ -3263,8 +3269,14 @@ class MediaPlayer(_Ctype):
         '''
         chapterDescription_pp = ctypes.POINTER(ChapterDescription)()
         n = libvlc_media_player_get_full_chapter_descriptions(self, ctypes.byref(chapterDescription_pp))
-        info = ctypes.cast(ctypes.chapterDescription_pp, ctypes.POINTER(ctypes.POINTER(ChapterDescription) * n))
-        return info
+        info = ctypes.cast(chapterDescription_pp, ctypes.POINTER(ctypes.POINTER(ChapterDescription) * n))
+        try:
+            contents = info.contents
+        except ValueError:
+            # Media not parsed, no info.
+            return None
+        descr = ( contents[i].contents for i in range(len(contents)) )
+        return descr
 
     def video_get_size(self, num=0):
         """Get the video size in pixels as 2-tuple (width, height).
