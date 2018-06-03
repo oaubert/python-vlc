@@ -422,7 +422,7 @@ if __name__ == '__main__':  # MCCABE 13
 
     if _video:
         app = AppVLC(title=_title, video=_video,
-                                  adjust=_adjust,
+                                 adjustr=_adjust,
                                  marquee=_marquee,
                                   raiser=_raiser)
         app.run(timeout=_timeout)  # never returns
