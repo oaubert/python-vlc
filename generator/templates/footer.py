@@ -33,7 +33,10 @@ def _dot2int(v):
     '''
     t = [int(i) for i in v.split('.')]
     if len(t) == 3:
-        t.append(0)
+        if t[2] < 100:
+            t.append(0)
+        else:  # 100 is arbitrary
+            t[2:4] = divmod(t[2], 100)
     elif len(t) != 4:
         raise ValueError('"i.i.i[.i]": %r' % (v,))
     if min(t) < 0 or max(t) > 255:

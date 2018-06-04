@@ -1,18 +1,18 @@
 
 # -*- coding: utf-8 -*-
 
-# Original <http://code.google.com/archive/p/cocoa-python>
+# Original <http://Code.Google.com/archive/p/cocoa-python>
 
-# Example of using ctypes with PyCocoa to create a window and table
-# with an application menu to run a video using VLC.  The VLC App must
-# be installed on macOS, see <http://www.VideoLan.org/index.html> with
-# the Python-VLC binding, see <http://PyPI.Python.org/pypi/python-vlc>.
+# Example of using PyCocoa <http://PyPI.org/project/PyCocoa> to create
+# a window, table and an application menu to run a video using VLC on
+# macOS.  The Python-VLC binding <http://PyPI.Python.org/pypi/python-vlc>
+# and the corresponding VLC App,see <http://www.VideoLan.org/index.html>.
 
-# This VLC player has only been tested with VLC 2.2.6 and 3.0.1 and the
-# corresponding vlc.py Python-VLC binding using 64-bit Python 2.7.14 and
-# 3.6.4 on macOS 10.13.4 High Sierra.  The player does not work (yet)
-# with PyPy Python <http://pypy.org> nor with Intel(R) Python
-# <http://Software.Intel.com/en-us/distribution-for-python>.
+# This VLC player has only been tested with VLC 2.2.6, 3.0.1, 3.0.2 and
+# 3.0.3 and the corresponding vlc.py Python-VLC binding using 64-bit
+# Python 2.7.14 and 3.6.4 on macOS 10.13.4 High Sierra.  The player does
+# not work using PyPy Python <http://PyPy.org> nor with Intel(R)
+# Python <http://Software.Intel.com/en-us/distribution-for-python>.
 
 # MIT License <http://opensource.org/licenses/MIT>
 #
@@ -60,47 +60,31 @@ import sys
 from time import strftime, strptime
 
 __all__  = ('AppVLC',)
-__version__ = '18.06.02'
+__version__ = '18.06.04'
 
-if __PyCocoa__ < __version__:
+if __PyCocoa__ < '18.06.02':
     raise ImportError('%s %s or newer required, see %s' % ('pycocoa',
-                       __version__, _PyPI('PyCocoa')))
+                      '18.6.2', _PyPI('PyCocoa')))
 del _PyPI, pycocoa
 
 _Adjust  = vlc.VideoAdjustOption  # Enum
-# <http://Wiki.VideoLan.org/Documentation:Modules/adjust/>
+# <http://Wiki.VideoLan.org/Documentation:Modules/adjust>
 _Adjust3 = {_Adjust.Brightness: (0, 1, 2),
             _Adjust.Contrast:   (0, 1, 2),
             _Adjust.Gamma:   (0.01, 1, 10),
             _Adjust.Hue:        (0, 0, 360),
             _Adjust.Saturation: (0, 1, 3)}
 _macOS   = platform.mac_ver()[0:3:2]  # PYCHOK false
-_Marquee = vlc.VideoMarqueeOption  # Enum
 _Movies  = '.m4v', '.mov', '.mp4'  # lower-case file types for movies, videos
 _Python  = sys.version.split()[0], platform.architecture()[0]  # PYCHOK false
 _Select  = 'Select a video file from the panel'
+_VLC_3_  = vlc.__version__.split('.')[0] > '2' and \
+           bytes2str(vlc.libvlc_get_version().split('.')[0]) > '2'
 
 
 def _mspf(fps):
     # convert frames per second to frame length in millisecs
     return 1000.0 / (fps or 25)
-
-
-def _VLCplayer(marquee=False, size=36):  # video.height / 24
-    if marquee:
-        # <http://Wiki.VideoLan.org/Documentation:Modules/marq/>
-        i = vlc.Instance('--sub-source=marq')
-        p = i.media_player_new()
-        p.video_set_marquee_int(_Marquee.Enable, 1)
-        p.video_set_marquee_int(_Marquee.Size, int(size))  # pixels
-        p.video_set_marquee_int(_Marquee.Position, vlc.Position.Bottom)
-        p.video_set_marquee_int(_Marquee.Opacity, 255)  # 0-255
-        p.video_set_marquee_int(_Marquee.Timeout, 0)  # millisec, 0==forever
-        p.video_set_marquee_int(_Marquee.Refresh, 1000)  # millisec (or sec?)
-        p.video_set_marquee_string(_Marquee.Text, str2bytes('%Y-%m-%d  %T  %z'))
-    else:
-        p = vlc.MediaPlayer()
-    return p
 
 
 class AppVLC(App):
@@ -112,6 +96,7 @@ class AppVLC(App):
     '''
     adjustr = ''
     marquee = None
+    logostr = ''
     panel   = None
     player  = None
     resized = False
@@ -119,12 +104,13 @@ class AppVLC(App):
     video   = None
     window  = None
 
-    def __init__(self, video=None, adjustr='', marquee=False, **kwds):
+    def __init__(self, video=None, adjustr='', logostr='', marquee=False, **kwds):
         super(AppVLC, self).__init__(**kwds)
         self.adjustr = adjustr
+        self.logostr = logostr
         self.marquee = marquee
         self.panel   = OpenPanel(_Select)
-        self.player  = _VLCplayer(marquee)
+        self.player  = vlc.MediaPlayer()
         self.video   = video
 
     def appLaunched_(self, app):
@@ -141,7 +127,13 @@ class AppVLC(App):
                     o, v = o.strip().split('=')
                     o = getattr(_Adjust, o.capitalize(), None)
                     if o is not None:
-                        self._VideoAdjust(o, value=v)
+                        self._VLCadjust(o, value=v)
+
+            if self.marquee:  # set up marquee
+                self._VLCmarquee()
+
+            if self.logostr:  # show logo
+                self._VLClogo(self.logostr)
 
             menu = Menu('VLC')
             menu.append(
@@ -161,10 +153,11 @@ class AppVLC(App):
                 menu.item('Zoom In',  key='+'),
                 menu.item('Zoom Out', key='-'),
                 menu.item('Faster', key='>', shift=True),
-                menu.item('Slower', key='<', shift=True),
-                menu.item('Brighter'),
-                menu.item('Darker'),
-            )
+                menu.item('Slower', key='<', shift=True))
+            if _VLC_3_:
+                menu.append(
+                    menu.item('Brighter'),
+                    menu.item('Darker'))
             self.append(menu)
 
         self.menuPlay_(None)
@@ -195,7 +188,8 @@ class AppVLC(App):
             m = p.get_media()
 
             t = Table(' Name:bold', ' Value:200:Center:center', ' Alt:300')
-            t.append('PyCocoa', __PyCocoa__, '20' + __version__)
+            t.append('cocoavlc', __version__, '20' + __version__)
+            t.append('PyCocoa', __PyCocoa__, '20' + __PyCocoa__)
             t.append('Python', *_Python)
             t.append('macOS', *_macOS)
             t.separator()
@@ -233,19 +227,20 @@ class AppVLC(App):
             t.append('scale', '%.3f' % (p.video_get_scale(),), '%.3f' % (self.scale,))
             t.separator()
 
-            def _VideoAdjust2(option):
-                lo, _, hi = _Adjust3[option]
-                f = self.player.video_get_adjust_float(option)
-                p = max(0, (f - lo)) * 100.0 / (hi - lo)
-                t = '%.2f %.1f%%' % (f, p)
-                return t.replace('.0%', '%').replace('.00', '.0').split()
+            if _VLC_3_:
+                def _VideoAdjust2(option):
+                    lo, _, hi = _Adjust3[option]
+                    f = self.player.video_get_adjust_float(option)
+                    p = max(0, (f - lo)) * 100.0 / (hi - lo)
+                    t = '%.2f %.1f%%' % (f, p)
+                    return t.replace('.0%', '%').replace('.00', '.0').split()
 
-            t.append('brightness', *_VideoAdjust2(_Adjust.Brightness))
-            t.append('contrast',   *_VideoAdjust2(_Adjust.Contrast))
-            t.append('gamma',      *_VideoAdjust2(_Adjust.Gamma))
-            t.append('hue',        *_VideoAdjust2(_Adjust.Hue))
-            t.append('saturation', *_VideoAdjust2(_Adjust.Saturation))
-            t.separator()
+                t.append('brightness', *_VideoAdjust2(_Adjust.Brightness))
+                t.append('contrast',   *_VideoAdjust2(_Adjust.Contrast))
+                t.append('gamma',      *_VideoAdjust2(_Adjust.Gamma))
+                t.append('hue',        *_VideoAdjust2(_Adjust.Hue))
+                t.append('saturation', *_VideoAdjust2(_Adjust.Saturation))
+                t.separator()
             t.display('Python, VLC & Media Information', width=600)
 
         except Exception as x:
@@ -302,19 +297,19 @@ class AppVLC(App):
         super(AppVLC, self).windowResize_(window)
 
     def _brightness(self, unused, fraction):  # change brightness
-        self._VideoAdjust(_Adjust.Brightness, fraction)
+        self._VLCadjust(_Adjust.Brightness, fraction)
 
     def _contrast(self, unused, fraction):  # change contrast
-        self._VideoAdjust(_Adjust.Contrast, fraction)
+        self._VLCadjust(_Adjust.Contrast, fraction)
 
     def _gamma(self, unused, fraction):  # change gamma
-        self._VideoAdjust(_Adjust.Gamma, fraction)
+        self._VLCadjust(_Adjust.Gamma, fraction)
 
     def _hue(self, unused, fraction):  # change hue
-        self._VideoAdjust(_Adjust.Hue, fraction)
+        self._VLCadjust(_Adjust.Hue, fraction)
 
     def _saturation(self, unused, fraction):  # change saturation
-        self._VideoAdjust(_Adjust.Saturation, fraction)
+        self._VLCadjust(_Adjust.Saturation, fraction)
 
     def _rate(self, unused, factor):  # change the video rate
         r = max(0.2, min(10.0, self.player.get_rate() * factor))
@@ -327,30 +322,54 @@ class AppVLC(App):
             # subsequent calls return (w, h)
             if h > 0 and w > 0:
                 self.window.ratio = w, h
-                if self.marquee:
-                    h /= 24
-                    if h > 0:
-                        self.player.video_set_marquee_int(_Marquee.Size, h)
                 self.resized = True
             else:
                 self.resized = False
 
-    def _VideoAdjust(self, option, fraction=0, value=None):
+    def _VLCadjust(self, option, fraction=0, value=None):
         # adjust a video option like brightness, contrast, etc.
         # note, .Enable needs to be set to 1, but only once
-        self.player.video_set_adjust_int(_Adjust.Enable, 1)
+        p = self.player
+        # <http://Wiki.VideoLan.org/Documentation:Modules/adjust>
+        p.video_set_adjust_int(_Adjust.Enable, 1)
         try:
             lo, _, hi = _Adjust3[option]
             if value is None:
-                v = self.player.video_get_float(option)
+                v = p.video_get_float(option)
             else:
                 v = float(value)
             if fraction:
                 v += fraction * (hi - lo)
             v = float(max(lo, min(hi, v)))
-            self.player.video_set_adjust_float(option, v)
+            p.video_set_adjust_float(option, v)
         except (KeyError, ValueError):
             pass
+
+    def _VLClogo(self, logostr):
+        # add a video logo, example "python cocoavlc.py -logo
+        # cone-altglass2.png\;cone-icon-small.png ..."
+        p = self.player
+        g = vlc.VideoLogoOption  # Enum
+        # <http://Wiki.VideoLan.org/Documentation:Modules/logo>
+        p.video_set_logo_int(g.enable, 1)
+        p.video_set_logo_int(g.position, vlc.Position.Center)
+        p.video_set_logo_int(g.opacity, 128)  # 0-255
+        # p.video_set_logo_int(g.delay, 1000)  # millisec
+        # p.video_set_logo_int(g.repeat, -1)  # forever
+        p.video_set_logo_string(g.file, logostr)
+
+    def _VLCmarquee(self, size=36):
+        # put video marquee at the bottom-center
+        p = self.player
+        m = vlc.VideoMarqueeOption  # Enum
+        # <http://Wiki.VideoLan.org/Documentation:Modules/marq/=>
+        p.video_set_marquee_int(m.Enable, 1)
+        p.video_set_marquee_int(m.Size, int(size))  # pixels
+        p.video_set_marquee_int(m.Position, vlc.Position.Bottom)
+        p.video_set_marquee_int(m.Opacity, 255)  # 0-255
+        p.video_set_marquee_int(m.Timeout, 0)  # millisec, 0==forever
+        p.video_set_marquee_int(m.Refresh, 1000)  # millisec (or sec?)
+        p.video_set_marquee_string(m.Text, str2bytes('%Y-%m-%d  %T  %z'))
 
     def _zoom(self, unused, factor):
         # zoom the video rate in/out
@@ -358,9 +377,9 @@ class AppVLC(App):
         self.player.video_set_scale(self.scale)
 
 
-if __name__ == '__main__':  # MCCABE 13
+if __name__ == '__main__':  # MCCABE 20
 
-    def _adjustr():
+    def _Adjustr():
         a = []  # get adjust default values
         for n in _Adjust._enum_names_.values():
             try:
@@ -370,8 +389,9 @@ if __name__ == '__main__':  # MCCABE 13
                 pass
         return ','.join(sorted(a))
 
-    _adjust  = ''
+    _adjustr = ''
     _argv0   = os.path.basename(sys.argv[0])  # _Title
+    _logostr = ''
     _marquee = False
     _raiser  = False
     _timeout = None
@@ -383,18 +403,22 @@ if __name__ == '__main__':  # MCCABE 13
         o = args.pop(0)
         t = o.lower()
         if t in ('-h', '--help'):
-            printf('usage:  [%s]',
-                   ']  ['.join(('-h|--help',
-                                '-adjust %s' % (_adjustr(),),
-                                '-marquee',
-                                '-raiser',
-                                '-timeout <secs>',
-                                '-title <string>',
-                                'video_file_name')), argv0=_argv0)
+            u = ('-h|--help',)
+            if _VLC_3_:  # require VLC 3+ and libvlc 3+
+                u += ('-adjust %s' % (_Adjustr(),),
+                      '-logo <image_file_name>[\\;<image_file_name>...]',
+                      '-marquee')
+            u += ('-raiser',
+                  '-timeout <secs>',
+                  '-title <string>',
+                  '<video_file_name>')
+            printf('usage:  [%s]', ']  ['.join(u), argv0=_argv0)
             sys.exit(0)
-        elif '-adjust'.startswith(t) and len(t) > 1 and args:
-            _adjust = args.pop(0)
-        elif '-marquee'.startswith(t) and len(t) > 1:
+        elif '-adjust'.startswith(t) and len(t) > 1 and args and _VLC_3_:
+            _adjustr = args.pop(0)
+        elif '-logo'.startswith(t) and len(t) > 1 and args and _VLC_3_:
+            _logostr = args.pop(0)
+        elif '-marquee'.startswith(t) and len(t) > 1 and _VLC_3_:
             _marquee = True
         elif '-raiser'.startswith(t) and len(t) > 1:
             _raiser = True
@@ -421,8 +445,9 @@ if __name__ == '__main__':  # MCCABE 13
         _video = OpenPanel('Select a video file').pick(_Movies)
 
     if _video:
-        app = AppVLC(title=_title, video=_video,
-                                 adjustr=_adjust,
-                                 marquee=_marquee,
-                                  raiser=_raiser)
+        app = AppVLC(video=_video, adjustr=_adjustr,
+                                   logostr=_logostr,
+                                   marquee=_marquee,
+                                    raiser=_raiser,
+                                     title=_title)
         app.run(timeout=_timeout)  # never returns
