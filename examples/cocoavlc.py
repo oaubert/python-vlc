@@ -60,7 +60,7 @@ import sys
 from time import strftime, strptime
 
 __all__  = ('AppVLC',)
-__version__ = '18.06.04'
+__version__ = '18.06.05'
 
 if __PyCocoa__ < '18.06.02':
     raise ImportError('%s %s or newer required, see %s' % ('pycocoa',
@@ -227,20 +227,20 @@ class AppVLC(App):
             t.append('scale', '%.3f' % (p.video_get_scale(),), '%.3f' % (self.scale,))
             t.separator()
 
-            if _VLC_3_:
-                def _VideoAdjust2(option):
-                    lo, _, hi = _Adjust3[option]
-                    f = self.player.video_get_adjust_float(option)
-                    p = max(0, (f - lo)) * 100.0 / (hi - lo)
-                    t = '%.2f %.1f%%' % (f, p)
-                    return t.replace('.0%', '%').replace('.00', '.0').split()
+            def _VLCadjustr2(option):
+                lo, _, hi = _Adjust3[option]
+                f = self.player.video_get_adjust_float(option)
+                p = max(0, (f - lo)) * 100.0 / (hi - lo)
+                t = '%.2f %.1f%%' % (f, p)
+                return t.replace('.0%', '%').replace('.00', '.0').split()
 
-                t.append('brightness', *_VideoAdjust2(_Adjust.Brightness))
-                t.append('contrast',   *_VideoAdjust2(_Adjust.Contrast))
-                t.append('gamma',      *_VideoAdjust2(_Adjust.Gamma))
-                t.append('hue',        *_VideoAdjust2(_Adjust.Hue))
-                t.append('saturation', *_VideoAdjust2(_Adjust.Saturation))
-                t.separator()
+            t.append('brightness', *_VLCadjustr2(_Adjust.Brightness))
+            t.append('contrast',   *_VLCadjustr2(_Adjust.Contrast))
+            t.append('gamma',      *_VLCadjustr2(_Adjust.Gamma))
+            t.append('hue',        *_VLCadjustr2(_Adjust.Hue))
+            t.append('saturation', *_VLCadjustr2(_Adjust.Saturation))
+            t.separator()
+
             t.display('Python, VLC & Media Information', width=600)
 
         except Exception as x:
@@ -328,14 +328,14 @@ class AppVLC(App):
 
     def _VLCadjust(self, option, fraction=0, value=None):
         # adjust a video option like brightness, contrast, etc.
-        # note, .Enable needs to be set to 1, but only once
         p = self.player
         # <http://Wiki.VideoLan.org/Documentation:Modules/adjust>
+        # note, .Enable must be set to 1, but once will suffices
         p.video_set_adjust_int(_Adjust.Enable, 1)
         try:
             lo, _, hi = _Adjust3[option]
             if value is None:
-                v = p.video_get_float(option)
+                v = p.video_get_adjust_float(option)
             else:
                 v = float(value)
             if fraction:
@@ -403,10 +403,10 @@ if __name__ == '__main__':  # MCCABE 20
         o = args.pop(0)
         t = o.lower()
         if t in ('-h', '--help'):
-            u = ('-h|--help',)
+            u = ('-h|--help',
+                 '-adjust %s' % (_Adjustr(),))
             if _VLC_3_:  # require VLC 3+ and libvlc 3+
-                u += ('-adjust %s' % (_Adjustr(),),
-                      '-logo <image_file_name>[\\;<image_file_name>...]',
+                u += ('-logo <image_file_name>[\\;<image_file_name>...]',
                       '-marquee')
             u += ('-raiser',
                   '-timeout <secs>',
@@ -414,7 +414,7 @@ if __name__ == '__main__':  # MCCABE 20
                   '<video_file_name>')
             printf('usage:  [%s]', ']  ['.join(u), argv0=_argv0)
             sys.exit(0)
-        elif '-adjust'.startswith(t) and len(t) > 1 and args and _VLC_3_:
+        elif '-adjust'.startswith(t) and len(t) > 1 and args:
             _adjustr = args.pop(0)
         elif '-logo'.startswith(t) and len(t) > 1 and args and _VLC_3_:
             _logostr = args.pop(0)
