@@ -60,7 +60,7 @@ import sys
 from time import strftime, strptime
 
 __all__  = ('AppVLC',)
-__version__ = '18.06.05'
+__version__ = '18.06.09'
 
 if __PyCocoa__ < '18.06.02':
     raise ImportError('%s %s or newer required, see %s' % ('pycocoa',
@@ -79,7 +79,7 @@ _Movies  = '.m4v', '.mov', '.mp4'  # lower-case file types for movies, videos
 _Python  = sys.version.split()[0], platform.architecture()[0]  # PYCHOK false
 _Select  = 'Select a video file from the panel'
 _VLC_3_  = vlc.__version__.split('.')[0] > '2' and \
-           bytes2str(vlc.libvlc_get_version().split('.')[0]) > '2'
+           bytes2str(vlc.libvlc_get_version().split(b'.')[0]) > '2'
 
 
 def _mspf(fps):
