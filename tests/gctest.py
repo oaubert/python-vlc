@@ -16,7 +16,7 @@ i = vlc.Instance()
 p = vlc.MediaPlayer()
 
 def poschanged(foo):
-    print "poschanged"
+    print("poschanged")
 
 for n in range(10):
     p.stop()
