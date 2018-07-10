@@ -59,6 +59,9 @@ test3: $(MODULE_NAME)
 	PYTHONPATH=$(DEV_PATH) python3 tests/test.py
 	PYTHONPATH=$(VERSIONED_PATH) python3 tests/test.py
 
+publish: $(VERSIONED_NAME)
+	cd $(VERSIONED_PATH); python setup.py sdist upload -r pypi
+
 tests: test test3
 
 check: $(MODULE_NAME)
