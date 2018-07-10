@@ -72,22 +72,28 @@ import time
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATEDIR = os.path.join(BASEDIR, 'templates')
 
+str = str
+
+try:
+    basestring = basestring    # Python 2
+except NameError:
+    basestring = (str, bytes)  # Python 3
+
+try:
+    unicode = unicode          # Python 2
+except NameError:
+    unicode = str              # Python 3
+
 if sys.version_info[0] < 3:
     PYTHON3 = False
+    bytes = str
     def opener(name, mode='r'):
         return open(name, mode)
-    str = str
-    unicode = unicode
-    bytes = str
-    basestring = basestring
 else:  # Python 3+
     PYTHON3 = True
+    bytes = bytes
     def opener(name, mode='r'):  #PYCHOK expected
         return open(name, mode, encoding='utf8')
-    str = str
-    unicode = str
-    bytes = bytes
-    basestring = (str, bytes)
 
 # Functions not wrapped/not referenced
 _blacklist = {
