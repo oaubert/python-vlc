@@ -656,6 +656,16 @@ class VideoViewpoint(_Cstruct):
         ('field_of_view', ctypes.c_float),
     ]
 
+class MediaDiscovererDescription(_Cstruct):
+    _fields_ = [
+        ('name', ctypes.c_char_p),
+        ('longname', ctypes.c_char_p),
+        ('cat', MediaDiscovererCategory),
+    ]
+
+    def __str__(self):
+        return '%s %s (%d) - %s' % (self.__class__.__name__, self.name, self.cat, self.longname)
+
 # This struct depends on the MediaSlaveType enum that is defined only
 # in > 2.2
 if 'MediaSlaveType' in locals():

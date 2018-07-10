@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.3102"
+__version__ = "3.0.3103"
 __libvlc_version__ = "3.0.3"
-__generator_version__ = "1.2"
-build_date  = "Tue Jul 10 23:22:23 2018 3.0.3"
+__generator_version__ = "1.3"
+build_date  = "Wed Jul 11 00:26:11 2018 3.0.3"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1588,6 +1588,16 @@ class VideoViewpoint(_Cstruct):
         ('field_of_view', ctypes.c_float),
     ]
 
+class MediaDiscovererDescription(_Cstruct):
+    _fields_ = [
+        ('name', ctypes.c_char_p),
+        ('longname', ctypes.c_char_p),
+        ('cat', MediaDiscovererCategory),
+    ]
+
+    def __str__(self):
+        return '%s %s (%d) - %s' % (self.__class__.__name__, self.name, self.cat, self.longname)
+
 # This struct depends on the MediaSlaveType enum that is defined only
 # in > 2.2
 if 'MediaSlaveType' in locals():
@@ -2607,7 +2617,7 @@ class Media(_Ctype):
     def parse_stop(self):
         '''Stop the parsing of the media
         When the media parsing is stopped, the libvlc_MediaParsedChanged event will
-        be sent with the L{parsed_status_t} status.
+        be sent with the libvlc_media_parsed_status_timeout status.
         See L{parse_with_options}.
         @version: LibVLC 3.0.0 or later.
         '''
@@ -3823,8 +3833,8 @@ class MediaPlayer(_Ctype):
     
     def set_video_title_display(self, position, timeout):
         '''Set if, and how, the video title will be shown when media is played.
-        @param position: position at which to display the title, or L{position_t} to prevent the title from being displayed.
-        @param timeout: title display timeout in milliseconds (ignored if L{position_t}).
+        @param position: position at which to display the title, or libvlc_position_disable to prevent the title from being displayed.
+        @param timeout: title display timeout in milliseconds (ignored if libvlc_position_disable).
         @version: libVLC 2.1.0 or later.
         '''
         return libvlc_media_player_set_video_title_display(self, position, timeout)
@@ -4098,7 +4108,7 @@ class MediaPlayer(_Ctype):
     def video_set_logo_int(self, option, value):
         '''Set logo option as integer. Options that take a different type value
         are ignored.
-        Passing L{video_logo_option_t} as option value has the side effect of
+        Passing libvlc_logo_enable as option value has the side effect of
         starting (arg !0) or stopping (arg 0) the logo filter.
         @param option: logo option to set, values of libvlc_video_logo_option_t.
         @param value: logo option value.
@@ -5474,7 +5484,7 @@ def libvlc_media_parse_with_options(p_md, parse_flag, timeout):
 def libvlc_media_parse_stop(p_md):
     '''Stop the parsing of the media
     When the media parsing is stopped, the libvlc_MediaParsedChanged event will
-    be sent with the L{libvlc_media_parsed_status_t} status.
+    be sent with the libvlc_media_parsed_status_timeout status.
     See L{libvlc_media_parse_with_options}.
     @param p_md: media descriptor object.
     @version: LibVLC 3.0.0 or later.
@@ -6953,8 +6963,8 @@ def libvlc_media_player_navigate(p_mi, navigate):
 def libvlc_media_player_set_video_title_display(p_mi, position, timeout):
     '''Set if, and how, the video title will be shown when media is played.
     @param p_mi: the media player.
-    @param position: position at which to display the title, or L{libvlc_position_t} to prevent the title from being displayed.
-    @param timeout: title display timeout in milliseconds (ignored if L{libvlc_position_t}).
+    @param position: position at which to display the title, or libvlc_position_disable to prevent the title from being displayed.
+    @param timeout: title display timeout in milliseconds (ignored if libvlc_position_disable).
     @version: libVLC 2.1.0 or later.
     '''
     f = _Cfunctions.get('libvlc_media_player_set_video_title_display', None) or \
@@ -7438,7 +7448,7 @@ def libvlc_video_get_logo_int(p_mi, option):
 def libvlc_video_set_logo_int(p_mi, option, value):
     '''Set logo option as integer. Options that take a different type value
     are ignored.
-    Passing L{libvlc_video_logo_option_t} as option value has the side effect of
+    Passing libvlc_logo_enable as option value has the side effect of
     starting (arg !0) or stopping (arg 0) the logo filter.
     @param p_mi: libvlc media player instance.
     @param option: logo option to set, values of libvlc_video_logo_option_t.
