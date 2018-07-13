@@ -24,6 +24,12 @@ import os.path
 import vlc
 from PyQt4 import QtGui, QtCore
 
+try:
+    unicode        # Python 2
+except NameError:
+    unicode = str  # Python 3
+
+
 class Player(QtGui.QMainWindow):
     """A simple Media Player using VLC and Qt
     """
