@@ -40,9 +40,9 @@ The C{#PYCHOK ...} comments direct the PyChecker/-Flakes post-
 processor, see U{http://code.activestate.com/recipes/546532}.
 
 This module and the generated Python bindings have been tested with
-32- and 64-bit Python 2.6, 2.7 and 3.1 on Linux, Windows XP SP3, MacOS
+32- and 64-bit Python 2.6, 2.7 and 3.6 on Linux, Windows XP SP3, MacOS
 X 10.4.11 (Intel) and MacOS X 10.11.3 using the public API include
-files from VLC 1.1.4.1, 1.1.5, 2.1.0 and 2.2.2.
+files from VLC 1.1.4.1, 1.1.5, 2.1.0, 2.2.2, 3.0.3.
 
 B{**)} Java/JNA bindings for the VLC public API can be created in a
 similar manner and depend on 3 Java files: C{boilerplate.java},
@@ -56,7 +56,7 @@ __all__     = ('Parser',
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ =  '1.3'
+__version__ =  '1.4'
 
 _debug = False
 
@@ -151,7 +151,7 @@ struct_type_re = re.compile('^typedef\s+struct\s*(\S+)\s*$')
 struct_re    = re.compile('typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
 typedef_re   = re.compile('^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
 forward_re   = re.compile('.+\(\s*(.+?)\s*\)(\s*\S+)')
-libvlc_re    = re.compile('\slibvlc_[a-z_]+')
+libvlc_re    = re.compile('libvlc_[a-z_]+')
 param_re     = re.compile('\s*(const\s*|unsigned\s*|struct\s*)?(\S+\s*\**)\s+(.+)')
 decllist_re  = re.compile('\s*;\s*')
 paramlist_re = re.compile('\s*,\s*')
@@ -975,9 +975,8 @@ class PythonGenerator(_Generator):
         # doc links to functions, methods and types
         self.links = {'libvlc_event_e': 'EventType'}
         # link enum value names to enum type/class
-##      for t in self.parser.enums:
-##          for v in t.vals:
-##              self.links[v.enum] = t.name
+        for t in self.parser.enums:
+            self.links[t.name] = self.class4(t.name)
         # prefixes to strip from method names
         # when wrapping them into class methods
         self.prefixes = {}
