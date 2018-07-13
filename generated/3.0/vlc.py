@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 __version__ = "3.0.3103"
 __libvlc_version__ = "3.0.3"
 __generator_version__ = "1.3"
-build_date  = "Wed Jul 11 00:26:11 2018 3.0.3"
+build_date  = "Fri Jul 13 10:59:40 2018 3.0.3"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -8260,7 +8260,10 @@ def _dot2int(v):
     '''
     t = [int(i) for i in v.split('.')]
     if len(t) == 3:
-        t.append(0)
+        if t[2] < 100:
+            t.append(0)
+        else:  # 100 is arbitrary
+            t[2:4] = divmod(t[2], 100)
     elif len(t) != 4:
         raise ValueError('"i.i.i[.i]": %r' % (v,))
     if min(t) < 0 or max(t) > 255:

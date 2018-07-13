@@ -34,6 +34,12 @@ import vlc
 import os
 import sys
 
+try:
+    unicode        # Python 2
+except NameError:
+    unicode = str  # Python 3
+
+
 class Player(wx.Frame):
     """The main window has to deal with events.
     """
