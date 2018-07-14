@@ -1,20 +1,37 @@
 group: travis_latest
+dist: xenial
+sudo: true
 language: python
 cache: pip
 python:
-    - 2.7
-    - 3.6
+  - 2.7
+  - 3.7
+before_install:
+  - apt-cache show vlc | grep Version
+  - sudo add-apt-repository ppa:videolan/stable-daily -y
+  - sudo apt-get update
+  - apt-cache show vlc | grep Version
+  - sudo apt-get install vlc=3.*
+  - vlc --verbose 3 --version
+  - sudo apt install snapd
+  - sudo snap install vlc
+  - vlc --verbose 3 --version
 install:
-    #- pip install -r requirements.txt
-    - pip install flake8 pytest  # add another testing frameworks later
+  #- pip install -r requirements.txt
+  - pip install flake8  # pytest  # add another testing frameworks later
 before_script:
-    - EXCLUDE=./generated/2.2,./generator/templates
-    # stop the build if there are Python syntax errors or undefined names
-    - flake8 . --count --exclude=$EXCLUDE --select=E901,E999,F821,F822,F823 --show-source --statistics
-    # exit-zero treats all errors as warnings.  The GitHub editor is 127 chars wide
-    - flake8 . --count --exclude=$EXCLUDE --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+  - EXCLUDE=./generated/2.2,./generator/templates
+  # stop the build if there are Python syntax errors or undefined names
+  - flake8 . --count --exclude=$EXCLUDE --select=E901,E999,F821,F822,F823 --show-source --statistics
+  # exit-zero treats all errors as warnings.  The GitHub editor is 127 chars wide
+  - flake8 . --count --exclude=$EXCLUDE --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 script:
-    - pytest --capture=sys  # add other tests here
+  - vlc --verbose 3 --version
+  - echo "PYTHONPATH: $PYTHONPATH"
+  - echo "PLUGIN_PATH: $PLUGIN_PATH"
+  - PYTHONPATH=generated/3.0
+  - make tests
+  #- pytest --capture=sys  # add other tests here
 notifications:
-    on_success: change
-    on_failure: change  # `always` will be the setting once code changes slow down
+  on_success: change
+  on_failure: change  # `always` will be the setting once code changes slow down
