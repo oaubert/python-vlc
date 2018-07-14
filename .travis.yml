@@ -7,14 +7,24 @@ python:
   - 2.7
   - 3.7
 before_install:
+  - sudo apt-get install ppa-purge
+  - sudo ppa-purge ppa:videolan/stable-daily
+  - sudo ppa-purge ppa:videolan/master-daily
   - apt-cache show vlc | grep Version
+
   - sudo add-apt-repository ppa:videolan/stable-daily -y
   - sudo apt-get update
   - apt-cache show vlc | grep Version
-  - sudo apt-get install vlc=3.*
-  - vlc --verbose 3 --version
+  #- sudo apt-get install vlc=3.*
+
+  - sudo add-apt-repository ppa:videolan/master-daily -y
+  - sudo apt-get update
+  - apt-cache show vlc | grep Version
+  #- sudo apt-get install vlc=3.*
+
   - sudo apt install snapd
-  - sudo snap install vlc
+  #- sudo snap install vlc
+  - sudo snap install --classic vlc
   - vlc --verbose 3 --version
 install:
   #- pip install -r requirements.txt
