@@ -7,27 +7,27 @@ python:
   - 2.7
   - 3.7
 before_install:
-  - sudo apt-get install ppa-purge
-  - apt-cache show vlc | grep Version
-
-  - sudo add-apt-repository ppa:videolan/stable-daily -y
   - sudo apt-get update
-  - apt-cache show vlc | grep Version
-  - sudo ppa-purge ppa:videolan/stable-daily
-  - apt-cache show vlc | grep Version
-  #- sudo apt-get install vlc=3.*
+  #- sudo apt-get install ppa-purge
+  #- apt-cache show vlc | grep Version
 
-  - sudo add-apt-repository ppa:videolan/master-daily -y
-  - sudo apt-get update
-  - apt-cache show vlc | grep Version
-  - sudo ppa-purge ppa:videolan/master-daily
-  - apt-cache show vlc | grep Version
-  #- sudo apt-get install vlc=3.*
+  #- sudo add-apt-repository ppa:videolan/stable-daily -y
+  #- sudo apt-get update
+  #- apt-cache show vlc | grep Version
+  #- sudo ppa-purge ppa:videolan/stable-daily
+  #- apt-cache show vlc | grep Version
+  ##- sudo apt-get install vlc=3.*
+
+  #- sudo add-apt-repository ppa:videolan/master-daily -y
+  #- sudo apt-get update
+  #- apt-cache show vlc | grep Version
+  #- sudo ppa-purge ppa:videolan/master-daily
+  #- apt-cache show vlc | grep Version
+  ##- sudo apt-get install vlc=3.*
 
   - sudo apt install snapd
-  #- sudo snap install vlc
-  - sudo snap install --classic vlc
-  - vlc --verbose 3 --version
+  - sudo snap install vlc
+  #- vlc --verbose 3 --version
 install:
   #- pip install -r requirements.txt
   - pip install flake8  # pytest  # add another testing frameworks later
@@ -38,10 +38,12 @@ before_script:
   # exit-zero treats all errors as warnings.  The GitHub editor is 127 chars wide
   - flake8 . --count --exclude=$EXCLUDE --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 script:
-  - vlc --verbose 3 --version
-  - echo "PYTHONPATH: $PYTHONPATH"
-  - echo "PLUGIN_PATH: $PLUGIN_PATH"
+  #- vlc --verbose 3 --version
+  - echo "PYTHONPATH: ${PYTHONPATH}"
+  - echo "PLUGIN_PATH: ${PLUGIN_PATH}"
   - PYTHONPATH=generated/3.0
+  - export PLUGIN_PATH=/snap/vlc/365/usr/lib/vlc/plugins
+  - vlc --verbose 3 --version
   - make tests
   #- pytest --capture=sys  # add other tests here
 notifications:
