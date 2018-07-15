@@ -121,7 +121,7 @@ if __name__ == '__main__':
                 import distro  # <http://GitHub.com/nir0s/distro>
                 t = t, bytes_to_str(distro.name()), bytes_to_str(distro.version())
             except ImportError:
-                t = t, uname()[0], 'n/a'
+                t = (t,) + uname()[0:3:2]
         print(' '.join(t))
 
     def print_version():
@@ -132,7 +132,7 @@ if __name__ == '__main__':
             print('LibVLC compiler: %s' % bytes_to_str(libvlc_get_compiler()))
             if plugin_path:
                 print('Plugin path: %s' % plugin_path)
-        except:
+        except Exception:
             print('Error: %s' % sys.exc_info()[1])
 
     if '-h' in sys.argv[:2] or '--help' in sys.argv[:2]:
