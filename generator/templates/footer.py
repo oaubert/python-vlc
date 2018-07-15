@@ -103,19 +103,49 @@ if __name__ == '__main__':
                                                           player.get_position() * 100))
             sys.stdout.flush()
 
+    def print_python():
+        from platform import architecture, mac_ver, uname, win32_ver
+        if 'intelpython' in sys.executable:
+            t = 'Intel-'
+        # elif 'PyPy ' in sys.version:
+        #     t = 'PyPy-'
+        else:
+            t = ''
+        t = '%sPython: %s (%s)' % (t, sys.version.split()[0], architecture()[0])
+        if win32_ver()[0]:
+            t = t, 'Windows', win32_ver()[0]
+        elif mac_ver()[0]:
+            t = t, ('iOS' if sys.platform == 'ios' else 'macOS'), mac_ver()[0]
+        else:
+            try:
+                import distro  # <http://GitHub.com/nir0s/distro>
+                t = t, bytes_to_str(distro.name()), bytes_to_str(distro.version())
+            except ImportError:
+                t = (t,) + uname()[0:3:2]
+        print(' '.join(t))
+
     def print_version():
         """Print version of this vlc.py and of the libvlc"""
         try:
-            print('Build date: %s (%#x)' % (build_date, hex_version()))
+            print('%s: %s (%s)' % (os.path.basename(__file__), __version__, build_date))
             print('LibVLC version: %s (%#x)' % (bytes_to_str(libvlc_get_version()), libvlc_hex_version()))
             print('LibVLC compiler: %s' % bytes_to_str(libvlc_get_compiler()))
             if plugin_path:
                 print('Plugin path: %s' % plugin_path)
-        except:
+        except Exception:
             print('Error: %s' % sys.exc_info()[1])
 
-    if sys.argv[1:] and '-h' not in sys.argv[1:] and '--help' not in sys.argv[1:]:
+    if '-h' in sys.argv[:2] or '--help' in sys.argv[:2]:
+        print('Usage: %s [options] <movie_filename>' % sys.argv[0])
+        print('Once launched, type ? for help.')
+        print('')
 
+    elif '-v' in sys.argv[:2] or '--version' in sys.argv[:2]:
+        print_version()
+        print_python()
+        print('')
+
+    else:
         movie = os.path.expanduser(sys.argv.pop())
         if not os.access(movie, os.R_OK):
             print('Error: %s file not readable' % movie)
@@ -235,9 +265,3 @@ if __name__ == '__main__':
             elif k.isdigit():
                  # jump to fraction of the movie.
                 player.set_position(float('0.'+k))
-
-    else:
-        print('Usage: %s [options] <movie_filename>' % sys.argv[0])
-        print('Once launched, type ? for help.')
-        print('')
-        print_version()
