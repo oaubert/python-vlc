@@ -59,7 +59,7 @@ import sys
 from time import strftime, strptime
 
 __all__  = ('AppVLC',)
-__version__ = '18.07.27'
+__version__ = '18.07.29'
 
 if __PyCocoa__ < '18.06.02':
     raise ImportError('%s %s or newer required, see %s' % ('pycocoa',
@@ -209,7 +209,8 @@ class AppVLC(App):
                 t.append('size', z1000str(z), zSIstr(z))
             t.append('state', str(p.get_state()))
             t.append('track/count', z1000str(p.video_get_track()), z1000str(p.video_get_track_count()))
-            t.append('time/duration', z1000str(p.get_time()), z1000str(m.get_duration()))
+            f = ['%.3f s' % (ms * 1e-3) for ms in (p.get_time(), m.get_duration())]
+            t.append('time/duration', *f)  # both shown in seconds
             f = max(p.get_position(), 0)
             t.append('position', '%.2f%%' % (f * 100,), f)
             t.separator()
@@ -250,7 +251,7 @@ class AppVLC(App):
 
                 t.append('media read',     *zSIstr(s.read_bytes).split())
                 t.append('input bitrate',  *Kops2bpstr2(s.input_bitrate))
-                t.append('media demuxed',  *zSIstr(s.demux_read_bytes).split())
+                t.append('demux read',     *zSIstr(s.demux_read_bytes).split())
                 t.append('stream bitrate', *Kops2bpstr2(s.demux_bitrate))
 
                 t.append('video decoded', z1000str(s.decoded_video),      'blocks')
