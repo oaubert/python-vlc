@@ -50,16 +50,25 @@ except ImportError:
     raise ImportError('no %s module, see %s?' % ('pycocoa', _PyPI('PyCocoa')))
 # the imports listed explicitly to help PyChecker
 from pycocoa import App, app_title, aspect_ratio, bytes2str, \
-                    closeTables, Item, MediaWindow, Menu, OpenPanel, \
+                    closeTables, MediaWindow, Menu, OpenPanel, \
                     printf, str2bytes, Table, z1000str, zSIstr, \
                     __version__ as __PyCocoa__  # PYCHOK expected
+try:
+    from pycocoa import get_printer  # PYCHOK expected
+except ImportError:  # printers module new in PyCocoa 18.08.04
+    get_printer = None
+
 import os
 import platform
 import sys
 from time import strftime, strptime
+try:
+    from urllib import unquote as mrl_unquote
+except ImportError:  # Python 3
+    from urllib.parse import unquote as mrl_unquote
 
 __all__  = ('AppVLC',)
-__version__ = '18.07.29'
+__version__ = '18.08.04'
 
 if __PyCocoa__ < '18.06.02':
     raise ImportError('%s %s or newer required, see %s' % ('pycocoa',
@@ -73,6 +82,7 @@ _Adjust3 = {_Adjust.Brightness: (0, 1, 2),
             _Adjust.Gamma:   (0.01, 1, 10),
             _Adjust.Hue:        (0, 0, 360),
             _Adjust.Saturation: (0, 1, 3)}
+_Argv0   = os.path.splitext(os.path.basename(__file__))[0]
 _macOS   = platform.mac_ver()[0:3:2]  # PYCHOK false
 _Movies  = '.m4v', '.mov', '.mp4'  # lower-case file types for movies, videos
 _Python  = sys.version.split()[0], platform.architecture()[0]  # PYCHOK false
@@ -82,7 +92,7 @@ _VLC_3_  = vlc.__version__.split('.')[0] > '2' and \
 
 
 def _mspf(fps):
-    # convert frames per second to frame length in millisecs
+    # convert frames per second to frame length in millisecs per frame
     return 1000.0 / (fps or 25)
 
 
@@ -93,24 +103,32 @@ class AppVLC(App):
        Set things up inside the C{.__init__} and C{.appLauched_}
        methods, start by calling the C{.run} method.
     '''
-    adjustr = ''
-    marquee = None
-    logostr = ''
-    panel   = None
-    player  = None
-    resized = False
-    scale   = 1  # media zoom factor
-    video   = None
-    window  = None
+    adjustr   = ''
+    marquee   = None
+    logostr   = ''
+    panel     = None
+    player    = None
+    raiser    = False
+    resized   = False
+    scale     = 1  # media zoom factor
+    snapshots = 0
+    video     = None
+    window    = None
 
-    def __init__(self, video=None, adjustr='', logostr='', marquee=False, **kwds):
-        super(AppVLC, self).__init__(**kwds)
+    def __init__(self, video=None,       # video file name
+                       adjustr='',       # vlc.VideoAdjustOption
+                       logostr='',       # vlc.VideoLogoOption
+                       marquee=False,    # vlc.VideoMarqueeOption
+                       raiser=False,     # re-raise errors
+                       title='AppVLC'):  # window title
+        super(AppVLC, self).__init__(raiser=raiser, title=title)
         self.adjustr = adjustr
         self.logostr = logostr
         self.marquee = marquee
         self.media   = None
         self.panel   = OpenPanel(_Select)
         self.player  = vlc.MediaPlayer()
+        self.raiser  = raiser
         self.video   = video
 
     def appLaunched_(self, app):
@@ -118,7 +136,7 @@ class AppVLC(App):
         self.window = MediaWindow(title=self.video or self.title)
 
         if self.player:
-            # the VLC player on macOS needs an NSView
+            # the VLC player on macOS needs an ObjC NSView
             self.player.set_nsobject(self.window.NSview)
             self.media = self.player.set_mrl(self.video)
 
@@ -137,10 +155,10 @@ class AppVLC(App):
 
             menu = Menu('VLC')
             menu.append(
-                # the action/method for each item is
-                # 'menu' + item.title + '_', with
-                # spaces and dots removed, see the
-                # function pycocoa.title2action.
+                # the action/method name for each item
+                # is string 'menu' + item.title + '_',
+                # without any spaces and trailing dots,
+                # see function pycocoa.title2action.
                 menu.item('Open...', key='o'),
                 menu.separator(),
                 menu.item('Info', key='i'),
@@ -158,6 +176,9 @@ class AppVLC(App):
                 menu.append(
                     menu.item('Brighter'),
                     menu.item('Darker'))
+            menu.append(
+                menu.separator(),
+                menu.item('Snapshot', key='s', alt=True))
             self.append(menu)
 
         self.menuPlay_(None)
@@ -182,13 +203,12 @@ class AppVLC(App):
     def menuInfo_(self, item):
         try:
             self.menuPause_(item)
-
             # display Python, vlc, libVLC, media info
             p = self.player
             m = p.get_media()
 
             t = Table(' Name:bold', ' Value:200:Center:center', ' Alt:100')
-            t.append('cocoavlc', __version__, '20' + __version__)
+            t.append(_Argv0, __version__, '20' + __version__)
             t.append('PyCocoa', __PyCocoa__, '20' + __PyCocoa__)
             t.append('Python', *_Python)
             t.append('macOS', *_macOS)
@@ -202,17 +222,17 @@ class AppVLC(App):
             t.append('libVLC', *bytes2str(vlc.libvlc_get_compiler()).split(None, 1))
             t.separator()
 
-            f = bytes2str(m.get_mrl())
+            f = mrl_unquote(bytes2str(m.get_mrl()))
             t.append('media', os.path.basename(f), f)
-            if f.startswith('file:///'):
+            if f.lower().startswith('file://'):
                 z = os.path.getsize(f[7:])
                 t.append('size', z1000str(z), zSIstr(z))
             t.append('state', str(p.get_state()))
-            t.append('track/count', z1000str(p.video_get_track()), z1000str(p.video_get_track_count()))
-            f = ['%.3f s' % (ms * 1e-3) for ms in (p.get_time(), m.get_duration())]
-            t.append('time/duration', *f)  # both shown in seconds
             f = max(p.get_position(), 0)
             t.append('position', '%.2f%%' % (f * 100,), f)
+            f = ['%.3f s' % (ms * 1e-3) for ms in (p.get_time(), m.get_duration())]
+            t.append('time/duration', *f)  # both shown in seconds
+            t.append('track/count', z1000str(p.video_get_track()), z1000str(p.video_get_track_count()))
             t.separator()
 
             f = p.get_fps()
@@ -251,6 +271,11 @@ class AppVLC(App):
 
                 t.append('media read',     *zSIstr(s.read_bytes).split())
                 t.append('input bitrate',  *Kops2bpstr2(s.input_bitrate))
+                if s.input_bitrate > 0:  # XXX approximate caching, based
+                    # on <http://GitHub.com/oaubert/python-vlc/issues/61>
+                    b = s.read_bytes - s.demux_read_bytes
+                    c = b / (s.input_bitrate * 1000)
+                    t.append('input caching', '%.3f s' % (c,), zSIstr(b))
                 t.append('demux read',     *zSIstr(s.demux_read_bytes).split())
                 t.append('stream bitrate', *Kops2bpstr2(s.demux_bitrate))
 
@@ -265,7 +290,9 @@ class AppVLC(App):
             t.display('Python, VLC & Media Information', width=500)
 
         except Exception as x:
-            printf('%r', x, nl=1, nt=1)
+            if self.raiser:
+                raise
+            printf('%s', x, nl=1, nt=1)
 
     def menuOpen_(self, item):
         # stop the current video and show
@@ -299,6 +326,21 @@ class AppVLC(App):
 
     def menuSlower_(self, item):
         self._rate(item, 0.80)
+
+    def menuSnapshot_(self, item_or_None):  # PYCHOK expected
+        try:
+            w = self.lastWindow  # in PyCocoa 18.08.04+
+        except AttributeError:
+            w = self.keyWindow or self.mainWindow
+        if w:
+            self.snapshots += 1
+            s = '-'.join((_Argv0,
+                          'snapshot%d' % (self.snapshots,),
+                           w.__class__.__name__))
+            if isinstance(w, MediaWindow):
+                self.player.video_take_snapshot(0, s + '.png', 0, 0)
+            elif get_printer:  # in PyCocoa 18.08.04+
+                get_printer().printView(w.PMview, toPDF=s + '.pdf')
 
     def menuZoomIn_(self, item):
         self._zoom(item, 1.25)
@@ -412,6 +454,7 @@ if __name__ == '__main__':  # MCCABE 20
 
     _adjustr = ''
     _argv0   = os.path.basename(sys.argv[0])  # _Title
+    _Argv0   = os.path.splitext(_argv0)[0]
     _logostr = ''
     _marquee = False
     _raiser  = False
