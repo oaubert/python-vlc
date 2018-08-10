@@ -37,24 +37,27 @@
 
 
 def _PyPI(package):
-    return '<http://PyPI.org/project/%s>' % (package,)
+    return 'see <http://PyPI.org/project/%s>' % (package,)
 
-
-try:
+try:  # PYCHOK expected
     import vlc
 except ImportError:
-    raise ImportError('no %s module, see %s?' % ('vlc.py', _PyPI('Python-VLC')))
+    raise ImportError('no %s module, %s' % ('vlc.py', _PyPI('Python-VLC')))
 try:
-    import pycocoa  # PYCHOK expected
+    from pycocoa import __version__ as __PyCocoa__
 except ImportError:
-    raise ImportError('no %s module, see %s?' % ('pycocoa', _PyPI('PyCocoa')))
-# the imports listed explicitly to help PyChecker
-from pycocoa import App, app_title, aspect_ratio, bytes2str, \
-                    closeTables, MediaWindow, Menu, OpenPanel, \
-                    printf, str2bytes, Table, z1000str, zSIstr, \
-                    __version__ as __PyCocoa__  # PYCHOK expected
+    raise ImportError('no %s module, %s' % ('pycocoa', _PyPI('PyCocoa')))
+if __PyCocoa__ < '18.08.02':
+    raise ImportError('%s %s or later required, %s' % ('pycocoa', '18.8.2',
+                     _PyPI('PyCocoa')))
+del _PyPI
+
+# all imports listed explicitly to help PyChecker
+from pycocoa import App, app_title, aspect_ratio, bytes2str, closeTables, \
+                    Item, ItemSeparator, MediaWindow, Menu, OpenPanel, \
+                    printf, str2bytes, Table, z1000str, zSIstr
 try:
-    from pycocoa import get_printer  # PYCHOK expected
+    from pycocoa import get_printer
 except ImportError:  # printers module new in PyCocoa 18.08.04
     get_printer = None
 
@@ -63,17 +66,12 @@ import platform
 import sys
 from time import strftime, strptime
 try:
-    from urllib import unquote as mrl_unquote
-except ImportError:  # Python 3
-    from urllib.parse import unquote as mrl_unquote
+    from urllib import unquote as mrl_unquote  # Python 2
+except ImportError:
+    from urllib.parse import unquote as mrl_unquote  # Python 3
 
 __all__  = ('AppVLC',)
-__version__ = '18.08.04'
-
-if __PyCocoa__ < '18.06.02':
-    raise ImportError('%s %s or newer required, see %s' % ('pycocoa',
-                      '18.6.2', _PyPI('PyCocoa')))
-del _PyPI, pycocoa
+__version__ = '18.08.06'
 
 _Adjust  = vlc.VideoAdjustOption  # Enum
 # <http://Wiki.VideoLan.org/Documentation:Modules/adjust>
@@ -327,7 +325,7 @@ class AppVLC(App):
     def menuSlower_(self, item):
         self._rate(item, 0.80)
 
-    def menuSnapshot_(self, item_or_None):  # PYCHOK expected
+    def menuSnapshot_(self, item):  # PYCHOK expected
         try:
             w = self.lastWindow  # in PyCocoa 18.08.04+
         except AttributeError:
