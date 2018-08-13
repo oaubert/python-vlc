@@ -47,19 +47,15 @@ try:
     from pycocoa import __version__ as __PyCocoa__
 except ImportError:
     raise ImportError('no %s module, %s' % ('pycocoa', _PyPI('PyCocoa')))
-if __PyCocoa__ < '18.08.02':
-    raise ImportError('%s %s or later required, %s' % ('pycocoa', '18.8.2',
+if __PyCocoa__ < '18.08.09':
+    raise ImportError('%s %s or later required, %s' % ('pycocoa', '18.8.9',
                      _PyPI('PyCocoa')))
 del _PyPI
 
 # all imports listed explicitly to help PyChecker
 from pycocoa import App, app_title, aspect_ratio, bytes2str, closeTables, \
-                    Item, ItemSeparator, MediaWindow, Menu, OpenPanel, \
-                    printf, str2bytes, Table, z1000str, zSIstr
-try:
-    from pycocoa import get_printer
-except ImportError:  # printers module new in PyCocoa 18.08.04
-    get_printer = None
+                    get_printer, Item, ItemSeparator, MediaWindow, Menu, \
+                    OpenPanel, printf, str2bytes, Table, z1000str, zSIstr
 
 import os
 import platform
@@ -68,10 +64,10 @@ from time import strftime, strptime
 try:
     from urllib import unquote as mrl_unquote  # Python 2
 except ImportError:
-    from urllib.parse import unquote as mrl_unquote  # Python 3
+    from urllib.parse import unquote as mrl_unquote  # Python 3+
 
 __all__  = ('AppVLC',)
-__version__ = '18.08.06'
+__version__ = '18.08.09'
 
 _Adjust  = vlc.VideoAdjustOption  # Enum
 # <http://Wiki.VideoLan.org/Documentation:Modules/adjust>
@@ -104,11 +100,11 @@ class AppVLC(App):
     adjustr   = ''
     marquee   = None
     logostr   = ''
-    panel     = None
     player    = None
     raiser    = False
     resized   = False
     scale     = 1  # media zoom factor
+    Snapshot  = Item('Snapshot', key='s', alt=True)
     snapshots = 0
     video     = None
     window    = None
@@ -124,7 +120,6 @@ class AppVLC(App):
         self.logostr = logostr
         self.marquee = marquee
         self.media   = None
-        self.panel   = OpenPanel(_Select)
         self.player  = vlc.MediaPlayer()
         self.raiser  = raiser
         self.video   = video
@@ -157,26 +152,27 @@ class AppVLC(App):
                 # is string 'menu' + item.title + '_',
                 # without any spaces and trailing dots,
                 # see function pycocoa.title2action.
-                menu.item('Open...', key='o'),
-                menu.separator(),
-                menu.item('Info', key='i'),
-                menu.item('Close Windows', key='w'),
-                menu.separator(),
-                menu.item('Play',   key='p', ctrl=True),
-                menu.item('Pause',  key='s', ctrl=True),
-                menu.item('Rewind', key='r', ctrl=True),
-                menu.separator(),
-                menu.item('Zoom In',  key='+'),
-                menu.item('Zoom Out', key='-'),
-                menu.item('Faster', key='>', shift=True),
-                menu.item('Slower', key='<', shift=True))
+                Item('Open...', key='o'),
+                ItemSeparator(),
+                Item('Info', key='i'),
+                Item('Close Windows', key='w'),
+                ItemSeparator(),
+                Item('Play',   key='p', ctrl=True),
+                Item('Pause',  key='s', ctrl=True),
+                Item('Rewind', key='r', ctrl=True),
+                ItemSeparator(),
+                Item('Zoom In',  key='+'),
+                Item('Zoom Out', key='-'),
+                ItemSeparator(),
+                Item('Faster', key='>', shift=True),
+                Item('Slower', key='<', shift=True))
             if _VLC_3_:
                 menu.append(
-                    menu.item('Brighter'),
-                    menu.item('Darker'))
+                    Item('Brighter', key='b', shift=True),
+                    Item('Darker',   key='d', shift=True))
             menu.append(
-                menu.separator(),
-                menu.item('Snapshot', key='s', alt=True))
+                ItemSeparator(),
+                self.Snapshot)
             self.append(menu)
 
         self.menuPlay_(None)
@@ -297,10 +293,10 @@ class AppVLC(App):
         # the panel to select another video
         self.menuPause_(item)
         self.badge.label = 'O'
-        video = self.panel.pick(_Movies)
-        if video:
-            self.window.title = self.video = video
-            self.player.set_mrl(video)
+        v = OpenPanel(_Select).pick(_Movies)
+        if v:
+            self.window.title = self.video = v
+            self.player.set_mrl(v)
             self.ratio = 3
             self._resize(True)
 
@@ -326,10 +322,7 @@ class AppVLC(App):
         self._rate(item, 0.80)
 
     def menuSnapshot_(self, item):  # PYCHOK expected
-        try:
-            w = self.lastWindow  # in PyCocoa 18.08.04+
-        except AttributeError:
-            w = self.keyWindow or self.mainWindow
+        w = self.lastWindow
         if w:
             self.snapshots += 1
             s = '-'.join((_Argv0,
@@ -351,6 +344,11 @@ class AppVLC(App):
         if window is self.window:
             self.terminate()
         super(AppVLC, self).windowClose_(window)
+
+    def windowLast_(self, window):
+        if window is not self.lastWindow:  # dis-/enable menu item
+            self.Snapshot.isEnabled = window.isPrintable or isinstance(window, MediaWindow)
+        super(AppVLC, self).windowLast_(window)
 
     def windowResize_(self, window):
         if window is self.window:
