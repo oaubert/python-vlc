@@ -67,7 +67,7 @@ except ImportError:
     from urllib.parse import unquote as mrl_unquote  # Python 3+
 
 __all__  = ('AppVLC',)
-__version__ = '18.08.09'
+__version__ = '18.08.15'
 
 _Adjust  = vlc.VideoAdjustOption  # Enum
 # <http://Wiki.VideoLan.org/Documentation:Modules/adjust>
@@ -106,6 +106,7 @@ class AppVLC(App):
     scale     = 1  # media zoom factor
     Snapshot  = Item('Snapshot', key='s', alt=True)
     snapshots = 0
+    Toggle    = None
     video     = None
     window    = None
 
@@ -122,6 +123,7 @@ class AppVLC(App):
         self.media   = None
         self.player  = vlc.MediaPlayer()
         self.raiser  = raiser
+        self.Toggle  = Item('Play', self.menuToggle_, key='p', ctrl=True)
         self.video   = video
 
     def appLaunched_(self, app):
@@ -157,8 +159,7 @@ class AppVLC(App):
                 Item('Info', key='i'),
                 Item('Close Windows', key='w'),
                 ItemSeparator(),
-                Item('Play',   key='p', ctrl=True),
-                Item('Pause',  key='s', ctrl=True),
+                self.Toggle,  # Play >< Pause
                 Item('Rewind', key='r', ctrl=True),
                 ItemSeparator(),
                 Item('Zoom In',  key='+'),
@@ -170,6 +171,10 @@ class AppVLC(App):
                 menu.append(
                     Item('Brighter', key='b', shift=True),
                     Item('Darker',   key='d', shift=True))
+            menu.append(
+                ItemSeparator(),
+                Item('Audio Filters', self.menuFilters_, key='a', shift=True),
+                Item('Video Filters', self.menuFilters_, key='v', shift=True))
             menu.append(
                 ItemSeparator(),
                 self.Snapshot)
@@ -194,10 +199,30 @@ class AppVLC(App):
     def menuFaster_(self, item):
         self._rate(item, 1.25)
 
+    def menuFilters_(self, item):
+        try:
+            self.menuPause_(item)
+            # display audio/video filters table
+            t = Table(' Name:150:bold', ' Short:150:Center:center', ' Long:300', 'Help')
+            i = self.player.get_instance()
+            b = item.title.split()[0]
+            for f in sorted(i.audio_filter_list_get() if b == 'Audio'
+                       else i.video_filter_list_get()):
+                while f and not f[-1]:  # "rstrip" None
+                    f = f[:-1]
+                t.append(*map(bytes2str, f))
+
+            t.display('VLC %s Filters' % (b,), width=800)
+
+        except Exception as x:
+            if self.raiser:
+                raise
+            printf('%s', x, nl=1, nt=1)
+
     def menuInfo_(self, item):
         try:
             self.menuPause_(item)
-            # display Python, vlc, libVLC, media info
+            # display Python, vlc, libVLC, media info table
             p = self.player
             m = p.get_media()
 
@@ -242,11 +267,12 @@ class AppVLC(App):
             t.append('scale', '%.3f' % (p.video_get_scale(),), '%.3f' % (self.scale,))
             t.separator()
 
-            def VLCadjustr2(option):
+            def VLCadjustr2(option):  # get option value
                 lo, _, hi = _Adjust3[option]
                 f = self.player.video_get_adjust_float(option)
                 p = max(0, (f - lo)) * 100.0 / (hi - lo)
                 t = '%.2f %.1f%%' % (f, p)
+                # return 2-tuple (value, percentage) as strings
                 return t.replace('.0%', '%').replace('.00', '.0').split()
 
             t.append('brightness', *VLCadjustr2(_Adjust.Brightness))
@@ -300,21 +326,23 @@ class AppVLC(App):
             self.ratio = 3
             self._resize(True)
 
-    def menuPause_(self, item):  # PYCHOK expected
-        # note, .pause() pauses and un-pauses the video,
-        # .stop() stops the video and blanks the window
-        if self.player.is_playing():
+    def menuPause_(self, item, pause=False):  # PYCHOK expected
+        # note, .player.pause() pauses and un-pauses the video,
+        # .player.stop() stops the video and blanks the window
+        if pause or self.player.is_playing():
             self.player.pause()
-            self.badge.label = 'S'
+            self.badge.label = 'S'  # stopped
+            self.Toggle.title = 'Play'  # item.title = 'Play'
 
     def menuPlay_(self, item_or_None):  # PYCHOK expected
         self.player.play()
-        self.badge.label = 'P'
+        self.badge.label = 'P'  # Playing
+        self.Toggle.title = 'Pause'  # item.title = 'Pause'
 
     def menuRewind_(self, item):  # PYCHOK expected
         self.player.set_position(0.0)
-        # can't re-play once at the end
-        # self.player.play()
+        # note, can't re-play once at the end
+        # self.menuPlay_()
         self.badge.label = 'R'
         self._resize(False)
 
@@ -333,6 +361,13 @@ class AppVLC(App):
             elif get_printer:  # in PyCocoa 18.08.04+
                 get_printer().printView(w.PMview, toPDF=s + '.pdf')
 
+    def menuToggle_(self, item):
+        # toggle between Pause and Play
+        if self.player.is_playing():
+            self.menuPause_(item, pause=True)
+        else:
+            self.menuPlay_(item)
+
     def menuZoomIn_(self, item):
         self._zoom(item, 1.25)
 
@@ -343,11 +378,11 @@ class AppVLC(App):
         # quit or click of window close button
         if window is self.window:
             self.terminate()
+        self.Snapshot.isEnabled = False
         super(AppVLC, self).windowClose_(window)
 
     def windowLast_(self, window):
-        if window is not self.lastWindow:  # dis-/enable menu item
-            self.Snapshot.isEnabled = window.isPrintable or isinstance(window, MediaWindow)
+        self.Snapshot.isEnabled = window.isPrintable or isinstance(window, MediaWindow)
         super(AppVLC, self).windowLast_(window)
 
     def windowResize_(self, window):
@@ -421,7 +456,7 @@ class AppVLC(App):
         # put video marquee at the bottom-center
         p = self.player
         m = vlc.VideoMarqueeOption  # Enum
-        # <http://Wiki.VideoLan.org/Documentation:Modules/marq/=>
+        # <http://Wiki.VideoLan.org/Documentation:Modules/marq>
         p.video_set_marquee_int(m.Enable, 1)
         p.video_set_marquee_int(m.Size, int(size))  # pixels
         p.video_set_marquee_int(m.Position, vlc.Position.Bottom)
