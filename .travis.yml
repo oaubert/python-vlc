@@ -1,20 +1,33 @@
 group: travis_latest
+dist: xenial
+sudo: true
 language: python
 cache: pip
 python:
-    - 2.7
-    - 3.6
+  - 2.7
+  - 3.7
+addons:
+  apt:
+    update: true
+    packages:
+      - snapd
+before_install:
+  - sudo snap install vlc
+  - vlc --verbose 3 --version
 install:
-    #- pip install -r requirements.txt
-    - pip install flake8  # pytest  # add another testing frameworks later
+  - pip install flake8
 before_script:
-    - EXCLUDE=./generated/2.2,./generator/templates
-    # stop the build if there are Python syntax errors or undefined names
-    - flake8 . --count --exclude=$EXCLUDE --select=E901,E999,F821,F822,F823 --show-source --statistics
-    # exit-zero treats all errors as warnings.  The GitHub editor is 127 chars wide
-    - flake8 . --count --exclude=$EXCLUDE --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+  - EXCLUDE=./generated/2.2,./generator/templates
+  # stop the build if there are Python syntax errors or undefined names
+  - flake8 . --count --exclude=$EXCLUDE --select=E901,E999,F821,F822,F823 --show-source --statistics
+  # exit-zero treats all errors as warnings.  The GitHub editor is 127 chars wide
+  - flake8 . --count --exclude=$EXCLUDE --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 script:
-    - true  # pytest --capture=sys  # add other tests here
+  - echo "PYTHONPATH: ${PYTHONPATH}"
+  - echo "PLUGIN_PATH: ${PLUGIN_PATH}"
+  - PYTHONPATH=generated/3.0
+  - export PLUGIN_PATH=/snap/vlc/365/usr/lib/vlc/plugins
+  - make tests
 notifications:
-    on_success: change
-    on_failure: change  # `always` will be the setting once code changes slow down
+  on_success: change
+  on_failure: change  # `always` will be the setting once code changes slow down
