@@ -145,7 +145,7 @@ def_re       = re.compile('^\s+def\s+(\w+)', re.MULTILINE)
 enum_type_re = re.compile('^(?:typedef\s+)?enum')
 enum_re      = re.compile('(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\S+)?;')
 enum_pair_re = re.compile('\s*=\s*')
-callback_type_re = re.compile('^typedef\s+\w+(\s+\*)?\s*\(\s*\*')
+callback_type_re = re.compile('^typedef\s+\w+(\s*\*)?\s*\(\s*\*')
 callback_re  = re.compile('typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
 struct_type_re = re.compile('^typedef\s+struct\s*(\S+)\s*$')
 struct_re    = re.compile('typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
@@ -926,6 +926,7 @@ class PythonGenerator(_Generator):
         'va_list':   'ctypes.c_void_p',
         'char*':     'ctypes.c_char_p',
         'bool':      'ctypes.c_bool',
+        'bool*':      'ctypes.POINTER(ctypes.c_bool)',
         'char**':    'ListPOINTER(ctypes.c_char_p)',
         'float':     'ctypes.c_float',
         'int':       'ctypes.c_int',
