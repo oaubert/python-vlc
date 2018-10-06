@@ -26,6 +26,7 @@
 """Unittest module.
 """
 
+import os
 import unittest
 try:
     import urllib.parse as urllib # python3
@@ -37,6 +38,7 @@ try:
 except ImportError:
     import generated.vlc as vlc
 
+SAMPLE = os.path.join(os.path.dirname(__file__), 'samples/sample.mp4')
 print ("Checking " + vlc.__file__)
 
 class TestVLCAPI(unittest.TestCase):
@@ -130,11 +132,20 @@ class TestVLCAPI(unittest.TestCase):
             except TypeError:
                 print("vlc.libvlc_log_get_context(ctx)")
 
-        url = '/tmp/foo.mp4'
-
         instance = vlc.Instance('--vout dummy --aout dummy')
         instance.log_set(log_handler, None)
         player = instance.media_player_new()
+
+    def test_tracks_get(self):
+        self.assertTrue(os.path.exists(SAMPLE))
+        m = vlc.Media(SAMPLE)
+        m.parse()
+        # Audiotrack is the second one
+        audiotrack = list(m.tracks_get())[1]
+        self.assertEqual(audiotrack.language, b"eng")
+        self.assertEqual(audiotrack.description, b"Stereo")
+        self.assertEqual(audiotrack.bitrate, 83051)
+        self.assertEqual(m.get_duration(), 5568)
 
 if __name__ == '__main__':
     unittest.main()
