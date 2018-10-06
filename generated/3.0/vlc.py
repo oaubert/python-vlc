@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 __version__ = "3.0.4105"
 __libvlc_version__ = "3.0.4"
 __generator_version__ = "1.5"
-build_date  = "Sat Oct  6 22:46:09 2018 3.0.4"
+build_date  = "Sat Oct  6 23:10:52 2018 3.0.4"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1812,10 +1812,7 @@ class Instance(_Ctype):
             i = head
             while i:
                 i = i.contents
-                d = [{'id':       libvlc_audio_output_device_id      (self, i.name, d),
-                      'longname': libvlc_audio_output_device_longname(self, i.name, d)}
-                   for d in range(libvlc_audio_output_device_count   (self, i.name))]
-                r.append({'name': i.name, 'description': i.description, 'devices': d})
+                r.append({'name': i.name, 'description': i.description})
                 i = i.next
             libvlc_audio_output_list_release(head)
         return r
@@ -3212,18 +3209,6 @@ class MediaPlayer(_Ctype):
         """
         return track_description_list(libvlc_video_get_spu_description(self))
 
-    def video_get_title_description(self):
-        """Get the description of available titles.
-        """
-        return track_description_list(libvlc_video_get_title_description(self))
-
-    def video_get_chapter_description(self, title):
-        """Get the description of available chapters for specific title.
-
-        @param title: selected title (int)
-        """
-        return track_description_list(libvlc_video_get_chapter_description(self, title))
-
     def video_get_track_description(self):
         """Get the description of available video tracks.
         """
@@ -3352,6 +3337,21 @@ class MediaPlayer(_Ctype):
         '''\deprecated Use L{get_nsobject}() instead.
         '''
         return libvlc_media_player_get_agl(self)
+
+
+    def video_get_title_description(self):
+        '''Get the description of available titles.
+        @return: list containing description of available titles. It must be freed with L{track_description_list_release}().
+        '''
+        return libvlc_video_get_title_description(self)
+
+
+    def video_get_chapter_description(self, i_title):
+        '''Get the description of available chapters for specific title.
+        @param i_title: selected title.
+        @return: list containing description of available chapter for title i_title. It must be freed with L{track_description_list_release}().
+        '''
+        return libvlc_video_get_chapter_description(self, i_title)
 
 
     def video_set_subtitle_file(self, psz_subtitle):
