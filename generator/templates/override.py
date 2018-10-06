@@ -109,10 +109,7 @@ class Instance:
             i = head
             while i:
                 i = i.contents
-                d = [{'id':       libvlc_audio_output_device_id      (self, i.name, d),
-                      'longname': libvlc_audio_output_device_longname(self, i.name, d)}
-                   for d in range(libvlc_audio_output_device_count   (self, i.name))]
-                r.append({'name': i.name, 'description': i.description, 'devices': d})
+                r.append({'name': i.name, 'description': i.description})
                 i = i.next
             libvlc_audio_output_list_release(head)
         return r
@@ -261,18 +258,6 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         """Get the description of available video subtitles.
         """
         return track_description_list(libvlc_video_get_spu_description(self))
-
-    def video_get_title_description(self):
-        """Get the description of available titles.
-        """
-        return track_description_list(libvlc_video_get_title_description(self))
-
-    def video_get_chapter_description(self, title):
-        """Get the description of available chapters for specific title.
-
-        @param title: selected title (int)
-        """
-        return track_description_list(libvlc_video_get_chapter_description(self, title))
 
     def video_get_track_description(self):
         """Get the description of available video tracks.
