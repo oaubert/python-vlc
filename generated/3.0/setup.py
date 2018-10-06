@@ -4,7 +4,7 @@ use_setuptools()
 from setuptools import setup
 
 setup(name='python-vlc',
-      version = '3.0.3104',
+      version = '3.0.4105',
       author='Olivier Aubert',
       author_email='contact@olivieraubert.net',
       maintainer='Olivier Aubert',
@@ -12,7 +12,7 @@ setup(name='python-vlc',
       url='http://wiki.videolan.org/PythonBinding',
       py_modules=['vlc'],
       keywords = [ 'vlc', 'video' ],
-      license = "GPL",
+      license = "LGPL-2.1+",
       classifiers = [
           "Development Status :: 5 - Production/Stable",
           "Intended Audience :: Developers",
@@ -35,5 +35,5 @@ setup(name='python-vlc',
       player. Note that it relies on an already present install of VLC.
 
       It has been automatically generated from the include files of
-      vlc 3.0.3, using generator 1.4.
+      vlc 3.0.4, using generator 1.5.
       """)
