@@ -12,7 +12,7 @@ setup(name='python-vlc',
       url='http://wiki.videolan.org/PythonBinding',
       py_modules=['vlc'],
       keywords = [ 'vlc', 'video' ],
-      license = "GPL",
+      license = "LGPL-2.1+",
       classifiers = [
           "Development Status :: 5 - Production/Stable",
           "Intended Audience :: Developers",
