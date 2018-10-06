@@ -1131,7 +1131,7 @@ class _Enum(ctypes.c_uint):
 
             self.output("""    %(name)s = ctypes.CFUNCTYPE(%(types)s)
     %(name)s.__doc__ = '''%(docs)s
-    ''' """ % locals())
+    '''""" % locals())
         self.output("cb = CallbackDecorators")
 
     def generate_wrappers(self):
@@ -1191,8 +1191,8 @@ class _Enum(ctypes.c_uint):
             docs = self.epylink(f.epydocs(1, 8), striprefix)  #PYCHOK flake
             decorator = ""
             if meth.endswith('event_manager'):
-                decorator = '@memoize_parameterless'
-            self.output("""    %(decorator)s
+                decorator = '    @memoize_parameterless'
+            self.output("""%(decorator)s
     def %(meth)s(%(args)s):
         '''%(docs)s
         '''
