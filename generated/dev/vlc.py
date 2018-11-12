@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-4987-g028c89ad19105"
-__libvlc_version__ = "4.0.0-dev-4987-g028c89ad19"
-__generator_version__ = "1.5"
-build_date  = "Sat Oct  6 23:10:52 2018 4.0.0-dev-4987-g028c89ad19"
+__version__ = "4.0.0-dev-5376-g71cb852338107"
+__libvlc_version__ = "4.0.0-dev-5376-g71cb852338"
+__generator_version__ = "1.7"
+build_date  = "Mon Nov 12 22:54:57 2018 4.0.0-dev-5376-g71cb852338"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -457,6 +457,18 @@ DialogQuestionType.CRITICAL = DialogQuestionType(2)
 DialogQuestionType.NORMAL   = DialogQuestionType(0)
 DialogQuestionType.WARNING  = DialogQuestionType(1)
 
+class PictureType(_Enum):
+    '''N/A
+    '''
+    _enum_names_ = {
+        0: 'Argb',
+        1: 'Png',
+        2: 'Jpg',
+    }
+PictureType.Argb = PictureType(0)
+PictureType.Jpg  = PictureType(2)
+PictureType.Png  = PictureType(1)
+
 class EventType(_Enum):
     '''Event types.
     '''
@@ -468,6 +480,7 @@ class EventType(_Enum):
         4: 'MediaFreed',
         5: 'MediaStateChanged',
         6: 'MediaSubItemTreeAdded',
+        7: 'MediaThumbnailGenerated',
         0x100: 'MediaPlayerMediaChanged',
         257: 'MediaPlayerNothingSpecial',
         258: 'MediaPlayerOpening',
@@ -562,6 +575,7 @@ EventType.MediaPlayerVout               = EventType(274)
 EventType.MediaStateChanged             = EventType(5)
 EventType.MediaSubItemAdded             = EventType(1)
 EventType.MediaSubItemTreeAdded         = EventType(6)
+EventType.MediaThumbnailGenerated       = EventType(7)
 EventType.RendererDiscovererItemAdded   = EventType(0x502)
 EventType.RendererDiscovererItemDeleted = EventType(1283)
 
@@ -781,6 +795,16 @@ class MediaSlaveType(_Enum):
     }
 MediaSlaveType.audio    = MediaSlaveType(1)
 MediaSlaveType.subtitle = MediaSlaveType(0)
+
+class ThumbnailerSeekSpeed(_Enum):
+    '''N/A
+    '''
+    _enum_names_ = {
+        0: 'precise',
+        1: 'fast',
+    }
+ThumbnailerSeekSpeed.fast    = ThumbnailerSeekSpeed(1)
+ThumbnailerSeekSpeed.precise = ThumbnailerSeekSpeed(0)
 
 class VideoMarqueeOption(_Enum):
     '''Marq options definition.
@@ -1701,6 +1725,73 @@ class RDDescription(_Cstruct):
     ]
 
 # End of header.py #
+class AudioEqualizer(_Ctype):
+    '''Create a new default equalizer, with all frequency values zeroed.
+
+    The new equalizer can subsequently be applied to a media player by invoking
+    L{MediaPlayer.set_equalizer}.
+    The returned handle should be freed via libvlc_audio_equalizer_release() when
+    it is no longer needed.
+    
+    '''
+
+    def __new__(cls, *args):
+        if len(args) == 1 and isinstance(args[0], _Ints):
+            return _Constructor(cls, args[0])
+        return libvlc_audio_equalizer_new()
+
+
+    def release(self):
+        '''Release a previously created equalizer instance.
+        The equalizer was previously created by using L{new}() or
+        L{new_from_preset}().
+        It is safe to invoke this method with a None p_equalizer parameter for no effect.
+        @version: LibVLC 2.2.0 or later.
+        '''
+        return libvlc_audio_equalizer_release(self)
+
+
+    def set_preamp(self, f_preamp):
+        '''Set a new pre-amplification value for an equalizer.
+        The new equalizer settings are subsequently applied to a media player by invoking
+        L{media_player_set_equalizer}().
+        The supplied amplification value will be clamped to the -20.0 to +20.0 range.
+        @param f_preamp: preamp value (-20.0 to 20.0 Hz).
+        @return: zero on success, -1 on error.
+        @version: LibVLC 2.2.0 or later.
+        '''
+        return libvlc_audio_equalizer_set_preamp(self, f_preamp)
+
+
+    def get_preamp(self):
+        '''Get the current pre-amplification value from an equalizer.
+        @return: preamp value (Hz).
+        @version: LibVLC 2.2.0 or later.
+        '''
+        return libvlc_audio_equalizer_get_preamp(self)
+
+
+    def set_amp_at_index(self, f_amp, u_band):
+        '''Set a new amplification value for a particular equalizer frequency band.
+        The new equalizer settings are subsequently applied to a media player by invoking
+        L{media_player_set_equalizer}().
+        The supplied amplification value will be clamped to the -20.0 to +20.0 range.
+        @param f_amp: amplification value (-20.0 to 20.0 Hz).
+        @param u_band: index, counting from zero, of the frequency band to set.
+        @return: zero on success, -1 on error.
+        @version: LibVLC 2.2.0 or later.
+        '''
+        return libvlc_audio_equalizer_set_amp_at_index(self, f_amp, u_band)
+
+
+    def get_amp_at_index(self, u_band):
+        '''Get the amplification value for a particular equalizer frequency band.
+        @param u_band: index, counting from zero, of the frequency band to get.
+        @return: amplification value (Hz); NaN if there is no such frequency band.
+        @version: LibVLC 2.2.0 or later.
+        '''
+        return libvlc_audio_equalizer_get_amp_at_index(self, u_band)
+
 class EventManager(_Ctype):
     '''Create an event manager with callback handler.
 
@@ -1785,6 +1876,7 @@ class EventManager(_Ctype):
         if k in self._callbacks:
             del self._callbacks[k] # remove, regardless of libvlc return value
             libvlc_event_detach(self, k, self._callback_handler, k)
+
 
 class Instance(_Ctype):
     '''Create a new Instance instance.
@@ -2405,6 +2497,38 @@ class Media(_Ctype):
         @version: LibVLC 3.0.0 and later. See L{MediaType}.
         '''
         return libvlc_media_get_type(self)
+
+
+    def thumbnail_request_by_time(self, time, speed, width, height, picture_type, timeout):
+        '''\brief libvlc_media_get_thumbnail_by_time Start an asynchronous thumbnail generation
+        If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
+        is guaranteed to be emited.
+        @param time: The time at which the thumbnail should be generated.
+        @param speed: The seeking speed \saL{ThumbnailerSeekSpeed}.
+        @param width: The thumbnail width.
+        @param height: the thumbnail height.
+        @param picture_type: The thumbnail picture type \saL{PictureType}.
+        @param timeout: A timeout value in ms, or 0 to disable timeout.
+        @return: A valid opaque request object, or None in case of failure.
+        @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
+        '''
+        return libvlc_media_thumbnail_request_by_time(self, time, speed, width, height, picture_type, timeout)
+
+
+    def thumbnail_request_by_pos(self, pos, speed, width, height, picture_type, timeout):
+        '''\brief libvlc_media_get_thumbnail_by_pos Start an asynchronous thumbnail generation
+        If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
+        is guaranteed to be emited.
+        @param pos: The position at which the thumbnail should be generated.
+        @param speed: The seeking speed \saL{ThumbnailerSeekSpeed}.
+        @param width: The thumbnail width.
+        @param height: the thumbnail height.
+        @param picture_type: The thumbnail picture type \saL{PictureType}.
+        @param timeout: A timeout value in ms, or 0 to disable timeout.
+        @return: A valid opaque request object, or None in case of failure.
+        @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
+        '''
+        return libvlc_media_thumbnail_request_by_pos(self, pos, speed, width, height, picture_type, timeout)
 
 
     def slaves_add(self, i_type, i_priority, psz_uri):
@@ -4041,6 +4165,190 @@ class MediaPlayer(_Ctype):
         '''
         return libvlc_media_player_set_role(self, role)
 
+class Picture(_Ctype):
+    '''N/A
+    '''
+
+    def __new__(cls, ptr=_internal_guard):
+        '''(INTERNAL) ctypes wrapper constructor.
+        '''
+        return _Constructor(cls, ptr)
+
+    def retain(self):
+        '''Increment the reference count of this picture.
+        See L{release}().
+        '''
+        return libvlc_picture_retain(self)
+
+
+    def release(self):
+        '''Decrement the reference count of this picture.
+        When the reference count reaches 0, the picture will be released.
+        The picture must not be accessed after calling this function.
+        See L{retain}.
+        '''
+        return libvlc_picture_release(self)
+
+
+    def save(self, path):
+        '''Saves this picture to a file. The image format is the same as the one
+        returned by \link L{type} \endlink.
+        @param path: The path to the generated file.
+        @return: 0 in case of success, -1 otherwise.
+        '''
+        return libvlc_picture_save(self, str_to_bytes(path))
+
+
+    def get_buffer(self, size):
+        '''Returns the image internal buffer, including potential padding.
+        The L{Picture} owns the returned buffer, which must not be modified nor
+        freed.
+        @param size: A pointer to a size_t that will hold the size of the buffer [required].
+        @return: A pointer to the internal buffer.
+        '''
+        return libvlc_picture_get_buffer(self, size)
+
+
+    def type(self):
+        '''Returns the picture type.
+        '''
+        return libvlc_picture_type(self)
+
+
+    def get_stride(self):
+        '''Returns the image stride, ie. the number of bytes per line.
+        This can only be called on images of type libvlc_picture_Argb.
+        '''
+        return libvlc_picture_get_stride(self)
+
+
+    def get_width(self):
+        '''Returns the width of the image in pixels.
+        '''
+        return libvlc_picture_get_width(self)
+
+
+    def get_height(self):
+        '''Returns the height of the image in pixels.
+        '''
+        return libvlc_picture_get_height(self)
+
+
+    def get_time(self):
+        '''Returns the time at which this picture was generated, in milliseconds.
+        '''
+        return libvlc_picture_get_time(self)
+
+class Renderer(_Ctype):
+    '''N/A
+    '''
+
+    def __new__(cls, ptr=_internal_guard):
+        '''(INTERNAL) ctypes wrapper constructor.
+        '''
+        return _Constructor(cls, ptr)
+
+    def hold(self):
+        '''Hold a renderer item, i.e. creates a new reference
+        This functions need to called from the libvlc_RendererDiscovererItemAdded
+        callback if the libvlc user wants to use this item after. (for display or
+        for passing it to the mediaplayer for example).
+        @return: the current item.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_hold(self)
+
+
+    def release(self):
+        '''Releases a renderer item, i.e. decrements its reference counter.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_release(self)
+
+
+    def name(self):
+        '''Get the human readable name of a renderer item.
+        @return: the name of the item (can't be None, must *not* be freed).
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_name(self)
+
+
+    def type(self):
+        '''Get the type (not translated) of a renderer item. For now, the type can only
+        be "chromecast" ("upnp", "airplay" may come later).
+        @return: the type of the item (can't be None, must *not* be freed).
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_type(self)
+
+
+    def icon_uri(self):
+        '''Get the icon uri of a renderer item.
+        @return: the uri of the item's icon (can be None, must *not* be freed).
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_icon_uri(self)
+
+
+    def flags(self):
+        '''Get the flags of a renderer item
+        See LIBVLC_RENDERER_CAN_AUDIO
+        See LIBVLC_RENDERER_CAN_VIDEO.
+        @return: bitwise flag: capabilities of the renderer, see.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_flags(self)
+
+class RendererDiscoverer(_Ctype):
+    '''N/A
+    '''
+
+    def __new__(cls, ptr=_internal_guard):
+        '''(INTERNAL) ctypes wrapper constructor.
+        '''
+        return _Constructor(cls, ptr)
+
+    def release(self):
+        '''Release a renderer discoverer object.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_discoverer_release(self)
+
+
+    def start(self):
+        '''Start renderer discovery
+        To stop it, call L{stop}() or
+        L{release}() directly.
+        See L{stop}().
+        @return: -1 in case of error, 0 otherwise.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_discoverer_start(self)
+
+
+    def stop(self):
+        '''Stop renderer discovery.
+        See L{start}().
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_discoverer_stop(self)
+
+    @memoize_parameterless
+    def event_manager(self):
+        '''Get the event manager of the renderer discoverer
+        The possible events to attach are @ref libvlc_RendererDiscovererItemAdded
+        and @ref libvlc_RendererDiscovererItemDeleted.
+        The @ref L{Renderer} struct passed to event callbacks is owned by
+        VLC, users should take care of holding/releasing this struct for their
+        internal usage.
+        See libvlc_event_t.u.renderer_discoverer_item_added.item
+        See libvlc_event_t.u.renderer_discoverer_item_removed.item.
+        @return: a valid event manager (can't fail).
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_discoverer_event_manager(self)
+
 
  # LibVLC __version__ functions #
 
@@ -4507,6 +4815,99 @@ def libvlc_dialog_dismiss(p_id):
                     ctypes.c_int, ctypes.c_void_p)
     return f(p_id)
 
+def libvlc_picture_retain(pic):
+    '''Increment the reference count of this picture.
+    See L{libvlc_picture_release}().
+    @param pic: A picture object.
+    '''
+    f = _Cfunctions.get('libvlc_picture_retain', None) or \
+        _Cfunction('libvlc_picture_retain', ((1,),), None,
+                    None, Picture)
+    return f(pic)
+
+def libvlc_picture_release(pic):
+    '''Decrement the reference count of this picture.
+    When the reference count reaches 0, the picture will be released.
+    The picture must not be accessed after calling this function.
+    See L{libvlc_picture_retain}.
+    @param pic: A picture object.
+    '''
+    f = _Cfunctions.get('libvlc_picture_release', None) or \
+        _Cfunction('libvlc_picture_release', ((1,),), None,
+                    None, Picture)
+    return f(pic)
+
+def libvlc_picture_save(pic, path):
+    '''Saves this picture to a file. The image format is the same as the one
+    returned by \link L{libvlc_picture_type} \endlink.
+    @param pic: A picture object.
+    @param path: The path to the generated file.
+    @return: 0 in case of success, -1 otherwise.
+    '''
+    f = _Cfunctions.get('libvlc_picture_save', None) or \
+        _Cfunction('libvlc_picture_save', ((1,), (1,),), None,
+                    ctypes.c_int, Picture, ctypes.c_char_p)
+    return f(pic, path)
+
+def libvlc_picture_get_buffer(pic, size):
+    '''Returns the image internal buffer, including potential padding.
+    The L{Picture} owns the returned buffer, which must not be modified nor
+    freed.
+    @param pic: A picture object.
+    @param size: A pointer to a size_t that will hold the size of the buffer [required].
+    @return: A pointer to the internal buffer.
+    '''
+    f = _Cfunctions.get('libvlc_picture_get_buffer', None) or \
+        _Cfunction('libvlc_picture_get_buffer', ((1,), (1,),), None,
+                    ctypes.c_char_p, Picture, ctypes.POINTER(ctypes.c_size_t))
+    return f(pic, size)
+
+def libvlc_picture_type(pic):
+    '''Returns the picture type.
+    @param pic: A picture object See L{PictureType}.
+    '''
+    f = _Cfunctions.get('libvlc_picture_type', None) or \
+        _Cfunction('libvlc_picture_type', ((1,),), None,
+                    PictureType, Picture)
+    return f(pic)
+
+def libvlc_picture_get_stride(pic):
+    '''Returns the image stride, ie. the number of bytes per line.
+    This can only be called on images of type libvlc_picture_Argb.
+    @param pic: A picture object.
+    '''
+    f = _Cfunctions.get('libvlc_picture_get_stride', None) or \
+        _Cfunction('libvlc_picture_get_stride', ((1,),), None,
+                    ctypes.c_int, Picture)
+    return f(pic)
+
+def libvlc_picture_get_width(pic):
+    '''Returns the width of the image in pixels.
+    @param pic: A picture object.
+    '''
+    f = _Cfunctions.get('libvlc_picture_get_width', None) or \
+        _Cfunction('libvlc_picture_get_width', ((1,),), None,
+                    ctypes.c_int, Picture)
+    return f(pic)
+
+def libvlc_picture_get_height(pic):
+    '''Returns the height of the image in pixels.
+    @param pic: A picture object.
+    '''
+    f = _Cfunctions.get('libvlc_picture_get_height', None) or \
+        _Cfunction('libvlc_picture_get_height', ((1,),), None,
+                    ctypes.c_int, Picture)
+    return f(pic)
+
+def libvlc_picture_get_time(pic):
+    '''Returns the time at which this picture was generated, in milliseconds.
+    @param pic: A picture object.
+    '''
+    f = _Cfunctions.get('libvlc_picture_get_time', None) or \
+        _Cfunction('libvlc_picture_get_time', ((1,),), None,
+                    ctypes.c_longlong, Picture)
+    return f(pic)
+
 def libvlc_media_library_new(p_instance):
     '''Create an new Media Library object.
     @param p_instance: the libvlc instance.
@@ -4941,6 +5342,53 @@ def libvlc_media_get_type(p_md):
                     MediaType, Media)
     return f(p_md)
 
+def libvlc_media_thumbnail_request_by_time(md, time, speed, width, height, picture_type, timeout):
+    '''\brief libvlc_media_get_thumbnail_by_time Start an asynchronous thumbnail generation
+    If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
+    is guaranteed to be emited.
+    @param md: media descriptor object.
+    @param time: The time at which the thumbnail should be generated.
+    @param speed: The seeking speed \saL{ThumbnailerSeekSpeed}.
+    @param width: The thumbnail width.
+    @param height: the thumbnail height.
+    @param picture_type: The thumbnail picture type \saL{PictureType}.
+    @param timeout: A timeout value in ms, or 0 to disable timeout.
+    @return: A valid opaque request object, or None in case of failure.
+    @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
+    '''
+    f = _Cfunctions.get('libvlc_media_thumbnail_request_by_time', None) or \
+        _Cfunction('libvlc_media_thumbnail_request_by_time', ((1,), (1,), (1,), (1,), (1,), (1,), (1,),), None,
+                    MediaThumbnailRequest, Media, ctypes.c_longlong, ThumbnailerSeekSpeed, ctypes.c_int, ctypes.c_int, PictureType, ctypes.c_longlong)
+    return f(md, time, speed, width, height, picture_type, timeout)
+
+def libvlc_media_thumbnail_request_by_pos(md, pos, speed, width, height, picture_type, timeout):
+    '''\brief libvlc_media_get_thumbnail_by_pos Start an asynchronous thumbnail generation
+    If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
+    is guaranteed to be emited.
+    @param md: media descriptor object.
+    @param pos: The position at which the thumbnail should be generated.
+    @param speed: The seeking speed \saL{ThumbnailerSeekSpeed}.
+    @param width: The thumbnail width.
+    @param height: the thumbnail height.
+    @param picture_type: The thumbnail picture type \saL{PictureType}.
+    @param timeout: A timeout value in ms, or 0 to disable timeout.
+    @return: A valid opaque request object, or None in case of failure.
+    @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
+    '''
+    f = _Cfunctions.get('libvlc_media_thumbnail_request_by_pos', None) or \
+        _Cfunction('libvlc_media_thumbnail_request_by_pos', ((1,), (1,), (1,), (1,), (1,), (1,), (1,),), None,
+                    MediaThumbnailRequest, Media, ctypes.c_float, ThumbnailerSeekSpeed, ctypes.c_int, ctypes.c_int, PictureType, ctypes.c_longlong)
+    return f(md, pos, speed, width, height, picture_type, timeout)
+
+def libvlc_media_thumbnail_cancel(p_req):
+    '''@brief L{libvlc_media_thumbnail_cancel} cancels a thumbnailing request.
+    @param p_req: An opaque thumbnail request object. Cancelling the request will still cause libvlc_MediaThumbnailGenerated event to be emited, with a None L{Picture} If the request is cancelled after its completion, the behavior is undefined.
+    '''
+    f = _Cfunctions.get('libvlc_media_thumbnail_cancel', None) or \
+        _Cfunction('libvlc_media_thumbnail_cancel', ((1,),), None,
+                    None, MediaThumbnailRequest)
+    return f(p_req)
+
 def libvlc_media_slaves_add(p_md, i_type, i_priority, psz_uri):
     '''Add a slave to the current media.
     A slave is an external input source that may contains an additional subtitle
@@ -5006,8 +5454,8 @@ def libvlc_renderer_item_hold(p_item):
     @version: LibVLC 3.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_renderer_item_hold', None) or \
-        _Cfunction('libvlc_renderer_item_hold', ((1,),), None,
-                    ctypes.c_void_p, ctypes.c_void_p)
+        _Cfunction('libvlc_renderer_item_hold', ((1,),), class_result(Renderer),
+                    ctypes.c_void_p, Renderer)
     return f(p_item)
 
 def libvlc_renderer_item_release(p_item):
@@ -5016,7 +5464,7 @@ def libvlc_renderer_item_release(p_item):
     '''
     f = _Cfunctions.get('libvlc_renderer_item_release', None) or \
         _Cfunction('libvlc_renderer_item_release', ((1,),), None,
-                    None, ctypes.c_void_p)
+                    None, Renderer)
     return f(p_item)
 
 def libvlc_renderer_item_name(p_item):
@@ -5026,7 +5474,7 @@ def libvlc_renderer_item_name(p_item):
     '''
     f = _Cfunctions.get('libvlc_renderer_item_name', None) or \
         _Cfunction('libvlc_renderer_item_name', ((1,),), None,
-                    ctypes.c_char_p, ctypes.c_void_p)
+                    ctypes.c_char_p, Renderer)
     return f(p_item)
 
 def libvlc_renderer_item_type(p_item):
@@ -5037,7 +5485,7 @@ def libvlc_renderer_item_type(p_item):
     '''
     f = _Cfunctions.get('libvlc_renderer_item_type', None) or \
         _Cfunction('libvlc_renderer_item_type', ((1,),), None,
-                    ctypes.c_char_p, ctypes.c_void_p)
+                    ctypes.c_char_p, Renderer)
     return f(p_item)
 
 def libvlc_renderer_item_icon_uri(p_item):
@@ -5047,7 +5495,7 @@ def libvlc_renderer_item_icon_uri(p_item):
     '''
     f = _Cfunctions.get('libvlc_renderer_item_icon_uri', None) or \
         _Cfunction('libvlc_renderer_item_icon_uri', ((1,),), None,
-                    ctypes.c_char_p, ctypes.c_void_p)
+                    ctypes.c_char_p, Renderer)
     return f(p_item)
 
 def libvlc_renderer_item_flags(p_item):
@@ -5059,7 +5507,7 @@ def libvlc_renderer_item_flags(p_item):
     '''
     f = _Cfunctions.get('libvlc_renderer_item_flags', None) or \
         _Cfunction('libvlc_renderer_item_flags', ((1,),), None,
-                    ctypes.c_int, ctypes.c_void_p)
+                    ctypes.c_int, Renderer)
     return f(p_item)
 
 def libvlc_renderer_discoverer_new(p_inst, psz_name):
@@ -5076,7 +5524,7 @@ def libvlc_renderer_discoverer_new(p_inst, psz_name):
     @version: LibVLC 3.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_new', None) or \
-        _Cfunction('libvlc_renderer_discoverer_new', ((1,), (1,),), None,
+        _Cfunction('libvlc_renderer_discoverer_new', ((1,), (1,),), class_result(RendererDiscoverer),
                     ctypes.c_void_p, Instance, ctypes.c_char_p)
     return f(p_inst, psz_name)
 
@@ -5087,7 +5535,7 @@ def libvlc_renderer_discoverer_release(p_rd):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_release', None) or \
         _Cfunction('libvlc_renderer_discoverer_release', ((1,),), None,
-                    None, ctypes.c_void_p)
+                    None, RendererDiscoverer)
     return f(p_rd)
 
 def libvlc_renderer_discoverer_start(p_rd):
@@ -5101,7 +5549,7 @@ def libvlc_renderer_discoverer_start(p_rd):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_start', None) or \
         _Cfunction('libvlc_renderer_discoverer_start', ((1,),), None,
-                    ctypes.c_int, ctypes.c_void_p)
+                    ctypes.c_int, RendererDiscoverer)
     return f(p_rd)
 
 def libvlc_renderer_discoverer_stop(p_rd):
@@ -5112,14 +5560,14 @@ def libvlc_renderer_discoverer_stop(p_rd):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_stop', None) or \
         _Cfunction('libvlc_renderer_discoverer_stop', ((1,),), None,
-                    None, ctypes.c_void_p)
+                    None, RendererDiscoverer)
     return f(p_rd)
 
 def libvlc_renderer_discoverer_event_manager(p_rd):
     '''Get the event manager of the renderer discoverer
     The possible events to attach are @ref libvlc_RendererDiscovererItemAdded
     and @ref libvlc_RendererDiscovererItemDeleted.
-    The @ref libvlc_renderer_item_t struct passed to event callbacks is owned by
+    The @ref L{Renderer} struct passed to event callbacks is owned by
     VLC, users should take care of holding/releasing this struct for their
     internal usage.
     See libvlc_event_t.u.renderer_discoverer_item_added.item
@@ -5129,7 +5577,7 @@ def libvlc_renderer_discoverer_event_manager(p_rd):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_event_manager', None) or \
         _Cfunction('libvlc_renderer_discoverer_event_manager', ((1,),), class_result(EventManager),
-                    ctypes.c_void_p, ctypes.c_void_p)
+                    ctypes.c_void_p, RendererDiscoverer)
     return f(p_rd)
 
 def libvlc_renderer_discoverer_list_get(p_inst, ppp_services):
@@ -5516,7 +5964,7 @@ def libvlc_media_player_set_renderer(p_mi, p_item):
     '''
     f = _Cfunctions.get('libvlc_media_player_set_renderer', None) or \
         _Cfunction('libvlc_media_player_set_renderer', ((1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, ctypes.c_void_p)
+                    ctypes.c_int, MediaPlayer, Renderer)
     return f(p_mi, p_item)
 
 def libvlc_video_set_callbacks(mp, lock, unlock, display, opaque):
@@ -6920,7 +7368,7 @@ def libvlc_audio_equalizer_new():
     @version: LibVLC 2.2.0 or later.
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_new', None) or \
-        _Cfunction('libvlc_audio_equalizer_new', (), None,
+        _Cfunction('libvlc_audio_equalizer_new', (), class_result(AudioEqualizer),
                     ctypes.c_void_p)
     return f()
 
@@ -6936,7 +7384,7 @@ def libvlc_audio_equalizer_new_from_preset(u_index):
     @version: LibVLC 2.2.0 or later.
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_new_from_preset', None) or \
-        _Cfunction('libvlc_audio_equalizer_new_from_preset', ((1,),), None,
+        _Cfunction('libvlc_audio_equalizer_new_from_preset', ((1,),), class_result(AudioEqualizer),
                     ctypes.c_void_p, ctypes.c_uint)
     return f(u_index)
 
@@ -6950,7 +7398,7 @@ def libvlc_audio_equalizer_release(p_equalizer):
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_release', None) or \
         _Cfunction('libvlc_audio_equalizer_release', ((1,),), None,
-                    None, ctypes.c_void_p)
+                    None, AudioEqualizer)
     return f(p_equalizer)
 
 def libvlc_audio_equalizer_set_preamp(p_equalizer, f_preamp):
@@ -6965,7 +7413,7 @@ def libvlc_audio_equalizer_set_preamp(p_equalizer, f_preamp):
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_set_preamp', None) or \
         _Cfunction('libvlc_audio_equalizer_set_preamp', ((1,), (1,),), None,
-                    ctypes.c_int, ctypes.c_void_p, ctypes.c_float)
+                    ctypes.c_int, AudioEqualizer, ctypes.c_float)
     return f(p_equalizer, f_preamp)
 
 def libvlc_audio_equalizer_get_preamp(p_equalizer):
@@ -6976,7 +7424,7 @@ def libvlc_audio_equalizer_get_preamp(p_equalizer):
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_get_preamp', None) or \
         _Cfunction('libvlc_audio_equalizer_get_preamp', ((1,),), None,
-                    ctypes.c_float, ctypes.c_void_p)
+                    ctypes.c_float, AudioEqualizer)
     return f(p_equalizer)
 
 def libvlc_audio_equalizer_set_amp_at_index(p_equalizer, f_amp, u_band):
@@ -6992,7 +7440,7 @@ def libvlc_audio_equalizer_set_amp_at_index(p_equalizer, f_amp, u_band):
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_set_amp_at_index', None) or \
         _Cfunction('libvlc_audio_equalizer_set_amp_at_index', ((1,), (1,), (1,),), None,
-                    ctypes.c_int, ctypes.c_void_p, ctypes.c_float, ctypes.c_uint)
+                    ctypes.c_int, AudioEqualizer, ctypes.c_float, ctypes.c_uint)
     return f(p_equalizer, f_amp, u_band)
 
 def libvlc_audio_equalizer_get_amp_at_index(p_equalizer, u_band):
@@ -7004,7 +7452,7 @@ def libvlc_audio_equalizer_get_amp_at_index(p_equalizer, u_band):
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_get_amp_at_index', None) or \
         _Cfunction('libvlc_audio_equalizer_get_amp_at_index', ((1,), (1,),), None,
-                    ctypes.c_float, ctypes.c_void_p, ctypes.c_uint)
+                    ctypes.c_float, AudioEqualizer, ctypes.c_uint)
     return f(p_equalizer, u_band)
 
 def libvlc_media_player_set_equalizer(p_mi, p_equalizer):
@@ -7030,7 +7478,7 @@ def libvlc_media_player_set_equalizer(p_mi, p_equalizer):
     '''
     f = _Cfunctions.get('libvlc_media_player_set_equalizer', None) or \
         _Cfunction('libvlc_media_player_set_equalizer', ((1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, ctypes.c_void_p)
+                    ctypes.c_int, MediaPlayer, AudioEqualizer)
     return f(p_mi, p_equalizer)
 
 def libvlc_media_player_get_role(p_mi):
@@ -7244,18 +7692,13 @@ def libvlc_media_list_player_set_playback_mode(p_mlp, e_mode):
 #  libvlc_printerr
 #  libvlc_set_exit_handler
 
-# 48 function(s) not wrapped as methods:
-#  libvlc_audio_equalizer_get_amp_at_index
+# 34 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
-#  libvlc_audio_equalizer_get_preamp
 #  libvlc_audio_equalizer_get_preset_count
 #  libvlc_audio_equalizer_get_preset_name
 #  libvlc_audio_equalizer_new
 #  libvlc_audio_equalizer_new_from_preset
-#  libvlc_audio_equalizer_release
-#  libvlc_audio_equalizer_set_amp_at_index
-#  libvlc_audio_equalizer_set_preamp
 #  libvlc_audio_output_device_list_release
 #  libvlc_audio_output_list_release
 #  libvlc_chapter_descriptions_release
@@ -7275,20 +7718,11 @@ def libvlc_media_list_player_set_playback_mode(p_mlp, e_mode):
 #  libvlc_media_discoverer_list_release
 #  libvlc_media_get_codec_description
 #  libvlc_media_slaves_release
+#  libvlc_media_thumbnail_cancel
 #  libvlc_media_tracks_release
 #  libvlc_module_description_list_release
 #  libvlc_new
-#  libvlc_renderer_discoverer_event_manager
 #  libvlc_renderer_discoverer_list_release
-#  libvlc_renderer_discoverer_release
-#  libvlc_renderer_discoverer_start
-#  libvlc_renderer_discoverer_stop
-#  libvlc_renderer_item_flags
-#  libvlc_renderer_item_hold
-#  libvlc_renderer_item_icon_uri
-#  libvlc_renderer_item_name
-#  libvlc_renderer_item_release
-#  libvlc_renderer_item_type
 #  libvlc_title_descriptions_release
 #  libvlc_track_description_list_release
 #  libvlc_video_new_viewpoint

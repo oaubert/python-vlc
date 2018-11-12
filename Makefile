@@ -60,7 +60,7 @@ test3: $(MODULE_NAME)
 	PYTHONPATH=$(VERSIONED_PATH) python3 tests/test.py
 
 publish: $(VERSIONED_NAME)
-	cd $(VERSIONED_PATH); python setup.py sdist upload -r pypi
+	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist && twine upload dist/*
 
 tests: test test3
 

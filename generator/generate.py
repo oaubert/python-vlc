@@ -56,7 +56,7 @@ __all__     = ('Parser',
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ =  '1.6'
+__version__ =  '1.7'
 
 _debug = False
 
@@ -657,6 +657,9 @@ class Parser(object):
 
                     yield m.groups() + (d, n)
                     d = []
+                elif typedef_re.match(t):
+                    # We have another typedef. Reset docstring.
+                    d = []
         f.close()
 
     def parse_param(self, param):
@@ -902,8 +905,10 @@ class PythonGenerator(_Generator):
         'libvlc_media_player_t*':      'MediaPlayer',
         'libvlc_video_viewpoint_t*':   'ctypes.POINTER(VideoViewpoint)',
         'libvlc_media_stats_t*':       'ctypes.POINTER(MediaStats)',
-        'libvlc_renderer_item_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
-        'libvlc_renderer_discoverer_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
+        'libvlc_picture_t*':           'Picture',
+        'libvlc_media_thumbnail_request_t*':  'MediaThumbnailRequest', # Opaque struct, do not mess with it.
+        'libvlc_renderer_item_t*':    'Renderer',
+        'libvlc_renderer_discoverer_t*':    'RendererDiscoverer',
         'libvlc_rd_description_t**': 'ctypes.POINTER(RDDescription)',
         'libvlc_rd_description_t***': 'ctypes.POINTER(ctypes.POINTER(RDDescription))',
         'libvlc_media_track_info_t**': 'ctypes.POINTER(ctypes.c_void_p)',
@@ -916,7 +921,7 @@ class PythonGenerator(_Generator):
         'libvlc_chapter_description_t***': 'ctypes.POINTER(ctypes.POINTER(ChapterDescription))',
         'libvlc_module_description_t*': 'ctypes.POINTER(ModuleDescription)',
         'libvlc_audio_output_device_t*': 'ctypes.POINTER(AudioOutputDevice)',
-        'libvlc_equalizer_t*':         'ctypes.c_void_p',
+        'libvlc_equalizer_t*':         'AudioEqualizer',
         'libvlc_media_slave_t**':    'ctypes.POINTER(MediaSlave)',
         'libvlc_media_slave_t***':    'ctypes.POINTER(ctypes.POINTER(MediaSlave))',
 
@@ -939,6 +944,7 @@ class PythonGenerator(_Generator):
         'uint32_t':  'ctypes.c_uint32',
         'ssize_t':   'ctypes.c_ssize_t',
         'size_t':    'ctypes.c_size_t',
+        'size_t*':   'ctypes.POINTER(ctypes.c_size_t)',
         'ssize_t*':   'ctypes.POINTER(ctypes.c_ssize_t)',
         'unsigned':  'ctypes.c_uint',
         'unsigned*': 'ctypes.POINTER(ctypes.c_uint)',  # _video_get_size
@@ -952,6 +958,7 @@ class PythonGenerator(_Generator):
     # Python classes, i.e. classes for which we want to
     # generate class wrappers around libvlc functions
     defined_classes = (
+        'AudioEqualizer',
         'EventManager',
         'Instance',
         'Log',
@@ -963,6 +970,9 @@ class PythonGenerator(_Generator):
         'MediaListPlayer',
         'MediaListView',
         'MediaPlayer',
+        'Picture',
+        'Renderer',
+        'RendererDiscoverer'
     )
 
     def __init__(self, parser=None):
@@ -991,6 +1001,9 @@ class PythonGenerator(_Generator):
                      .rstrip(')')
                 if c[:1].isupper():
                     self.links[t] = c
+        # We have to hardcode this one, which is not regular in vlc headers
+        self.prefixes['AudioEqualizer'] = 'libvlc_audio_equalizer_'
+
         # xform docs to epydoc lines
         for f in self.parser.funcs:
             f.xform()

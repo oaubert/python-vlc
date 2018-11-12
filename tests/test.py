@@ -136,6 +136,13 @@ class TestVLCAPI(unittest.TestCase):
         instance.log_set(log_handler, None)
         player = instance.media_player_new()
 
+    def test_equalizer(self):
+        val = 9.5
+        eq = vlc.AudioEqualizer()
+        self.assertEqual(eq.get_amp_at_index(0), 0)
+        eq.set_amp_at_index(val, 1)
+        self.assertEqual(eq.get_amp_at_index(1), val)
+
     def test_tracks_get(self):
         self.assertTrue(os.path.exists(SAMPLE))
         m = vlc.Media(SAMPLE)

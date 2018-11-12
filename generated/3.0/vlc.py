@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.4105"
+__version__ = "3.0.4107"
 __libvlc_version__ = "3.0.4"
-__generator_version__ = "1.5"
-build_date  = "Sat Oct  6 23:10:52 2018 3.0.4"
+__generator_version__ = "1.7"
+build_date  = "Mon Nov 12 22:49:53 2018 3.0.4"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1615,6 +1615,67 @@ class RDDescription(_Cstruct):
     ]
 
 # End of header.py #
+class AudioEqualizer(_Ctype):
+    '''N/A
+    '''
+    def __new__(cls, *args):
+        if len(args) == 1 and isinstance(args[0], _Ints):
+            return _Constructor(cls, args[0])
+        return libvlc_audio_equalizer_new()
+
+
+
+    def release(self):
+        '''Release a previously created equalizer instance.
+        The equalizer was previously created by using L{new}() or
+        L{new_from_preset}().
+        It is safe to invoke this method with a None p_equalizer parameter for no effect.
+        @version: LibVLC 2.2.0 or later.
+        '''
+        return libvlc_audio_equalizer_release(self)
+
+
+    def set_preamp(self, f_preamp):
+        '''Set a new pre-amplification value for an equalizer.
+        The new equalizer settings are subsequently applied to a media player by invoking
+        L{media_player_set_equalizer}().
+        The supplied amplification value will be clamped to the -20.0 to +20.0 range.
+        @param f_preamp: preamp value (-20.0 to 20.0 Hz).
+        @return: zero on success, -1 on error.
+        @version: LibVLC 2.2.0 or later.
+        '''
+        return libvlc_audio_equalizer_set_preamp(self, f_preamp)
+
+
+    def get_preamp(self):
+        '''Get the current pre-amplification value from an equalizer.
+        @return: preamp value (Hz).
+        @version: LibVLC 2.2.0 or later.
+        '''
+        return libvlc_audio_equalizer_get_preamp(self)
+
+
+    def set_amp_at_index(self, f_amp, u_band):
+        '''Set a new amplification value for a particular equalizer frequency band.
+        The new equalizer settings are subsequently applied to a media player by invoking
+        L{media_player_set_equalizer}().
+        The supplied amplification value will be clamped to the -20.0 to +20.0 range.
+        @param f_amp: amplification value (-20.0 to 20.0 Hz).
+        @param u_band: index, counting from zero, of the frequency band to set.
+        @return: zero on success, -1 on error.
+        @version: LibVLC 2.2.0 or later.
+        '''
+        return libvlc_audio_equalizer_set_amp_at_index(self, f_amp, u_band)
+
+
+    def get_amp_at_index(self, u_band):
+        '''Get the amplification value for a particular equalizer frequency band.
+        @param u_band: index, counting from zero, of the frequency band to get.
+        @return: amplification value (Hz); NaN if there is no such frequency band.
+        @version: LibVLC 2.2.0 or later.
+        '''
+        return libvlc_audio_equalizer_get_amp_at_index(self, u_band)
+
 class EventManager(_Ctype):
     '''Create an event manager with callback handler.
 
@@ -1699,6 +1760,7 @@ class EventManager(_Ctype):
         if k in self._callbacks:
             del self._callbacks[k] # remove, regardless of libvlc return value
             libvlc_event_detach(self, k, self._callback_handler, k)
+
 
 class Instance(_Ctype):
     '''Create a new Instance instance.
@@ -4361,6 +4423,116 @@ class MediaPlayer(_Ctype):
         '''
         return libvlc_media_player_set_role(self, role)
 
+class Renderer(_Ctype):
+    '''N/A
+    '''
+
+    def __new__(cls, ptr=_internal_guard):
+        '''(INTERNAL) ctypes wrapper constructor.
+        '''
+        return _Constructor(cls, ptr)
+
+    def hold(self):
+        '''Hold a renderer item, i.e. creates a new reference
+        This functions need to called from the libvlc_RendererDiscovererItemAdded
+        callback if the libvlc user wants to use this item after. (for display or
+        for passing it to the mediaplayer for example).
+        @return: the current item.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_hold(self)
+
+
+    def release(self):
+        '''Releases a renderer item, i.e. decrements its reference counter.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_release(self)
+
+
+    def name(self):
+        '''Get the human readable name of a renderer item.
+        @return: the name of the item (can't be None, must *not* be freed).
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_name(self)
+
+
+    def type(self):
+        '''Get the type (not translated) of a renderer item. For now, the type can only
+        be "chromecast" ("upnp", "airplay" may come later).
+        @return: the type of the item (can't be None, must *not* be freed).
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_type(self)
+
+
+    def icon_uri(self):
+        '''Get the icon uri of a renderer item.
+        @return: the uri of the item's icon (can be None, must *not* be freed).
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_icon_uri(self)
+
+
+    def flags(self):
+        '''Get the flags of a renderer item
+        See LIBVLC_RENDERER_CAN_AUDIO
+        See LIBVLC_RENDERER_CAN_VIDEO.
+        @return: bitwise flag: capabilities of the renderer, see.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_item_flags(self)
+
+class RendererDiscoverer(_Ctype):
+    '''N/A
+    '''
+
+    def __new__(cls, ptr=_internal_guard):
+        '''(INTERNAL) ctypes wrapper constructor.
+        '''
+        return _Constructor(cls, ptr)
+
+    def release(self):
+        '''Release a renderer discoverer object.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_discoverer_release(self)
+
+
+    def start(self):
+        '''Start renderer discovery
+        To stop it, call L{stop}() or
+        L{release}() directly.
+        See L{stop}().
+        @return: -1 in case of error, 0 otherwise.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_discoverer_start(self)
+
+
+    def stop(self):
+        '''Stop renderer discovery.
+        See L{start}().
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_discoverer_stop(self)
+
+    @memoize_parameterless
+    def event_manager(self):
+        '''Get the event manager of the renderer discoverer
+        The possible events to attach are @ref libvlc_RendererDiscovererItemAdded
+        and @ref libvlc_RendererDiscovererItemDeleted.
+        The @ref L{Renderer} struct passed to event callbacks is owned by
+        VLC, users should take care of holding/releasing this struct for their
+        internal usage.
+        See libvlc_event_t.u.renderer_discoverer_item_added.item
+        See libvlc_event_t.u.renderer_discoverer_item_removed.item.
+        @return: a valid event manager (can't fail).
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_renderer_discoverer_event_manager(self)
+
 
  # LibVLC __version__ functions #
 
@@ -5644,8 +5816,8 @@ def libvlc_renderer_item_hold(p_item):
     @version: LibVLC 3.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_renderer_item_hold', None) or \
-        _Cfunction('libvlc_renderer_item_hold', ((1,),), None,
-                    ctypes.c_void_p, ctypes.c_void_p)
+        _Cfunction('libvlc_renderer_item_hold', ((1,),), class_result(Renderer),
+                    ctypes.c_void_p, Renderer)
     return f(p_item)
 
 def libvlc_renderer_item_release(p_item):
@@ -5654,7 +5826,7 @@ def libvlc_renderer_item_release(p_item):
     '''
     f = _Cfunctions.get('libvlc_renderer_item_release', None) or \
         _Cfunction('libvlc_renderer_item_release', ((1,),), None,
-                    None, ctypes.c_void_p)
+                    None, Renderer)
     return f(p_item)
 
 def libvlc_renderer_item_name(p_item):
@@ -5664,7 +5836,7 @@ def libvlc_renderer_item_name(p_item):
     '''
     f = _Cfunctions.get('libvlc_renderer_item_name', None) or \
         _Cfunction('libvlc_renderer_item_name', ((1,),), None,
-                    ctypes.c_char_p, ctypes.c_void_p)
+                    ctypes.c_char_p, Renderer)
     return f(p_item)
 
 def libvlc_renderer_item_type(p_item):
@@ -5675,7 +5847,7 @@ def libvlc_renderer_item_type(p_item):
     '''
     f = _Cfunctions.get('libvlc_renderer_item_type', None) or \
         _Cfunction('libvlc_renderer_item_type', ((1,),), None,
-                    ctypes.c_char_p, ctypes.c_void_p)
+                    ctypes.c_char_p, Renderer)
     return f(p_item)
 
 def libvlc_renderer_item_icon_uri(p_item):
@@ -5685,7 +5857,7 @@ def libvlc_renderer_item_icon_uri(p_item):
     '''
     f = _Cfunctions.get('libvlc_renderer_item_icon_uri', None) or \
         _Cfunction('libvlc_renderer_item_icon_uri', ((1,),), None,
-                    ctypes.c_char_p, ctypes.c_void_p)
+                    ctypes.c_char_p, Renderer)
     return f(p_item)
 
 def libvlc_renderer_item_flags(p_item):
@@ -5697,7 +5869,7 @@ def libvlc_renderer_item_flags(p_item):
     '''
     f = _Cfunctions.get('libvlc_renderer_item_flags', None) or \
         _Cfunction('libvlc_renderer_item_flags', ((1,),), None,
-                    ctypes.c_int, ctypes.c_void_p)
+                    ctypes.c_int, Renderer)
     return f(p_item)
 
 def libvlc_renderer_discoverer_new(p_inst, psz_name):
@@ -5714,7 +5886,7 @@ def libvlc_renderer_discoverer_new(p_inst, psz_name):
     @version: LibVLC 3.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_new', None) or \
-        _Cfunction('libvlc_renderer_discoverer_new', ((1,), (1,),), None,
+        _Cfunction('libvlc_renderer_discoverer_new', ((1,), (1,),), class_result(RendererDiscoverer),
                     ctypes.c_void_p, Instance, ctypes.c_char_p)
     return f(p_inst, psz_name)
 
@@ -5725,7 +5897,7 @@ def libvlc_renderer_discoverer_release(p_rd):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_release', None) or \
         _Cfunction('libvlc_renderer_discoverer_release', ((1,),), None,
-                    None, ctypes.c_void_p)
+                    None, RendererDiscoverer)
     return f(p_rd)
 
 def libvlc_renderer_discoverer_start(p_rd):
@@ -5739,7 +5911,7 @@ def libvlc_renderer_discoverer_start(p_rd):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_start', None) or \
         _Cfunction('libvlc_renderer_discoverer_start', ((1,),), None,
-                    ctypes.c_int, ctypes.c_void_p)
+                    ctypes.c_int, RendererDiscoverer)
     return f(p_rd)
 
 def libvlc_renderer_discoverer_stop(p_rd):
@@ -5750,14 +5922,14 @@ def libvlc_renderer_discoverer_stop(p_rd):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_stop', None) or \
         _Cfunction('libvlc_renderer_discoverer_stop', ((1,),), None,
-                    None, ctypes.c_void_p)
+                    None, RendererDiscoverer)
     return f(p_rd)
 
 def libvlc_renderer_discoverer_event_manager(p_rd):
     '''Get the event manager of the renderer discoverer
     The possible events to attach are @ref libvlc_RendererDiscovererItemAdded
     and @ref libvlc_RendererDiscovererItemDeleted.
-    The @ref libvlc_renderer_item_t struct passed to event callbacks is owned by
+    The @ref L{Renderer} struct passed to event callbacks is owned by
     VLC, users should take care of holding/releasing this struct for their
     internal usage.
     See libvlc_event_t.u.renderer_discoverer_item_added.item
@@ -5767,7 +5939,7 @@ def libvlc_renderer_discoverer_event_manager(p_rd):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_event_manager', None) or \
         _Cfunction('libvlc_renderer_discoverer_event_manager', ((1,),), class_result(EventManager),
-                    ctypes.c_void_p, ctypes.c_void_p)
+                    ctypes.c_void_p, RendererDiscoverer)
     return f(p_rd)
 
 def libvlc_renderer_discoverer_list_get(p_inst, ppp_services):
@@ -6455,7 +6627,7 @@ def libvlc_media_player_set_renderer(p_mi, p_item):
     '''
     f = _Cfunctions.get('libvlc_media_player_set_renderer', None) or \
         _Cfunction('libvlc_media_player_set_renderer', ((1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, ctypes.c_void_p)
+                    ctypes.c_int, MediaPlayer, Renderer)
     return f(p_mi, p_item)
 
 def libvlc_video_set_callbacks(mp, lock, unlock, display, opaque):
@@ -7844,7 +8016,7 @@ def libvlc_audio_equalizer_new():
     @version: LibVLC 2.2.0 or later.
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_new', None) or \
-        _Cfunction('libvlc_audio_equalizer_new', (), None,
+        _Cfunction('libvlc_audio_equalizer_new', (), class_result(AudioEqualizer),
                     ctypes.c_void_p)
     return f()
 
@@ -7860,7 +8032,7 @@ def libvlc_audio_equalizer_new_from_preset(u_index):
     @version: LibVLC 2.2.0 or later.
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_new_from_preset', None) or \
-        _Cfunction('libvlc_audio_equalizer_new_from_preset', ((1,),), None,
+        _Cfunction('libvlc_audio_equalizer_new_from_preset', ((1,),), class_result(AudioEqualizer),
                     ctypes.c_void_p, ctypes.c_uint)
     return f(u_index)
 
@@ -7874,7 +8046,7 @@ def libvlc_audio_equalizer_release(p_equalizer):
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_release', None) or \
         _Cfunction('libvlc_audio_equalizer_release', ((1,),), None,
-                    None, ctypes.c_void_p)
+                    None, AudioEqualizer)
     return f(p_equalizer)
 
 def libvlc_audio_equalizer_set_preamp(p_equalizer, f_preamp):
@@ -7889,7 +8061,7 @@ def libvlc_audio_equalizer_set_preamp(p_equalizer, f_preamp):
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_set_preamp', None) or \
         _Cfunction('libvlc_audio_equalizer_set_preamp', ((1,), (1,),), None,
-                    ctypes.c_int, ctypes.c_void_p, ctypes.c_float)
+                    ctypes.c_int, AudioEqualizer, ctypes.c_float)
     return f(p_equalizer, f_preamp)
 
 def libvlc_audio_equalizer_get_preamp(p_equalizer):
@@ -7900,7 +8072,7 @@ def libvlc_audio_equalizer_get_preamp(p_equalizer):
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_get_preamp', None) or \
         _Cfunction('libvlc_audio_equalizer_get_preamp', ((1,),), None,
-                    ctypes.c_float, ctypes.c_void_p)
+                    ctypes.c_float, AudioEqualizer)
     return f(p_equalizer)
 
 def libvlc_audio_equalizer_set_amp_at_index(p_equalizer, f_amp, u_band):
@@ -7916,7 +8088,7 @@ def libvlc_audio_equalizer_set_amp_at_index(p_equalizer, f_amp, u_band):
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_set_amp_at_index', None) or \
         _Cfunction('libvlc_audio_equalizer_set_amp_at_index', ((1,), (1,), (1,),), None,
-                    ctypes.c_int, ctypes.c_void_p, ctypes.c_float, ctypes.c_uint)
+                    ctypes.c_int, AudioEqualizer, ctypes.c_float, ctypes.c_uint)
     return f(p_equalizer, f_amp, u_band)
 
 def libvlc_audio_equalizer_get_amp_at_index(p_equalizer, u_band):
@@ -7928,7 +8100,7 @@ def libvlc_audio_equalizer_get_amp_at_index(p_equalizer, u_band):
     '''
     f = _Cfunctions.get('libvlc_audio_equalizer_get_amp_at_index', None) or \
         _Cfunction('libvlc_audio_equalizer_get_amp_at_index', ((1,), (1,),), None,
-                    ctypes.c_float, ctypes.c_void_p, ctypes.c_uint)
+                    ctypes.c_float, AudioEqualizer, ctypes.c_uint)
     return f(p_equalizer, u_band)
 
 def libvlc_media_player_set_equalizer(p_mi, p_equalizer):
@@ -7954,7 +8126,7 @@ def libvlc_media_player_set_equalizer(p_mi, p_equalizer):
     '''
     f = _Cfunctions.get('libvlc_media_player_set_equalizer', None) or \
         _Cfunction('libvlc_media_player_set_equalizer', ((1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, ctypes.c_void_p)
+                    ctypes.c_int, MediaPlayer, AudioEqualizer)
     return f(p_mi, p_equalizer)
 
 def libvlc_media_player_get_role(p_mi):
@@ -8170,18 +8342,13 @@ def libvlc_media_list_player_set_playback_mode(p_mlp, e_mode):
 #  libvlc_printerr
 #  libvlc_set_exit_handler
 
-# 54 function(s) not wrapped as methods:
-#  libvlc_audio_equalizer_get_amp_at_index
+# 39 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
-#  libvlc_audio_equalizer_get_preamp
 #  libvlc_audio_equalizer_get_preset_count
 #  libvlc_audio_equalizer_get_preset_name
 #  libvlc_audio_equalizer_new
 #  libvlc_audio_equalizer_new_from_preset
-#  libvlc_audio_equalizer_release
-#  libvlc_audio_equalizer_set_amp_at_index
-#  libvlc_audio_equalizer_set_preamp
 #  libvlc_audio_output_device_list_release
 #  libvlc_audio_output_list_release
 #  libvlc_chapter_descriptions_release
@@ -8209,17 +8376,7 @@ def libvlc_media_list_player_set_playback_mode(p_mlp, e_mode):
 #  libvlc_media_tracks_release
 #  libvlc_module_description_list_release
 #  libvlc_new
-#  libvlc_renderer_discoverer_event_manager
 #  libvlc_renderer_discoverer_list_release
-#  libvlc_renderer_discoverer_release
-#  libvlc_renderer_discoverer_start
-#  libvlc_renderer_discoverer_stop
-#  libvlc_renderer_item_flags
-#  libvlc_renderer_item_hold
-#  libvlc_renderer_item_icon_uri
-#  libvlc_renderer_item_name
-#  libvlc_renderer_item_release
-#  libvlc_renderer_item_type
 #  libvlc_title_descriptions_release
 #  libvlc_track_description_list_release
 #  libvlc_track_description_release
