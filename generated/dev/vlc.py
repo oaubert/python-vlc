@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 __version__ = "4.0.0-dev-5376-g71cb852338107"
 __libvlc_version__ = "4.0.0-dev-5376-g71cb852338"
 __generator_version__ = "1.7"
-build_date  = "Mon Nov 12 22:54:57 2018 4.0.0-dev-5376-g71cb852338"
+build_date  = "Mon Nov 12 23:07:30 2018 4.0.0-dev-5376-g71cb852338"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1724,6 +1724,12 @@ class RDDescription(_Cstruct):
         ('longname', ctypes.c_char_p)
     ]
 
+
+class MediaThumbnailRequest:
+    def __new__(cls, *args):
+        if len(args) == 1 and isinstance(args[0], _Ints):
+            return _Constructor(cls, args[0])
+
 # End of header.py #
 class AudioEqualizer(_Ctype):
     '''Create a new default equalizer, with all frequency values zeroed.
@@ -1732,7 +1738,6 @@ class AudioEqualizer(_Ctype):
     L{MediaPlayer.set_equalizer}.
     The returned handle should be freed via libvlc_audio_equalizer_release() when
     it is no longer needed.
-    
     '''
 
     def __new__(cls, *args):

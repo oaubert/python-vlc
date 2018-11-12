@@ -502,8 +502,7 @@ class AudioEqualizer:
     The new equalizer can subsequently be applied to a media player by invoking
     L{MediaPlayer.set_equalizer}.
     The returned handle should be freed via libvlc_audio_equalizer_release() when
-    it is no longer needed.
-    """
+    it is no longer needed."""
     def __new__(cls, *args):
         if len(args) == 1 and isinstance(args[0], _Ints):
             return _Constructor(cls, args[0])

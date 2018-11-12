@@ -682,4 +682,10 @@ class RDDescription(_Cstruct):
         ('longname', ctypes.c_char_p)
     ]
 
+
+class MediaThumbnailRequest:
+    def __new__(cls, *args):
+        if len(args) == 1 and isinstance(args[0], _Ints):
+            return _Constructor(cls, args[0])
+
 # End of header.py #
