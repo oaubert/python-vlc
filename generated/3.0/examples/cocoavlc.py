@@ -7,10 +7,10 @@
 # and the corresponding VLC App, see <http://www.VideoLan.org/index.html>.
 
 # This VLC player has only been tested with VLC 2.2.6, 2.2.8, 3.0.1,
-# 3.0.2 and 3.0.3 and the compatible vlc.py Python-VLC binding using
-# 64-bit Python 2.7.14, 2.7.15, 3.6.4, 3.6.5 and/or 3.7.0 on macOS
-# 10.13.4, 10.13.5 and 10.13.6 High Sierra.  This player does not work
-# using PyPy Python <http://PyPy.org> nor with Intel(R) Python
+# 3.0.2 and 3.0.4 and the compatible vlc.py Python-VLC binding using
+# 64-bit Python 2.7.14, 2.7.15, 3.6.4, 3.6.5, 3.7.0, 3.7.1 and/or 3.7.2
+# on macOS 10.13.4, 10.13.5 and 10.13.6 High Sierra.  This player does
+# not work with PyPy Python <http://PyPy.org> nor with Intel(R) Python
 # <http://Software.Intel.com/en-us/distribution-for-python>.
 
 # MIT License <http://OpenSource.org/licenses/MIT>
@@ -67,7 +67,7 @@ except ImportError:
     from urllib.parse import unquote as mrl_unquote  # Python 3+
 
 __all__  = ('AppVLC',)
-__version__ = '18.08.15'
+__version__ = '19.01.31'
 
 _Adjust  = vlc.VideoAdjustOption  # Enum
 # <http://Wiki.VideoLan.org/Documentation:Modules/adjust>
@@ -88,6 +88,11 @@ _VLC_3_  = vlc.__version__.split('.')[0] > '2' and \
 def _mspf(fps):
     # convert frames per second to frame length in millisecs per frame
     return 1000.0 / (fps or 25)
+
+
+def _ms2str(ms):
+    # convert milliseconds to seconds string
+    return '%.3f s' % (max(ms, 0) * 0.001,)
 
 
 class AppVLC(App):
@@ -202,7 +207,7 @@ class AppVLC(App):
     def menuFilters_(self, item):
         try:
             self.menuPause_(item)
-            # display audio/video filters table
+            # display a table of audio/video filters
             t = Table(' Name:150:bold', ' Short:150:Center:center', ' Long:300', 'Help')
             i = self.player.get_instance()
             b = item.title.split()[0]
@@ -248,9 +253,9 @@ class AppVLC(App):
                 t.append('size', z1000str(z), zSIstr(z))
             t.append('state', str(p.get_state()))
             f = max(p.get_position(), 0)
-            t.append('position', '%.2f%%' % (f * 100,), f)
-            f = ['%.3f s' % (ms * 1e-3) for ms in (p.get_time(), m.get_duration())]
-            t.append('time/duration', *f)  # both shown in seconds
+            t.append('position/length', '%.2f%%' % (f * 100,), _ms2str(p.get_length()))
+            f = map(_ms2str, (p.get_time(), m.get_duration()))
+            t.append('time/duration', *f)
             t.append('track/count', z1000str(p.video_get_track()), z1000str(p.video_get_track_count()))
             t.separator()
 
@@ -294,8 +299,7 @@ class AppVLC(App):
                 if s.input_bitrate > 0:  # XXX approximate caching, based
                     # on <http://GitHub.com/oaubert/python-vlc/issues/61>
                     b = s.read_bytes - s.demux_read_bytes
-                    c = b / (s.input_bitrate * 1000)
-                    t.append('input caching', '%.3f s' % (c,), zSIstr(b))
+                    t.append('input caching', _ms2str(b / s.input_bitrate), zSIstr(b))
                 t.append('demux read',     *zSIstr(s.demux_read_bytes).split())
                 t.append('stream bitrate', *Kops2bpstr2(s.demux_bitrate))
 

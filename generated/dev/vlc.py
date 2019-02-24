@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-5376-g71cb852338107"
-__libvlc_version__ = "4.0.0-dev-5376-g71cb852338"
-__generator_version__ = "1.7"
-build_date  = "Mon Nov 12 23:07:30 2018 4.0.0-dev-5376-g71cb852338"
+__version__ = "4.0.0-dev-6311-gd5ccdffa65108"
+__libvlc_version__ = "4.0.0-dev-6311-gd5ccdffa65"
+__generator_version__ = "1.8"
+build_date  = "Sun Feb 24 16:20:24 2019 4.0.0-dev-6311-gd5ccdffa65"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -124,13 +124,7 @@ def find_lib():
     if dll is not None:
         return dll, plugin_path
 
-    if sys.platform.startswith('linux'):
-        p = find_library('vlc')
-        try:
-            dll = ctypes.CDLL(p)
-        except OSError:  # may fail
-            dll = ctypes.CDLL('libvlc.so.5')
-    elif sys.platform.startswith('win'):
+    if sys.platform.startswith('win'):
         libname = 'libvlc.dll'
         p = find_library(libname)
         if p is None:
@@ -195,7 +189,17 @@ def find_lib():
             dll = ctypes.CDLL('libvlc.dylib')
 
     else:
-        raise NotImplementedError('%s: %s not supported' % (sys.argv[0], sys.platform))
+        # All other OSes (linux, freebsd...)
+        p = find_library('vlc')
+        try:
+            dll = ctypes.CDLL(p)
+        except OSError:  # may fail
+            dll = None
+        if dll is None:
+            try:
+                dll = ctypes.CDLL('libvlc.so.5')
+            except:
+                raise NotImplementedError('Cannot find libvlc lib')
 
     return (dll, plugin_path)
 
@@ -893,16 +897,16 @@ TeletextKey.index  = TeletextKey(6881280)
 TeletextKey.red    = TeletextKey(7471104)
 TeletextKey.yellow = TeletextKey(7929856)
 
-class GlEngine(_Enum):
-    '''Enumeration of the opengl engine to be used
-can be passed to @a libvlc_video_set_opengl_callbacks.
+class VideoEngine(_Enum):
+    '''Enumeration of the video engine to be used on output.
+can be passed to @a libvlc_video_set_output_callbacks.
     '''
     _enum_names_ = {
         0: 'opengl',
         1: 'gles2',
     }
-GlEngine.gles2  = GlEngine(1)
-GlEngine.opengl = GlEngine(0)
+VideoEngine.gles2  = VideoEngine(1)
+VideoEngine.opengl = VideoEngine(0)
 
 class VideoLogoOption(_Enum):
     '''Option values for libvlc_video_{get,set}_logo_{int,string}.
@@ -1120,44 +1124,44 @@ class VideoCleanupCb(ctypes.c_void_p):
     @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() (and possibly modified by @ref libvlc_video_format_cb) [IN].
     """
     pass
-class GlSetupCb(ctypes.c_void_p):
+class VideoSetupCb(ctypes.c_void_p):
     """Callback prototype called to initialize user data.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
     @return: true on success.
     @version: LibVLC 4.0.0 or later.
     """
     pass
-class GlCleanupCb(ctypes.c_void_p):
+class VideoCleanupCb(ctypes.c_void_p):
     """Callback prototype called to release user data.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
     @version: LibVLC 4.0.0 or later.
     """
     pass
-class GlResizeCb(ctypes.c_void_p):
+class VideoUpdateOutputCb(ctypes.c_void_p):
     """Callback prototype called on video size changes.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
     @param width: video width in pixel [IN].
     @param height: video height in pixel [IN].
     @version: LibVLC 4.0.0 or later.
     """
     pass
-class GlSwapCb(ctypes.c_void_p):
+class VideoSwapCb(ctypes.c_void_p):
     """Callback prototype called after performing drawing calls.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
     @version: LibVLC 4.0.0 or later.
     """
     pass
-class GlMakecurrentCb(ctypes.c_void_p):
+class VideoMakecurrentCb(ctypes.c_void_p):
     """Callback prototype to set up the OpenGL context for rendering.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
     @param enter: true to set the context as current, false to unset it [IN].
     @return: true on success.
     @version: LibVLC 4.0.0 or later.
     """
     pass
-class GlGetprocaddressCb(ctypes.c_void_p):
+class VideoGetprocaddressCb(ctypes.c_void_p):
     """Callback prototype to load opengl functions.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
     @param fct_name: name of the opengl function to load.
     @return: a pointer to the named OpenGL function the None otherwise.
     @version: LibVLC 4.0.0 or later.
@@ -1323,39 +1327,39 @@ class CallbackDecorators(object):
     VideoCleanupCb.__doc__ = '''Callback prototype to configure picture buffers format.
         @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() (and possibly modified by @ref libvlc_video_format_cb) [IN].
     '''
-    GlSetupCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_bool), ctypes.c_void_p)
-    GlSetupCb.__doc__ = '''Callback prototype called to initialize user data.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    VideoSetupCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_bool), ctypes.c_void_p)
+    VideoSetupCb.__doc__ = '''Callback prototype called to initialize user data.
+        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
         @return: true on success.
         @version: LibVLC 4.0.0 or later.
     '''
-    GlCleanupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
-    GlCleanupCb.__doc__ = '''Callback prototype called to release user data.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    VideoCleanupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
+    VideoCleanupCb.__doc__ = '''Callback prototype called to release user data.
+        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
         @version: LibVLC 4.0.0 or later.
     '''
-    GlResizeCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint)
-    GlResizeCb.__doc__ = '''Callback prototype called on video size changes.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    VideoUpdateOutputCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint)
+    VideoUpdateOutputCb.__doc__ = '''Callback prototype called on video size changes.
+        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
         @param width: video width in pixel [IN].
         @param height: video height in pixel [IN].
         @version: LibVLC 4.0.0 or later.
     '''
-    GlSwapCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
-    GlSwapCb.__doc__ = '''Callback prototype called after performing drawing calls.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    VideoSwapCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
+    VideoSwapCb.__doc__ = '''Callback prototype called after performing drawing calls.
+        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
         @version: LibVLC 4.0.0 or later.
     '''
-    GlMakecurrentCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_bool), ctypes.c_void_p, ctypes.c_bool)
-    GlMakecurrentCb.__doc__ = '''Callback prototype to set up the OpenGL context for rendering.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    VideoMakecurrentCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_bool), ctypes.c_void_p, ctypes.c_bool)
+    VideoMakecurrentCb.__doc__ = '''Callback prototype to set up the OpenGL context for rendering.
+        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
         @param enter: true to set the context as current, false to unset it [IN].
         @return: true on success.
         @version: LibVLC 4.0.0 or later.
     '''
-    GlGetprocaddressCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p)
-    GlGetprocaddressCb.__doc__ = '''Callback prototype to load opengl functions.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_opengl_callbacks}() [IN].
+    VideoGetprocaddressCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p)
+    VideoGetprocaddressCb.__doc__ = '''Callback prototype to load opengl functions.
+        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
         @param fct_name: name of the opengl function to load.
         @return: a pointer to the named OpenGL function the None otherwise.
         @version: LibVLC 4.0.0 or later.
@@ -3283,24 +3287,6 @@ class MediaPlayer(_Ctype):
         return libvlc_video_set_callbacks(self, lock, unlock, display, opaque)
 
 
-    def video_set_opengl_callbacks(self, gl_engine, setup_cb, cleanup_cb, resize_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque):
-        '''Set callbacks and data to render decoded video to a custom OpenGL texture
-        @warning: VLC will perform video rendering in its own thread and at its own rate,
-        You need to provide your own synchronisation mechanism.
-        OpenGL context need to be created before playing a media.
-        @param gl_engine: the OpenGL engine to use.
-        @param setup_cb: callback called to initialize user data.
-        @param cleanup_cb: callback called to clean up user data.
-        @param resize_cb: callback called to get the size of the video.
-        @param swap_cb: callback called after rendering a video frame (cannot be None).
-        @param makeCurrent_cb: callback called to enter/leave the opengl context (cannot be None).
-        @param getProcAddress_cb: opengl function loading callback (cannot be None).
-        @param opaque: private pointer passed to callbacks.
-        @version: LibVLC 4.0.0 or later.
-        '''
-        return libvlc_video_set_opengl_callbacks(self, gl_engine, setup_cb, cleanup_cb, resize_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque)
-
-
     def video_set_format(self, chroma, width, height, pitch):
         '''Set decoded video chroma and dimensions.
         This only works in combination with L{video_set_callbacks}(),
@@ -3323,6 +3309,24 @@ class MediaPlayer(_Ctype):
         @version: LibVLC 2.0.0 or later.
         '''
         return libvlc_video_set_format_callbacks(self, setup, cleanup)
+
+
+    def video_set_output_callbacks(self, engine, setup_cb, cleanup_cb, update_output_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque):
+        '''Set callbacks and data to render decoded video to a custom texture
+        @warning: VLC will perform video rendering in its own thread and at its own rate,
+        You need to provide your own synchronisation mechanism.
+        OpenGL context need to be created before playing a media.
+        @param engine: the GPU engine to use.
+        @param setup_cb: callback called to initialize user data.
+        @param cleanup_cb: callback called to clean up user data.
+        @param update_output_cb: callback called to get the size of the video.
+        @param swap_cb: callback called after rendering a video frame (cannot be None).
+        @param makeCurrent_cb: callback called to enter/leave the opengl context (cannot be None for \ref libvlc_video_engine_opengl and for \ref libvlc_video_engine_gles2).
+        @param getProcAddress_cb: opengl function loading callback (cannot be None for \ref libvlc_video_engine_opengl and for \ref libvlc_video_engine_gles2).
+        @param opaque: private pointer passed to callbacks \libvlc_return_bool.
+        @version: LibVLC 4.0.0 or later.
+        '''
+        return libvlc_video_set_output_callbacks(self, engine, setup_cb, cleanup_cb, update_output_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque)
 
 
     def set_nsobject(self, drawable):
@@ -3452,7 +3456,7 @@ class MediaPlayer(_Ctype):
         '''Sets a fixed decoded audio format.
         This only works in combination with L{audio_set_callbacks}(),
         and is mutually exclusive with L{audio_set_format_callbacks}().
-        @param format: a four-characters string identifying the sample format (e.g. "S16N" or "FL32").
+        @param format: a four-characters string identifying the sample format (e.g. "S16N" or "f32l").
         @param rate: sample rate (expressed in Hz).
         @param channels: channels count.
         @version: LibVLC 2.0.0 or later.
@@ -6009,27 +6013,6 @@ def libvlc_video_set_callbacks(mp, lock, unlock, display, opaque):
                     None, MediaPlayer, VideoLockCb, VideoUnlockCb, VideoDisplayCb, ctypes.c_void_p)
     return f(mp, lock, unlock, display, opaque)
 
-def libvlc_video_set_opengl_callbacks(mp, gl_engine, setup_cb, cleanup_cb, resize_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque):
-    '''Set callbacks and data to render decoded video to a custom OpenGL texture
-    @warning: VLC will perform video rendering in its own thread and at its own rate,
-    You need to provide your own synchronisation mechanism.
-    OpenGL context need to be created before playing a media.
-    @param mp: the media player.
-    @param gl_engine: the OpenGL engine to use.
-    @param setup_cb: callback called to initialize user data.
-    @param cleanup_cb: callback called to clean up user data.
-    @param resize_cb: callback called to get the size of the video.
-    @param swap_cb: callback called after rendering a video frame (cannot be None).
-    @param makeCurrent_cb: callback called to enter/leave the opengl context (cannot be None).
-    @param getProcAddress_cb: opengl function loading callback (cannot be None).
-    @param opaque: private pointer passed to callbacks.
-    @version: LibVLC 4.0.0 or later.
-    '''
-    f = _Cfunctions.get('libvlc_video_set_opengl_callbacks', None) or \
-        _Cfunction('libvlc_video_set_opengl_callbacks', ((1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,),), None,
-                    None, MediaPlayer, GlEngine, GlSetupCb, GlCleanupCb, GlResizeCb, GlSwapCb, GlMakecurrentCb, GlGetprocaddressCb, ctypes.c_void_p)
-    return f(mp, gl_engine, setup_cb, cleanup_cb, resize_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque)
-
 def libvlc_video_set_format(mp, chroma, width, height, pitch):
     '''Set decoded video chroma and dimensions.
     This only works in combination with L{libvlc_video_set_callbacks}(),
@@ -6059,6 +6042,27 @@ def libvlc_video_set_format_callbacks(mp, setup, cleanup):
         _Cfunction('libvlc_video_set_format_callbacks', ((1,), (1,), (1,),), None,
                     None, MediaPlayer, VideoFormatCb, VideoCleanupCb)
     return f(mp, setup, cleanup)
+
+def libvlc_video_set_output_callbacks(mp, engine, setup_cb, cleanup_cb, update_output_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque):
+    '''Set callbacks and data to render decoded video to a custom texture
+    @warning: VLC will perform video rendering in its own thread and at its own rate,
+    You need to provide your own synchronisation mechanism.
+    OpenGL context need to be created before playing a media.
+    @param mp: the media player.
+    @param engine: the GPU engine to use.
+    @param setup_cb: callback called to initialize user data.
+    @param cleanup_cb: callback called to clean up user data.
+    @param update_output_cb: callback called to get the size of the video.
+    @param swap_cb: callback called after rendering a video frame (cannot be None).
+    @param makeCurrent_cb: callback called to enter/leave the opengl context (cannot be None for \ref libvlc_video_engine_opengl and for \ref libvlc_video_engine_gles2).
+    @param getProcAddress_cb: opengl function loading callback (cannot be None for \ref libvlc_video_engine_opengl and for \ref libvlc_video_engine_gles2).
+    @param opaque: private pointer passed to callbacks \libvlc_return_bool.
+    @version: LibVLC 4.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_video_set_output_callbacks', None) or \
+        _Cfunction('libvlc_video_set_output_callbacks', ((1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, VideoEngine, VideoSetupCb, VideoCleanupCb, VideoUpdateOutputCb, VideoSwapCb, VideoMakecurrentCb, VideoGetprocaddressCb, ctypes.c_void_p)
+    return f(mp, engine, setup_cb, cleanup_cb, update_output_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque)
 
 def libvlc_media_player_set_nsobject(p_mi, drawable):
     '''Set the NSView handler where the media player should render its video output.
@@ -6227,7 +6231,7 @@ def libvlc_audio_set_format(mp, format, rate, channels):
     This only works in combination with L{libvlc_audio_set_callbacks}(),
     and is mutually exclusive with L{libvlc_audio_set_format_callbacks}().
     @param mp: the media player.
-    @param format: a four-characters string identifying the sample format (e.g. "S16N" or "FL32").
+    @param format: a four-characters string identifying the sample format (e.g. "S16N" or "f32l").
     @param rate: sample rate (expressed in Hz).
     @param channels: channels count.
     @version: LibVLC 2.0.0 or later.

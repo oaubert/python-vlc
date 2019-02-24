@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.4107"
-__libvlc_version__ = "3.0.4"
-__generator_version__ = "1.7"
-build_date  = "Mon Nov 12 23:07:30 2018 3.0.4"
+__version__ = "3.0.6108"
+__libvlc_version__ = "3.0.6"
+__generator_version__ = "1.8"
+build_date  = "Sun Feb 24 16:20:25 2019 3.0.6"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -124,13 +124,7 @@ def find_lib():
     if dll is not None:
         return dll, plugin_path
 
-    if sys.platform.startswith('linux'):
-        p = find_library('vlc')
-        try:
-            dll = ctypes.CDLL(p)
-        except OSError:  # may fail
-            dll = ctypes.CDLL('libvlc.so.5')
-    elif sys.platform.startswith('win'):
+    if sys.platform.startswith('win'):
         libname = 'libvlc.dll'
         p = find_library(libname)
         if p is None:
@@ -195,7 +189,17 @@ def find_lib():
             dll = ctypes.CDLL('libvlc.dylib')
 
     else:
-        raise NotImplementedError('%s: %s not supported' % (sys.argv[0], sys.platform))
+        # All other OSes (linux, freebsd...)
+        p = find_library('vlc')
+        try:
+            dll = ctypes.CDLL(p)
+        except OSError:  # may fail
+            dll = None
+        if dll is None:
+            try:
+                dll = ctypes.CDLL('libvlc.so.5')
+            except:
+                raise NotImplementedError('Cannot find libvlc lib')
 
     return (dll, plugin_path)
 
