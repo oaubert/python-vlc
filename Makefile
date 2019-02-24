@@ -1,6 +1,12 @@
 GENERATE:=python3 generator/generate.py
 DEV_INCLUDE_DIR=../../include/vlc
-INSTALLED_INCLUDE_DIR=/usr/include/vlc
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),FreeBSD)
+    INSTALLED_INCLUDE_DIR=/usr/local/include/vlc
+else
+    INSTALLED_INCLUDE_DIR=/usr/include/vlc
+endif
 
 DEV_PATH=generated/dev
 VERSIONED_PATH=generated/3.0

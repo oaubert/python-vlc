@@ -127,6 +127,12 @@ def find_lib():
             dll = ctypes.CDLL(p)
         except OSError:  # may fail
             dll = ctypes.CDLL('libvlc.so.5')
+    elif sys.platform.startswith('freebsd'):
+        p = find_library('vlc')
+        try:
+            dll = ctypes.CDLL(p)
+        except OSError:  # may fail
+            dll = ctypes.CDLL('libvlc.so.5')
     elif sys.platform.startswith('win'):
         libname = 'libvlc.dll'
         p = find_library(libname)
