@@ -121,19 +121,7 @@ def find_lib():
     if dll is not None:
         return dll, plugin_path
 
-    if sys.platform.startswith('linux'):
-        p = find_library('vlc')
-        try:
-            dll = ctypes.CDLL(p)
-        except OSError:  # may fail
-            dll = ctypes.CDLL('libvlc.so.5')
-    elif sys.platform.startswith('freebsd'):
-        p = find_library('vlc')
-        try:
-            dll = ctypes.CDLL(p)
-        except OSError:  # may fail
-            dll = ctypes.CDLL('libvlc.so.5')
-    elif sys.platform.startswith('win'):
+    if sys.platform.startswith('win'):
         libname = 'libvlc.dll'
         p = find_library(libname)
         if p is None:
@@ -198,7 +186,17 @@ def find_lib():
             dll = ctypes.CDLL('libvlc.dylib')
 
     else:
-        raise NotImplementedError('%s: %s not supported' % (sys.argv[0], sys.platform))
+        # All other OSes (linux, freebsd...)
+        p = find_library('vlc')
+        try:
+            dll = ctypes.CDLL(p)
+        except OSError:  # may fail
+            dll = None
+        if dll is None:
+            try:
+                dll = ctypes.CDLL('libvlc.so.5')
+            except:
+                raise NotImplementedError('Cannot find libvlc lib')
 
     return (dll, plugin_path)
 
