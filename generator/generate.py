@@ -56,7 +56,7 @@ __all__     = ('Parser',
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ =  '1.8'
+__version__ =  '1.9'
 
 _debug = False
 
@@ -422,11 +422,21 @@ class Par(object):
 class Val(object):
     """Enum name and value.
     """
-    def __init__(self, enum, value):
+    def __init__(self, enum, value, context=None):
         self.enum = enum  # C name
         # convert name
         t = enum.split('_')
-        n = t[-1]
+        if context is not None:
+            # A context (enum type name) is provided. Strip out the
+            # common prefix.
+            prefix = os.path.commonprefix( (enum, re.sub('_t$', '_', context)) )
+            n = enum.replace(prefix, '', 1)
+        else:
+            # No prefix. Fallback on the previous version (which
+            # considers only the last _* portion of the name)
+            n = t[-1]
+        # Special case for debug levels and roles (with non regular name)
+        n = re.sub('^(LIBVLC_|role_|marquee_|adjust_|AudioChannel_|AudioOutputDevice_)', '', n)
         if len(n) <= 1:  # single char name
             n = '_'.join( t[-2:] )  # some use 1_1, 5_1, etc.
         if n[0].isdigit():  # can't start with a number
@@ -528,11 +538,11 @@ class Parser(object):
                         v = hex(e)
                     else:
                         v = str(e)
-                    vals.append(Val(n, v))
+                    vals.append(Val(n, v, context=name))
                 elif n:  # only name
                     e += 1
                     locs[n] = e
-                    vals.append(Val(n, str(e)))
+                    vals.append(Val(n, str(e), context=name))
 
             name = name.strip()
             if not name:  # anonymous
