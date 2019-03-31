@@ -713,7 +713,7 @@ class Parser(object):
         # approaches.
         if version is None:
             # Try to get version information from git describe
-            git_dir = Path(h_files[0]).parents[2].joinpath('.git')
+            git_dir = Path(h_files[0]).absolute().parents[2].joinpath('.git')
             if git_dir.is_dir():
                 # We are in a git tree. Let's get the version information
                 # from there if we can call git
