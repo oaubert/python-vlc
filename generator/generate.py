@@ -629,9 +629,13 @@ class Parser(object):
 
             else:  # parse line
                 t, m = t.strip(), None
+
                 if s or t.startswith('/*'):  # in comment
                     s = not t.endswith('*/')
+                    m = match_re(t.split('/*', 1)[0])
                 elif a:  # accumulate multi-line
+                    if '/*' in t:
+                        s = not t.endswith('*/')
                     t = t.split('/*', 1)[0].rstrip()  # //?
                     a.append(t)
                     if (t.endswith(ends) if isinstance(ends, basestring) else ends.match(t)):  # end
