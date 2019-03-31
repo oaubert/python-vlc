@@ -28,7 +28,7 @@
 U{http://wiki.videolan.org/LibVLC}.
 
 You can find the documentation and a README file with some examples
-at U{http://www.olivieraubert.net/vlc/python-ctypes/}.
+at U{https://www.olivieraubert.net/vlc/python-ctypes/}.
 
 Basically, the most important class is L{Instance}, which is used
 to create a libvlc instance.  From this instance, you then create
@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.6108"
+__version__ = "3.0.6109"
 __libvlc_version__ = "3.0.6"
-__generator_version__ = "1.8"
-build_date  = "Sun Feb 24 16:20:25 2019 3.0.6"
+__generator_version__ = "1.9"
+build_date  = "Sun Mar 31 20:14:16 2019 3.0.6"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -298,7 +298,7 @@ def _Constructor(cls, ptr=_internal_guard):
 class _Cstruct(ctypes.Structure):
     """(INTERNAL) Base class for ctypes structures.
     """
-    _fields_ = []  # list of 2-tuples ('name', ctyptes.<type>)
+    _fields_ = []  # list of 2-tuples ('name', ctypes.<type>)
 
     def __str__(self):
         l = [' %s:\t%s' % (n, getattr(self, n)) for n, _ in self._fields_]
@@ -319,7 +319,7 @@ class _Ctype(object):
         return this._as_parameter_
 
 class ListPOINTER(object):
-    """Just like a POINTER but accept a list of ctype as an argument.
+    """Just like a POINTER but accept a list of etype elements as an argument.
     """
     def __init__(self, etype):
         self.etype = etype
@@ -453,13 +453,13 @@ class DialogQuestionType(_Enum):
 libvlc dialog external api.
     '''
     _enum_names_ = {
-        0: 'NORMAL',
-        1: 'WARNING',
-        2: 'CRITICAL',
+        0: 'DIALOG_QUESTION_NORMAL',
+        1: 'DIALOG_QUESTION_WARNING',
+        2: 'DIALOG_QUESTION_CRITICAL',
     }
-DialogQuestionType.CRITICAL = DialogQuestionType(2)
-DialogQuestionType.NORMAL   = DialogQuestionType(0)
-DialogQuestionType.WARNING  = DialogQuestionType(1)
+DialogQuestionType.DIALOG_QUESTION_CRITICAL = DialogQuestionType(2)
+DialogQuestionType.DIALOG_QUESTION_NORMAL   = DialogQuestionType(0)
+DialogQuestionType.DIALOG_QUESTION_WARNING  = DialogQuestionType(1)
 
 class EventType(_Enum):
     '''Event types.
@@ -687,10 +687,10 @@ class TrackType(_Enum):
         -1: 'unknown',
         0: 'audio',
         1: 'video',
-        2: 'text',
+        2: 'ext',
     }
 TrackType.audio   = TrackType(0)
-TrackType.text    = TrackType(2)
+TrackType.ext     = TrackType(2)
 TrackType.unknown = TrackType(-1)
 TrackType.video   = TrackType(1)
 
@@ -698,23 +698,23 @@ class VideoOrient(_Enum):
     '''N/A
     '''
     _enum_names_ = {
-        0: 'left',
-        1: 'right',
-        2: 'left',
-        3: 'right',
-        4: 'top',
-        5: 'bottom',
-        6: 'top',
-        7: 'bottom',
+        0: 'top_left',
+        1: 'top_right',
+        2: 'bottom_left',
+        3: 'bottom_right',
+        4: 'left_top',
+        5: 'left_bottom',
+        6: 'right_top',
+        7: 'right_bottom',
     }
-VideoOrient.bottom = VideoOrient(5)
-VideoOrient.bottom = VideoOrient(7)
-VideoOrient.left   = VideoOrient(0)
-VideoOrient.left   = VideoOrient(2)
-VideoOrient.right  = VideoOrient(1)
-VideoOrient.right  = VideoOrient(3)
-VideoOrient.top    = VideoOrient(4)
-VideoOrient.top    = VideoOrient(6)
+VideoOrient.bottom_left  = VideoOrient(2)
+VideoOrient.bottom_right = VideoOrient(3)
+VideoOrient.left_bottom  = VideoOrient(5)
+VideoOrient.left_top     = VideoOrient(4)
+VideoOrient.right_bottom = VideoOrient(7)
+VideoOrient.right_top    = VideoOrient(6)
+VideoOrient.top_left     = VideoOrient(0)
+VideoOrient.top_right    = VideoOrient(1)
 
 class VideoProjection(_Enum):
     '''N/A
@@ -722,11 +722,11 @@ class VideoProjection(_Enum):
     _enum_names_ = {
         0: 'rectangular',
         1: 'equirectangular',
-        0x100: 'standard',
+        0x100: 'cubemap_layout_standard',
     }
-VideoProjection.equirectangular = VideoProjection(1)
-VideoProjection.rectangular     = VideoProjection(0)
-VideoProjection.standard        = VideoProjection(0x100)
+VideoProjection.cubemap_layout_standard = VideoProjection(0x100)
+VideoProjection.equirectangular         = VideoProjection(1)
+VideoProjection.rectangular             = VideoProjection(0)
 
 class MediaType(_Enum):
     '''Media type
@@ -754,15 +754,15 @@ See libvlc_media_parse_with_options.
     _enum_names_ = {
         0x0: 'local',
         0x1: 'network',
-        0x2: 'local',
-        0x4: 'network',
-        0x8: 'interact',
+        0x2: 'fetch_local',
+        0x4: 'fetch_network',
+        0x8: 'do_interact',
     }
-MediaParseFlag.interact = MediaParseFlag(0x8)
-MediaParseFlag.local    = MediaParseFlag(0x0)
-MediaParseFlag.local    = MediaParseFlag(0x2)
-MediaParseFlag.network  = MediaParseFlag(0x1)
-MediaParseFlag.network  = MediaParseFlag(0x4)
+MediaParseFlag.do_interact   = MediaParseFlag(0x8)
+MediaParseFlag.fetch_local   = MediaParseFlag(0x2)
+MediaParseFlag.fetch_network = MediaParseFlag(0x4)
+MediaParseFlag.local         = MediaParseFlag(0x0)
+MediaParseFlag.network       = MediaParseFlag(0x1)
 
 class MediaParsedStatus(_Enum):
     '''Parse status used sent by libvlc_media_parse_with_options() or returned by
@@ -844,22 +844,22 @@ class Position(_Enum):
         1: 'left',
         2: 'right',
         3: 'top',
-        4: 'left',
-        5: 'right',
+        4: 'top_left',
+        5: 'top_right',
         6: 'bottom',
-        7: 'left',
-        8: 'right',
+        7: 'bottom_left',
+        8: 'bottom_right',
     }
-Position.bottom  = Position(6)
-Position.center  = Position(0)
-Position.disable = Position(-1)
-Position.left    = Position(1)
-Position.left    = Position(4)
-Position.left    = Position(7)
-Position.right   = Position(2)
-Position.right   = Position(5)
-Position.right   = Position(8)
-Position.top     = Position(3)
+Position.bottom       = Position(6)
+Position.bottom_left  = Position(7)
+Position.bottom_right = Position(8)
+Position.center       = Position(0)
+Position.disable      = Position(-1)
+Position.left         = Position(1)
+Position.right        = Position(2)
+Position.top          = Position(3)
+Position.top_left     = Position(4)
+Position.top_right    = Position(5)
 
 class TeletextKey(_Enum):
     '''Enumeration of teletext keys than can be passed via
@@ -882,23 +882,23 @@ class VideoLogoOption(_Enum):
     '''Option values for libvlc_video_{get,set}_logo_{int,string}.
     '''
     _enum_names_ = {
-        0: 'enable',
-        1: 'file',
+        0: 'logo_enable',
+        1: 'logo_file',
         2: 'logo_x',
         3: 'logo_y',
-        4: 'delay',
-        5: 'repeat',
-        6: 'opacity',
-        7: 'position',
+        4: 'logo_delay',
+        5: 'logo_repeat',
+        6: 'logo_opacity',
+        7: 'logo_position',
     }
-VideoLogoOption.delay    = VideoLogoOption(4)
-VideoLogoOption.enable   = VideoLogoOption(0)
-VideoLogoOption.file     = VideoLogoOption(1)
-VideoLogoOption.logo_x   = VideoLogoOption(2)
-VideoLogoOption.logo_y   = VideoLogoOption(3)
-VideoLogoOption.opacity  = VideoLogoOption(6)
-VideoLogoOption.position = VideoLogoOption(7)
-VideoLogoOption.repeat   = VideoLogoOption(5)
+VideoLogoOption.logo_delay    = VideoLogoOption(4)
+VideoLogoOption.logo_enable   = VideoLogoOption(0)
+VideoLogoOption.logo_file     = VideoLogoOption(1)
+VideoLogoOption.logo_opacity  = VideoLogoOption(6)
+VideoLogoOption.logo_position = VideoLogoOption(7)
+VideoLogoOption.logo_repeat   = VideoLogoOption(5)
+VideoLogoOption.logo_x        = VideoLogoOption(2)
+VideoLogoOption.logo_y        = VideoLogoOption(3)
 
 class VideoAdjustOption(_Enum):
     '''Option values for libvlc_video_{get,set}_adjust_{int,float,bool}.
@@ -1728,7 +1728,10 @@ class EventManager(_Ctype):
 
         @note: The callback function must have at least one argument,
         an Event instance.  Any other, optional positional and keyword
-        arguments are in B{addition} to the first one.
+        arguments are in B{addition} to the first one. Warning: libvlc
+        is not reentrant, i.e. you cannot call libvlc functions from
+        an event handler. They must be called from the main
+        application thread.
         """
         if not isinstance(eventtype, EventType):
             raise VLCException("%s required: %r" % ('EventType', eventtype))
