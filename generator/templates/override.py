@@ -448,7 +448,10 @@ class EventManager:
 
         @note: The callback function must have at least one argument,
         an Event instance.  Any other, optional positional and keyword
-        arguments are in B{addition} to the first one.
+        arguments are in B{addition} to the first one. Warning: libvlc
+        is not reentrant, i.e. you cannot call libvlc functions from
+        an event handler. They must be called from the main
+        application thread.
         """
         if not isinstance(eventtype, EventType):
             raise VLCException("%s required: %r" % ('EventType', eventtype))

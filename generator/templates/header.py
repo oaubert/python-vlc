@@ -28,7 +28,7 @@
 U{http://wiki.videolan.org/LibVLC}.
 
 You can find the documentation and a README file with some examples
-at U{http://www.olivieraubert.net/vlc/python-ctypes/}.
+at U{https://www.olivieraubert.net/vlc/python-ctypes/}.
 
 Basically, the most important class is L{Instance}, which is used
 to create a libvlc instance.  From this instance, you then create
@@ -295,7 +295,7 @@ def _Constructor(cls, ptr=_internal_guard):
 class _Cstruct(ctypes.Structure):
     """(INTERNAL) Base class for ctypes structures.
     """
-    _fields_ = []  # list of 2-tuples ('name', ctyptes.<type>)
+    _fields_ = []  # list of 2-tuples ('name', ctypes.<type>)
 
     def __str__(self):
         l = [' %s:\t%s' % (n, getattr(self, n)) for n, _ in self._fields_]
@@ -316,7 +316,7 @@ class _Ctype(object):
         return this._as_parameter_
 
 class ListPOINTER(object):
-    """Just like a POINTER but accept a list of ctype as an argument.
+    """Just like a POINTER but accept a list of etype elements as an argument.
     """
     def __init__(self, etype):
         self.etype = etype
