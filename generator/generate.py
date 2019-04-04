@@ -745,6 +745,7 @@ class _Generator(object):
     outpath      = ''
     type_re      = None  # must be overloaded
     type2class   = {}    # must be overloaded
+    type2class_out = {}  # Specific values for OUT parameters
 
     def __init__(self, parser=None):
         self.parser = parser
@@ -767,10 +768,15 @@ class _Generator(object):
                     errorf('no type conversion for %s %s in %s', p.type, p.name, f.name)
         errors('%s type conversion(s) missing', e)
 
-    def class4(self, type):
+    def class4(self, type, flag=None):
         """Return the class name for a type or enum.
         """
-        return self.type2class.get(type, '') or ('FIXME_%s' % (type,))
+        cl = None
+        if flag == Flag.Out:
+            cl = self.type2class_out.get(type)
+        if cl is None:
+            cl = self.type2class.get(type, '') or ('FIXME_%s' % (type,))
+        return cl
 
     def convert_classnames(self, element_list):
         """Convert enum names to class names.
@@ -967,6 +973,10 @@ class PythonGenerator(_Generator):
         'WINDOWHANDLE': 'ctypes.c_ulong',
     }
 
+    type2class_out = {
+        'char**':    'ctypes.POINTER(ctypes.c_char_p)',
+    }
+
     # Python classes, i.e. classes for which we want to
     # generate class wrappers around libvlc functions
     defined_classes = (
@@ -1042,7 +1052,7 @@ class PythonGenerator(_Generator):
                 flags += ','
 
             # arg classes
-            types = [self.class4(p.type) for p in f.pars]
+            types = [self.class4(p.type, p.flags(f.out)[0]) for p in f.pars]
 
             # result type
             rtype = self.class4(f.type)
@@ -1149,7 +1159,7 @@ class _Enum(ctypes.c_uint):
             # valid ctypes signature, specifically for the
             # libvlc_video_lock_cb callback. It should be fixed in a better way (more generic)
             types = ', '.join([self.class4(f.type if f.type != 'void**' else 'void*')] +  #PYCHOK flake
-                              [self.class4(p.type) for p in f.pars])
+                              [self.class4(p.type, p.flags(f.out)[0]) for p in f.pars])
 
             # xformed doc string with first @param
             docs = self.epylink(f.epydocs(0, 8))

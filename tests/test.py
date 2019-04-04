@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 # This Python file uses the following encoding: utf-8
 
 #
@@ -26,6 +26,10 @@
 """Unittest module.
 """
 
+import logging
+logger = logging.getLogger(__name__)
+
+import ctypes
 import os
 import unittest
 try:
@@ -154,5 +158,34 @@ class TestVLCAPI(unittest.TestCase):
         self.assertEqual(audiotrack.bitrate, 83051)
         self.assertEqual(m.get_duration(), 5568)
 
+    def notest_log_get_context(self):
+        """Semi-working test for log_get_context.
+
+        It crashes with a Segmentation fault after displaying some
+        messages. This should be fixed + a better test should be
+        devised so that we do not clutter the terminal.
+        """
+        libc = ctypes.cdll.LoadLibrary("libc.{}".format("so.6" if os.uname()[0] == 'Linux' else "dylib"))
+        @vlc.CallbackDecorators.LogCb
+        def log_handler(instance, log_level, ctx, fmt, va_list):
+            bufferString = ctypes.create_string_buffer(4096)
+            libc.vsprintf(bufferString, fmt, ctypes.cast(va_list, ctypes.c_void_p))
+            msg = bufferString.value.decode('utf-8')
+            module, _file, _line = vlc.libvlc_log_get_context(ctx)
+            module = module.decode('utf-8')
+            try:
+                logger.warn(u"log_level={log_level}, module={module}, msg={msg}".format(log_level=log_level, module=module, msg=msg))
+            except Exception as e:
+                logger.exception(e)
+                import pdb; pdb.set_trace()
+
+        instance = vlc.Instance('--vout dummy --aout dummy')
+        instance.log_set(log_handler, None)
+        player = instance.media_player_new()
+        media = instance.media_new(SAMPLE)
+        player.set_media(media)
+        player.play()
+
 if __name__ == '__main__':
+    logging.basicConfig()
     unittest.main()

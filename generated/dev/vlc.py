@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 __version__ = "4.0.0-dev-7165-g8c608cc575109"
 __libvlc_version__ = "4.0.0-dev-7165-g8c608cc575"
 __generator_version__ = "1.9"
-build_date  = "Sun Mar 31 20:14:15 2019 4.0.0-dev-7165-g8c608cc575"
+build_date  = "Thu Apr  4 14:25:23 2019 4.0.0-dev-7165-g8c608cc575"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -822,19 +822,19 @@ class VideoMarqueeOption(_Enum):
         5: 'Refresh',
         6: 'Size',
         7: 'Timeout',
-        8: 'marquee_X',
-        9: 'marquee_Y',
+        8: 'X',
+        9: 'Y',
     }
-VideoMarqueeOption.Color     = VideoMarqueeOption(2)
-VideoMarqueeOption.Enable    = VideoMarqueeOption(0)
-VideoMarqueeOption.Opacity   = VideoMarqueeOption(3)
-VideoMarqueeOption.Position  = VideoMarqueeOption(4)
-VideoMarqueeOption.Refresh   = VideoMarqueeOption(5)
-VideoMarqueeOption.Size      = VideoMarqueeOption(6)
-VideoMarqueeOption.Text      = VideoMarqueeOption(1)
-VideoMarqueeOption.Timeout   = VideoMarqueeOption(7)
-VideoMarqueeOption.marquee_X = VideoMarqueeOption(8)
-VideoMarqueeOption.marquee_Y = VideoMarqueeOption(9)
+VideoMarqueeOption.Color    = VideoMarqueeOption(2)
+VideoMarqueeOption.Enable   = VideoMarqueeOption(0)
+VideoMarqueeOption.Opacity  = VideoMarqueeOption(3)
+VideoMarqueeOption.Position = VideoMarqueeOption(4)
+VideoMarqueeOption.Refresh  = VideoMarqueeOption(5)
+VideoMarqueeOption.Size     = VideoMarqueeOption(6)
+VideoMarqueeOption.Text     = VideoMarqueeOption(1)
+VideoMarqueeOption.Timeout  = VideoMarqueeOption(7)
+VideoMarqueeOption.X        = VideoMarqueeOption(8)
+VideoMarqueeOption.Y        = VideoMarqueeOption(9)
 
 class NavigateMode(_Enum):
     '''Navigation mode.
@@ -4567,7 +4567,7 @@ def libvlc_log_get_context(ctx):
     '''
     f = _Cfunctions.get('libvlc_log_get_context', None) or \
         _Cfunction('libvlc_log_get_context', ((1,), (2,), (2,), (2,),), None,
-                    None, Log_ptr, ListPOINTER(ctypes.c_char_p), ListPOINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_uint))
+                    None, Log_ptr, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_uint))
     return f(ctx)
 
 def libvlc_log_get_object(ctx, id):
@@ -4588,7 +4588,7 @@ def libvlc_log_get_object(ctx, id):
     '''
     f = _Cfunctions.get('libvlc_log_get_object', None) or \
         _Cfunction('libvlc_log_get_object', ((1,), (2,), (2,), (1,),), None,
-                    None, Log_ptr, ListPOINTER(ctypes.c_char_p), ListPOINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_uint))
+                    None, Log_ptr, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_uint))
     return f(ctx, id)
 
 def libvlc_log_unset(p_instance):
