@@ -437,8 +437,6 @@ class Val(object):
             n = t[-1]
         # Special case for debug levels and roles (with non regular name)
         n = re.sub('^(LIBVLC_|role_|marquee_|adjust_|AudioChannel_|AudioOutputDevice_)', '', n)
-        if len(n) <= 1:  # single char name
-            n = '_'.join( t[-2:] )  # some use 1_1, 5_1, etc.
         if n[0].isdigit():  # can't start with a number
             n = '_' + n
         if n == 'None': # can't use a reserved python keyword
