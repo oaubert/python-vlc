@@ -1,7 +1,6 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
-#
 # tkinter example for VLC Python bindings
 # Copyright (C) 2015 the VideoLAN team
 #
@@ -19,13 +18,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
 #
-"""A simple example for VLC python bindings using tkinter. Uses python 3.4
+"""A simple example for VLC python bindings using tkinter.
+
+Requires Python 3.4 or later.
 
 Author: Patrick Fay
 Date: 23-09-2015
 """
 
-__version__ = '19.07.24'  # mrJean1 at Gmail dot com
+# Tested with Python 3.7.4, tkinter/Tk 8.6.9 on macOS 10.13.6 only.
+__version__ = '19.07.26'  # mrJean1 at Gmail dot com
 
 # import external libraries
 import vlc
@@ -35,14 +37,15 @@ if sys.version_info[0] < 3:
     import Tkinter as Tk
     from Tkinter import ttk
     from Tkinter.filedialog import askopenfilename
+    from Tkinter.tkMessageBox import showerror
 else:
     import tkinter as Tk
     from tkinter import ttk
     from tkinter.filedialog import askopenfilename
+    from tkinter.messagebox import showerror
 import os
 from os.path import basename, expanduser, isfile, join as joined
 from pathlib import Path
-from threading import Thread, Event
 import time
 
 _isMacOS   = sys.platform.startswith('darwin')
@@ -72,49 +75,79 @@ if _isMacOS:
             return None
         libtk = 'N/A'
 
-    def _shortcut(label, key, callback):
-        # XXX key shows in the menu, but doesn't work while video plays
-        return dict(label=label, accelerator='Command-' + key,
-                                 command=callback)
+    _Command_ = 'Command-'  # mimick modifier
+    _Command  = ''  # '' means up, _Command_ means down
+
+    def _handleShortcuts(root):
+        '''Set up several event handlers to make Command-<key>
+           shortcut binding work on macOS, since tkinter does
+           not seem to recognize binding 'Command-<keys>.
+
+           This is obviously a kludge (only tested with Python
+           3.7.4 and tk 8.6.9 on macOS 10.13.6).
+        '''
+        # There is no Command key modifier in Tk on macOS: it is called Meta,
+        # there is only Meta_L, no Meta_R and both comamnd keyboard keys
+        # generate Meta_L events. Same issue for the Option keys, called Alt,
+        # there's only Alt_L, no Alt_R and both Option keys generate Alt_L.
+        # See answers at: <https://StackOverflow.com/questions/6378556/
+        # multiple-key-event-bindings-in-tkinter-control-e-command-apple-e-etc>
+
+        def _cmd_key(up_down):  # handle command key
+            global _Command
+            _Command = up_down
+
+        def _any_key(event):  # handle other keys
+            e = _Command + str(event.keysym)  # .lower()
+            # since root.event_generate(e) throws a RecursionError,
+            # use an ugly workaround for the configured shortcuts
+            c = Player._shortcuts.get(e, None)
+            if c:
+                c(event)
+
+        root.event_add('<<CommandDown>>', '<KeyPress-Meta_L>',   '<KeyPress-Meta_R>')
+        root.event_add('<<CommandUp>>',   '<KeyRelease-Meta_L>', '<KeyRelease-Meta_R>')
+        # handle Command key press and release ...
+        root.bind('<<CommandDown>>', lambda _: _cmd_key(_Command_))
+        root.bind('<<CommandUp>>',   lambda _: _cmd_key(''))
+        # ... and handle all other keys, pressed only
+        root.bind('<Key>', _any_key)
+
+    def _shortcut(label, key, callback, frame=None):
+        # <https://TkDocs.com/tutorial/menus.html>
+        key = _Command_ + key  # .lower()
+        if frame:
+            # frame.bind(key, callback)  # doesn't work, workaround ...
+            Player._shortcuts[key] = callback  # see _handleShortcuts
+        # keys show as upper-case, always
+        return dict(label=label, accelerator=key, command=callback)
 
 else:  # *nix, Xwindows and Windows
-    def _shortcut(label, key, callback):
-        return dict(label=label, underline=label.upper().index(key),
-                                 command=callback)
+
     libtk = 'N/A'
 
+    def _handleShortcuts(unused):
+        pass
 
-class ttkTimer(Thread):
-    """a class serving same function as wxTimer... but there may be better ways to do this
-    """
-    def __init__(self, callback, tick):
-        Thread.__init__(self)
-        self.callback = callback
-        self.stopFlag = Event()
-        self.tick = tick
-        self.iters = 0
-
-    def run(self):
-        while not self.stopFlag.wait(self.tick):
-            self.iters += 1
-            self.callback()
-
-    def stop(self):
-        self.stopFlag.set()
-
-    def get(self):
-        return self.iters
+    def _shortcut(label, key, callback, frame=None):
+        # <https://TkDocs.com/tutorial/menus.html>
+        if frame:
+            frame.bind('Control-%s>' % (key,), callback)
+        return dict(label=label, underline=label.lower().index(key),
+                                 command=callback)
 
 
 class Player(Tk.Frame):
     """The main window has to deal with events.
     """
+    _shortcuts = {}  # macOS only, see _handleShortcuts
+
     def __init__(self, parent, title=None, video=''):
         Tk.Frame.__init__(self, parent)
 
-        self.parent = parent
+        self.parent = parent  # == root
         self.parent.title(title or "tkVLCplayer")
-        self.video = video
+        self.video = expanduser(video)
 
         # Menu Bar
         #   File Menu
@@ -122,69 +155,85 @@ class Player(Tk.Frame):
         self.parent.config(menu=menubar)
 
         fileMenu = Tk.Menu(menubar)
-        fileMenu.add_command(**_shortcut("Open", 'O', self.OnOpen))
+        fileMenu.add_command(**_shortcut("Open", 'o', self.OnOpen, parent))
         fileMenu.add_separator()
-        fileMenu.add_command(label="Play", command=self.OnPlay)
-        fileMenu.add_command(**_shortcut("Pause", 'P', self.OnPause))
+        fileMenu.add_command(**_shortcut("Play", 'p', self.OnPlay, parent))  # Play/Pause
         fileMenu.add_command(label="Stop", command=self.OnStop)
         fileMenu.add_separator()
-        fileMenu.add_command(**_shortcut("Mute", 'M', self.OnSetVolume))
-        fileMenu.add_separator()
-        fileMenu.add_command(**_shortcut("Exit", 'X', _quit))
+        fileMenu.add_command(**_shortcut("Mute", 'm', self.OnMute, parent))
+        # fileMenu.add_separator()
+        # fileMenu.add_command(**_shortcut("Exit", 'x', self.OnExit, parent))
         menubar.add_cascade(label="File", menu=fileMenu)
+        self.fileMenu = fileMenu
+        self.playIndex = fileMenu.index('Play')
+        self.muteIndex = fileMenu.index('Mute')
 
-        # The second panel holds controls
-        self.player = None
+        # first, top panel shows video
         self.videopanel = ttk.Frame(self.parent)
-        self.canvas = Tk.Canvas(self.videopanel).pack(fill=Tk.BOTH,expand=1)
-        self.videopanel.pack(fill=Tk.BOTH,expand=1)
+        self.canvas = Tk.Canvas(self.videopanel)
+        self.canvas.pack(fill=Tk.BOTH, expand=1)
+        self.videopanel.pack(fill=Tk.BOTH, expand=1)
 
-        ctrlpanel = ttk.Frame(self.parent)
-        pause  = ttk.Button(ctrlpanel, text="Pause", command=self.OnPause)
-        play   = ttk.Button(ctrlpanel, text="Play", command=self.OnPlay)
-        stop   = ttk.Button(ctrlpanel, text="Stop", command=self.OnStop)
-        volume = ttk.Button(ctrlpanel, text="Mute", command=self.OnSetVolume)
-        pause.pack(side=Tk.LEFT)
-        play.pack(side=Tk.LEFT)
+        # panel to hold buttons
+        buttons = ttk.Frame(self.parent)
+        self.playButton = ttk.Button(buttons, text="Play", command=self.OnPlay)
+        stop            = ttk.Button(buttons, text="Stop", command=self.OnStop)
+        self.muteButton = ttk.Button(buttons, text="Mute", command=self.OnMute)
+        self.playButton.pack(side=Tk.LEFT)
         stop.pack(side=Tk.LEFT)
-        volume.pack(side=Tk.LEFT)
-        self.volume_var = Tk.IntVar()
-        self.volslider = Tk.Scale(ctrlpanel, variable=self.volume_var, command=self.volume_sel,
-                                  from_=0, to=100, orient=Tk.HORIZONTAL, length=100)
-        self.volslider.pack(side=Tk.LEFT)
-        ctrlpanel.pack(side=Tk.BOTTOM)
+        self.muteButton.pack(side=Tk.LEFT)
+        self.muted = False
 
-        ctrlpanel2 = ttk.Frame(self.parent)
-        self.scale_var = Tk.DoubleVar()
-        self.timeslider_last_val = ""
-        self.timeslider = Tk.Scale(ctrlpanel2, variable=self.scale_var, command=self.scale_sel,
-                                   from_=0, to=1000, orient=Tk.HORIZONTAL, length=500)
-        self.timeslider.pack(side=Tk.BOTTOM, fill=Tk.X,expand=1)
-        self.timeslider_last_update = time.time()
-        ctrlpanel2.pack(side=Tk.BOTTOM,fill=Tk.X)
+        self.volMuted = ''
+        self.volVar = Tk.IntVar()
+        self.volSlider = Tk.Scale(buttons, variable=self.volVar, command=self.OnVolume,
+                                  from_=0, to=100, orient=Tk.HORIZONTAL, length=200,
+                                  showvalue=0, label='Volume')
+        self.volSlider.pack(side=Tk.LEFT)
+        buttons.pack(side=Tk.BOTTOM)
+
+        # panel to hold time slider
+        timers = ttk.Frame(self.parent)
+        self.timeVar = Tk.DoubleVar()
+        self.timeSliderLast = 0
+        self.timeSlider = Tk.Scale(timers, variable=self.timeVar, command=self.OnTime,
+                                   from_=0, to=1000, orient=Tk.HORIZONTAL, length=500,
+                                   showvalue=0)  # label='Time',
+        self.timeSlider.pack(side=Tk.BOTTOM, fill=Tk.X, expand=1)
+        self.timeSliderUpdate = time.time()
+        timers.pack(side=Tk.BOTTOM, fill=Tk.X)
 
         # VLC player controls
         self.Instance = vlc.Instance()
         self.player = self.Instance.media_player_new()
 
-        # below is a test, now use the File->Open file menu
-        #media = self.Instance.media_new('output.mp4')
-        #self.player.set_media(media)
-        #self.player.play() # hit the player button
-        #self.player.video_set_deinterlace(str_to_bytes('yadif'))
-
-        self.timer = ttkTimer(self.OnTimer, 1.0)
-        self.timer.start()
         self.parent.update()
 
-        #self.player.set_hwnd(self.GetHandle()) # for windows, OnOpen does this
+        self.OnTick()  # set the timer up
 
-    def OnExit(self, evt):
+    def OnExit(self, *unused):
         """Closes the window.
         """
-        self.Close()
+        # print("_quit: bye")
+        self.parent.quit()  # stops mainloop
+        self.parent.destroy()  # this is necessary on Windows to avoid
+        # ... Fatal Python Error: PyEval_RestoreThread: NULL tstate
+        os._exit(1)
 
-    def OnOpen(self):
+    def OnMute(self, *unused):
+        """Mute/Unmute audio.
+
+           @note: Vlc audio un/mute is not reliable, see vlc.py docs.
+        """
+        self.muted = m = not self.muted  # self.player.audio_get_mute()
+        self.player.audio_set_mute(m)
+        u = "Unmute" if m else "Mute"
+        self.fileMenu.entryconfig(self.muteIndex, label=u)
+        self.muteButton.config(text=u)
+        # update the volume slider
+        self.OnVolume()
+
+    def OnOpen(self, *unused):
         """Pop up a new dialow window to choose a file, then play the selected file.
         """
         # if a file is already running, then stop it.
@@ -200,14 +249,13 @@ class Player(Tk.Frame):
                                     title = "Choose a video",
                                     filetypes = (("all files", "*.*"),
                                                  ("mp4 files", "*.mp4"), ("mov files", "*.mov")))
-        if isfile(video):
-            # Creation
-            self.Media = self.Instance.media_new(str(video))
-            self.player.set_media(self.Media)
+        if isfile(video):  # Creation
+            m = self.Instance.media_new(str(video))
+            self.player.set_media(m)
             self.parent.title("tkVLCplayer - %s" % (basename(video),))
 
             # set the window id where to render VLC's video output
-            h = self.GetHandle()
+            h = self.videopanel.winfo_id()  # .winfo_visualid()?
             if _isWindows:
                 self.player.set_hwnd(h)
             elif _isMacOS:
@@ -223,134 +271,105 @@ class Player(Tk.Frame):
                 self.player.set_xwindow(h)  # fails on Windows
             # FIXME: this should be made cross-platform
             self.OnPlay()
-
             # set the volume slider to the current volume
-            #self.volslider.SetValue(self.player.audio_get_volume() / 2)
-            self.volslider.set(self.player.audio_get_volume())
+            self.volSlider.set(self.player.audio_get_volume())  # / 2
 
-    def OnPlay(self):
-        """Toggle the status to Play/Pause.
-        If no file is loaded, open the dialog window.
+    def OnPlay(self, *unused):
+        """Toggle to Play.  If no file is loaded, open the dialog window.
         """
-        # check if there is a file to play, otherwise open a
-        # Tk.FileDialog to select a file
+        # if there's no video to play or playing,
+        # open a Tk.FileDialog to select a file
         if not self.player.get_media():
             self.OnOpen()
-        else:
-            # Try to launch the media, if this fails display an error message
-            if self.player.play() == -1:
-                self.errorDialog("Unable to play.")
+        # Try to play, if this fails display an error message
+        elif self.player.play() == -1:
+            self.showError("Unable to play a video.")
+        else:  # re-label menu item to Pause and OnPause
+            self.OnPause(False)  # playing now
+            # switch shortcut from OnPlay to OnPause
+            Player._shortcuts[_Command_ + 'p'] = self.OnPause
+            # set volume slider to audio level
+            vol = self.player.audio_get_volume()
+            if vol > 0:
+                self.volVar.set(vol)
 
-    def GetHandle(self):
-        return self.videopanel.winfo_id()
-
-    #def OnPause(self, evt):
-    def OnPause(self):
-        """Pause the player.
+    def OnPause(self, paused=True):
+        """Toggle between Pause and Play.
         """
-        self.player.pause()
+        if paused:
+            paused = self.player.is_playing()
+            self.player.pause()  # toggles pause >< play
+        p = 'Play' if paused else 'Pause'
+        self.fileMenu.entryconfig(self.playIndex, label=p, command=self.OnPause)
+        self.playButton.config(text=p, command=self.OnPause)
 
-    def OnStop(self):
-        """Stop the player.
+    def OnStop(self, *unused):
+        """Stop the player, resets media.
         """
-        self.player.stop()
-        # reset the time slider
-        self.timeslider.set(0)
+        if self.player:
+            self.player.stop()
+            # reset the time slider
+            self.timeSlider.set(0)
 
-    def OnTimer(self):
-        """Update the time slider according to the current movie time.
+    def OnTick(self):
+        """Timer tick, update the time slider to the video time.
         """
-        if self.player is None:
-            return
-        # since the self.player.get_length can change while playing,
-        # re-set the timeslider to the correct range.
-        length = self.player.get_length()
-        dbl = length * 0.001
-        self.timeslider.config(to=dbl)
+        if self.player:
+            # since the self.player.get_length may change while
+            # playing, re-set the timeSlider to the correct range
+            t = self.player.get_length() * 1e-3  # to seconds
+            if t > 0:
+                self.timeSlider.config(to=t)
 
-        # update the time on the slider
-        tyme = self.player.get_time()
-        if tyme == -1:
-            tyme = 0
-        dbl = tyme * 0.001
-        self.timeslider_last_val = ("%.0f" % dbl) + ".0"
-        # don't want to programatically change slider while user is messing with it.
-        # wait 2 seconds after user lets go of slider
-        if time.time() > (self.timeslider_last_update + 2.0):
-            self.timeslider.set(dbl)
+                t = self.player.get_time() * 1e-3  # to seconds
+                # don't change slider while user is messing with it
+                if t > 0 and time.time() > (self.timeSliderUpdate + 2):
+                    self.timeSlider.set(t)
+                    self.timeSliderLast = int(self.timeVar.get())
+        # set the 1 second timer up gain
+        self.parent.after(1000, self.OnTick)
 
-    def scale_sel(self, evt):
-        if self.player is None:
-            return
-        nval = self.scale_var.get()
-        sval = str(nval)
-        if self.timeslider_last_val != sval:
-            # this is a hack. The timer updates the time slider.
-            # This change causes this rtn (the 'slider has changed' rtn) to be invoked.
-            # I can't tell the difference between when the user has manually moved the slider and when
-            # the timer changed the slider. But when the user moves the slider tkinter only notifies
-            # this rtn about once per second and when the slider has quit moving.
-            # Also, the tkinter notification value has no fractional seconds.
-            # The timer update rtn saves off the last update value (rounded to integer seconds) in timeslider_last_val
-            # if the notification time (sval) is the same as the last saved time timeslider_last_val then
-            # we know that this notification is due to the timer changing the slider.
-            # otherwise the notification is due to the user changing the slider.
-            # if the user is changing the slider then I have the timer routine wait for at least
-            # 2 seconds before it starts updating the slider again (so the timer doesn't start fighting with the
-            # user)
-            self.timeslider_last_update = time.time()
-            mval = "%.0f" % (nval * 1000)
-            self.player.set_time(int(mval))  # expects milliseconds
+    def OnTime(self, *unused):
+        if self.player:
+            t = self.timeVar.get()
+            if self.timeSliderLast != int(t):
+                # this is a hack. The timer updates the time slider.
+                # This change causes this rtn (the 'slider has changed' rtn)
+                # to be invoked.  I can't tell the difference between when
+                # the user has manually moved the slider and when the timer
+                # changed the slider.  But when the user moves the slider
+                # tkinter only notifies this rtn about once per second and
+                # when the slider has quit moving.
+                # Also, the tkinter notification value has no fractional
+                # seconds.  The timer update rtn saves off the last update
+                # value (rounded to integer seconds) in timeSliderLast if
+                # the notification time (sval) is the same as the last saved
+                # time timeSliderLast then we know that this notification is
+                # due to the timer changing the slider.  Otherwise the
+                # notification is due to the user changing the slider.  If
+                # the user is changing the slider then I have the timer
+                # routine wait for at least 2 seconds before it starts
+                # updating the slider again (so the timer doesn't start
+                # fighting with the user).
+                self.player.set_time(int(t * 1e3))  # milliseconds
+                self.timeSliderUpdate = time.time()
 
-    def volume_sel(self, evt):
-        if self.player is None:
-            return
-        volume = self.volume_var.get()
-        if volume > 100:
-            volume = 100
-        if self.player.audio_set_volume(volume) == -1:
-            self.errorDialog("Failed to set volume")
-
-    def OnToggleVolume(self, evt):
-        """Mute/Unmute according to the audio button.
+    def OnVolume(self, *unused):
+        """Volume slider changed, adjust the audio volume.
         """
-        is_mute = self.player.audio_get_mute()
+        vol = min(self.volVar.get(), 100)
+        v_M = "%d%s" % (vol, " (Muted)" if self.muted else '')
+        if self.player and vol > 0:  # and not self.muted:
+            # .audio_set_volume returns 0 if success, -1 otherwise,
+            # for example if the player doesn't haven any media
+            if self.player.audio_set_volume(vol):  # and self.player.get_media():
+                self.showError("Failed to set the volume: %s." % (v_M,))
+        self.volSlider.config(label="Volume " + v_M)
 
-        self.player.audio_set_mute(not is_mute)
-        # update the volume slider;
-        # since vlc volume range is in [0, 200],
-        # and our volume slider has range [0, 100], just divide by 2.
-        self.volume_var.set(self.player.audio_get_volume())
-
-    def OnSetVolume(self):
-        """Set the volume according to the volume sider.
-        """
-        volume = self.volume_var.get()
-        # vlc.MediaPlayer.audio_set_volume returns 0 if success, -1 otherwise
-        if volume > 100:
-            volume = 100
-        if self.player.audio_set_volume(volume) == -1:
-            self.errorDialog("Failed to set volume")
-
-    def errorDialog(self, errormessage):
+    def showError(self, message):
         """Display a simple error dialog.
         """
-        Tk.tkMessageBox.showerror(self, 'Error', errormessage)
-
-
-def Tk_get_root():
-    if not hasattr(Tk_get_root, "root"):  # (1)
-        Tk_get_root.root= Tk.Tk()  # initialization call is inside the function
-    return Tk_get_root.root
-
-
-def _quit():
-    # print("_quit: bye")
-    root = Tk_get_root()
-    root.quit()     # stops mainloop
-    root.destroy()  # this is necessary on Windows to prevent
-                    # Fatal Python Error: PyEval_RestoreThread: NULL tstate
-    os._exit(1)
+        showerror(self.parent.title(), message)
 
 
 if __name__ == "__main__":
@@ -423,9 +442,10 @@ if __name__ == "__main__":
                 sys.exit(1)
 
     # Create a Tk.App(), which handles the windowing system event loop
-    root = Tk_get_root()
-    root.protocol("WM_DELETE_WINDOW", _quit)
+    root = Tk.Tk()
+    _handleShortcuts(root)  # XXX ugly kludge, see _handleShortcuts
 
     player = Player(root, video=_video)
+    root.protocol("WM_DELETE_WINDOW", player.OnExit)
     # show the player window centred and run the application
     root.mainloop()
