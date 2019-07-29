@@ -1863,10 +1863,11 @@ class EventManager(_Ctype):
                 """
                 try: # retrieve Python callback and arguments
                     call, args, kwds = self._callbacks[k]
-                     # deref event.contents to simplify callback code
-                    call(event.contents, *args, **kwds)
                 except KeyError:  # detached?
                     pass
+                else:
+                    # deref event.contents to simplify callback code
+                    call(event.contents, *args, **kwds)
             self._callback_handler = _callback_handler
             self._callbacks = {}
 
