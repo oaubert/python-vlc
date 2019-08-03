@@ -104,6 +104,8 @@ _blacklist = {
     'libvlc_printerr': '',
     # Waiting for some structure wrapping
     'libvlc_dialog_set_callbacks': '',
+    # Its signature is a mess
+    'libvlc_video_direct3d_set_resize_cb': '',
 }
 
 # Set of functions that return a string that the caller is
@@ -504,6 +506,9 @@ class Parser(object):
         @return: yield a Func instance for each callback signature, unless blacklisted.
         """
         for type_, name, pars, docs, line in self.parse_groups(callback_type_re.match, callback_re.match, ');'):
+            if name in _blacklist:
+                _blacklist[name] = type_
+                continue
 
             pars = [self.parse_param(p) for p in paramlist_re.split(pars)]
 
