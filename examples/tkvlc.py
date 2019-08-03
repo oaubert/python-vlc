@@ -49,6 +49,7 @@ import time
 
 _isMacOS   = sys.platform.startswith('darwin')
 _isWindows = sys.platform.startswith('win')
+_isLinux = sys.platform.startswith('linux')
 
 if _isMacOS:
     from ctypes import c_void_p, cdll
@@ -232,7 +233,10 @@ class Player(Tk.Frame):
         timers.pack(side=Tk.BOTTOM, fill=Tk.X)
 
         # VLC player
-        self.Instance = vlc.Instance()
+        args = []
+        if _isLinux:
+            args.append('--no-xlib')
+        self.Instance = vlc.Instance(args)
         self.player = self.Instance.media_player_new()
 
         self.parent.bind("<Configure>", self.OnConfigure)  # catch window resize, etc.
