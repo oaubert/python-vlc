@@ -56,7 +56,7 @@ __all__     = ('Parser',
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ =  '1.9'
+__version__ =  '1.10'
 
 _debug = False
 
@@ -106,6 +106,8 @@ _blacklist = {
     'libvlc_dialog_set_callbacks': '',
     # Its signature is a mess
     'libvlc_video_direct3d_set_resize_cb': '',
+    # It depends on the previous one
+    'libvlc_video_direct3d_set_callbacks': '',
 }
 
 # Set of functions that return a string that the caller is
@@ -133,6 +135,7 @@ _INDENT_ = '    '
 # special keywords in header.py
 _BUILD_DATE_      = 'build_date  = '
 _GENERATED_ENUMS_ = '# GENERATED_ENUMS'
+_GENERATED_CALLBACKS_ = '# GENERATED_CALLBACKS'
 
 # keywords in header files
 _VLC_FORWARD_     = 'VLC_FORWARD'
@@ -389,6 +392,9 @@ class Par(object):
         self.name = name
         self.type = type  # C type
 
+    def __repr__(self):
+        return "%s (%s)" % (self.name, self.type)
+
     def dump(self, out=()):  # for debug
         if self.name in out:
             t = _OUT_  # @param [OUT]
@@ -398,7 +404,7 @@ class Par(object):
                  Flag.InOut:  'InOut',
                  Flag.InZero: 'InZero',
                 }.get(self.flags()[0], 'FIXME_Flag')
-        sys.stderr.write('%s%s (%s) %s\n' % (_INDENT_, self.name, self.type, t))
+        sys.stderr.write('%s%s %s\n' % (_INDENT_, str(self), t))
 
     # Parameter passing flags for types.  This shouldn't
     # be hardcoded this way, but works all right for now.
@@ -780,7 +786,8 @@ class _Generator(object):
         if flag == Flag.Out:
             cl = self.type2class_out.get(type)
         if cl is None:
-            cl = self.type2class.get(type, '') or ('FIXME_%s' % (type,))
+            cl = self.type2class.get(type, 'FIXME_%s%s' % ('OUT_' if flag == Flag.Out else '',
+                                                           type))
         return cl
 
     def convert_classnames(self, element_list):
@@ -841,6 +848,7 @@ class _Generator(object):
         for t in f:
             if genums and t.startswith(_GENERATED_ENUMS_):
                 self.generate_enums()
+            elif genums and t.startswith(_GENERATED_CALLBACKS_):
                 self.generate_callbacks()
             elif t.startswith(_BUILD_DATE_):
                 v = self.parser.version or _NA_
@@ -947,6 +955,11 @@ class PythonGenerator(_Generator):
         'libvlc_equalizer_t*':         'AudioEqualizer',
         'libvlc_media_slave_t**':    'ctypes.POINTER(MediaSlave)',
         'libvlc_media_slave_t***':    'ctypes.POINTER(ctypes.POINTER(MediaSlave))',
+        'libvlc_video_direct3d_device_setup_t*': 'Direct3dDeviceSetup',
+        'libvlc_video_direct3d_device_cfg_t*': 'Direct3dDeviceCfg',
+        'libvlc_video_direct3d_cfg_t*': 'Direct3dCfg',
+        'libvlc_video_output_cfg_t*': 'VideoOutputCfg',
+        'libvlc_video_direct3d_hdr10_metadata_t*': 'Direct3dHdr10Metadata',
 
         'FILE*':                       'FILE_ptr',
 
@@ -1163,7 +1176,7 @@ class _Enum(ctypes.c_uint):
             # Note: The f.type != 'void**' is a hack to generate a
             # valid ctypes signature, specifically for the
             # libvlc_video_lock_cb callback. It should be fixed in a better way (more generic)
-            types = ', '.join([self.class4(f.type if f.type != 'void**' else 'void*')] +  #PYCHOK flake
+            types = ', '.join([self.class4('void*' if f.type != 'void**' else f.type)] +  #PYCHOK flake
                               [self.class4(p.type, p.flags(f.out)[0]) for p in f.pars])
 
             # xformed doc string with first @param

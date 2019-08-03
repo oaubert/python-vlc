@@ -701,4 +701,52 @@ class MediaThumbnailRequest:
         if len(args) == 1 and isinstance(args[0], _Ints):
             return _Constructor(cls, args[0])
 
+class Direct3dDeviceSetup(_Cstruct):
+    _fields_ = [
+        ('device_context', ctypes.c_void_p),
+    ]
+
+class Direct3dDeviceCfg(_Cstruct):
+    _fields_ = [
+        ('hardware_decoding', ctypes.c_bool),
+    ]
+
+class Direct3dCfg(_Cstruct):
+    _fields_ = [
+        ('width', ctypes.c_uint),
+        ('height', ctypes.c_uint),
+        ('bitdepth', ctypes.c_uint),
+        ('full_range', ctypes.c_bool),
+        # FIXME: should be references to enums
+        ('colorspace', ctypes.c_uint),
+        ('primaries', ctypes.c_uint),
+        ('transfer', ctypes.c_uint),
+        ]
+
+class VideoOutputCfg(_Cstruct):
+    _fields_ = [
+        ('surface_format', ctypes.c_int),
+        ('full_range', ctypes.c_bool),
+        # FIXME: should be references to enums
+        ('colorspace', ctypes.c_uint),
+        ('primaries', ctypes.c_uint),
+        ('transfer', ctypes.c_uint),
+        ]
+
+class Direct3dHdr10Metadata(_Cstruct):
+    _fields_ = [
+        ('RedPrimary ', ctypes.c_uint16 * 2),
+        ('GreenPrimary', ctypes.c_uint16 * 2),
+        ('BluePrimary', ctypes.c_uint16 * 2),
+        ('WhitePoint', ctypes.c_uint16 * 2),
+        ('MaxMasteringLuminance', ctypes.c_uint),
+        ('MinMasteringLuminance', ctypes.c_uint),
+        ('MaxContentLightLevel', ctypes.c_uint16),
+        ('MaxFrameAverageLightLevel', ctypes.c_uint16),
+        ]
+
+# Generated callback definitions #
+# GENERATED_CALLBACKS
+# End of generated enum types #
+
 # End of header.py #
