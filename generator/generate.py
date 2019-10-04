@@ -143,12 +143,12 @@ bs_param_re  = re.compile(r'\\param\s+(\S+)')
 class_re     = re.compile(r'class\s+(\S+):')
 def_re       = re.compile(r'^\s+def\s+(\w+)', re.MULTILINE)
 enum_type_re = re.compile(r'^(?:typedef\s+)?enum')
-enum_re      = re.compile(r'(?:typedef\s+)?(enum)\s*(\S+)\s*{\s*(.+)\s*}\s*(?:\S+)?;')
+enum_re      = re.compile(r'(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\S+)?;')
 enum_pair_re = re.compile(r'\s*=\s*')
 callback_type_re = re.compile(r'^typedef\s+\w+(\s*\*)?\s*\(\s*\*')
 callback_re  = re.compile(r'typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
 struct_type_re = re.compile(r'^typedef\s+struct\s*(\S+)\s*$')
-struct_re    = re.compile(r'typedef\s+(struct)\s*(\S+)?\s*{\s*(.+)\s*}\s*(?:\S+)?\s*;')
+struct_re    = re.compile(r'typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
 typedef_re   = re.compile(r'^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
 forward_re   = re.compile(r'.+\(\s*(.+?)\s*\)(\s*\S+)')
 libvlc_re    = re.compile(r'libvlc_[a-z_]+')
@@ -557,7 +557,7 @@ class Parser(object):
 
         @return: yield a Struct instance for each struct.
         """
-        for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile(r'^}(\s*\S+)?\s*;$')):
+        for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile(r'^\}(\s*\S+)?\s*;$')):
             fields = [ self.parse_param(t.strip()) for t in decllist_re.split(body) if t.strip() and not '%s()' % name in t ]
             fields = [ f for f in fields if f is not None ]
 
