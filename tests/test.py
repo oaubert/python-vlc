@@ -30,6 +30,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import ctypes
+import re
 import os
 import unittest
 try:
@@ -41,6 +42,8 @@ try:
     import vlc
 except ImportError:
     import generated.vlc as vlc
+
+from generator import generate
 
 SAMPLE = os.path.join(os.path.dirname(__file__), 'samples/sample.mp4')
 print ("Checking " + vlc.__file__)
@@ -185,6 +188,15 @@ class TestVLCAPI(unittest.TestCase):
         media = instance.media_new(SAMPLE)
         player.set_media(media)
         player.play()
+
+
+class TestREs(unittest.TestCase):
+    def test_api_re_comment(self):
+        self.assertIsNone(generate.api_re.match('/* Avoid unhelpful warnings from libvlc with our deprecated APIs */'))
+
+    def test_api_re_match(self):
+        self.assertIsInstance(generate.api_re.match('LIBVLC_API void libvlc_clearerr (void);'), re.Match)
+
 
 if __name__ == '__main__':
     logging.basicConfig()
