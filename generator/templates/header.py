@@ -255,6 +255,15 @@ def get_default_instance():
         _default_instance = Instance()
     return _default_instance
 
+def try_fspath(path):
+    """Try calling os.fspath
+    os.fspath is only available from py3.6
+    """
+    try:
+        return os.fspath(path)
+    except (AttributeError, TypeError):
+        return path
+
 _Cfunctions = {}  # from LibVLC __version__
 _Globals = globals()  # sys.modules[__name__].__dict__
 

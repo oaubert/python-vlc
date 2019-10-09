@@ -33,10 +33,16 @@ import ctypes
 import re
 import os
 import unittest
+from unittest.mock import MagicMock
 try:
     import urllib.parse as urllib # python3
 except ImportError:
     import urllib # python2
+
+try:
+    from pathlib import Path
+except ImportError:
+    pass
 
 try:
     import vlc
@@ -47,6 +53,24 @@ from generator import generate
 
 SAMPLE = os.path.join(os.path.dirname(__file__), 'samples/sample.mp4')
 print ("Checking " + vlc.__file__)
+
+
+class TestAuxMethods(unittest.TestCase):
+    def test_try_fspath_incompatible_object(self):
+        test_object = MagicMock()
+        result = vlc.try_fspath(test_object)
+        self.assertIs(result, test_object)
+
+    def test_try_fspath_path_like_object(self):
+        test_object = Path('test', 'path')
+        result = vlc.try_fspath(test_object)
+        self.assertEqual(result, os.path.join('test', 'path'))
+
+    def test_try_fspath_str_object(self):
+        test_object = os.path.join('test', 'path')
+        result = vlc.try_fspath(test_object)
+        self.assertEqual(result, os.path.join('test', 'path'))
+
 
 class TestVLCAPI(unittest.TestCase):
     #def setUp(self):
