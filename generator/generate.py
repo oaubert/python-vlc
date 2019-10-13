@@ -137,27 +137,27 @@ _VLC_FORWARD_     = 'VLC_FORWARD'
 _VLC_PUBLIC_API_  = 'LIBVLC_API'
 
 # Precompiled regexps
-api_re       = re.compile('(?:LIBVLC_DEPRECATED\s+)?' + _VLC_PUBLIC_API_ + '\s+(\S+\s+.+?)\s*\(\s*(.+?)\s*\)')
-at_param_re  = re.compile('(@param\s+\S+)(.+)')
+api_re       = re.compile(r'(?:LIBVLC_DEPRECATED\s+)?' + _VLC_PUBLIC_API_ + r'\s+(\S+\s+.+?)\s*\(\s*(.+?)\s*\)')
+at_param_re  = re.compile(r'(@param\s+\S+)(.+)')
 bs_param_re  = re.compile(r'\\param\s+(\S+)')
-class_re     = re.compile('class\s+(\S+):')
-def_re       = re.compile('^\s+def\s+(\w+)', re.MULTILINE)
-enum_type_re = re.compile('^(?:typedef\s+)?enum')
-enum_re      = re.compile('(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\S+)?;')
-enum_pair_re = re.compile('\s*=\s*')
-callback_type_re = re.compile('^typedef\s+\w+(\s*\*)?\s*\(\s*\*')
-callback_re  = re.compile('typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
-struct_type_re = re.compile('^typedef\s+struct\s*(\S+)\s*$')
-struct_re    = re.compile('typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
-typedef_re   = re.compile('^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
-forward_re   = re.compile('.+\(\s*(.+?)\s*\)(\s*\S+)')
-libvlc_re    = re.compile('libvlc_[a-z_]+')
-param_re     = re.compile('\s*(const\s*|unsigned\s*|struct\s*)?(\S+\s*\**)\s+(.+)')
-decllist_re  = re.compile('\s*;\s*')
-paramlist_re = re.compile('\s*,\s*')
-version_re   = re.compile('vlc[\-]\d+[.]\d+[.]\d+.*')
-LIBVLC_V_re  = re.compile('\s*#\s*define\s+LIBVLC_VERSION_([A-Z]+)\s+\(*(\d+)\)*')
-define_re    = re.compile('^\s*#\s*define\s+\w+\s+.+?$')
+class_re     = re.compile(r'class\s+(\S+):')
+def_re       = re.compile(r'^\s+def\s+(\w+)', re.MULTILINE)
+enum_type_re = re.compile(r'^(?:typedef\s+)?enum')
+enum_re      = re.compile(r'(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\S+)?;')
+enum_pair_re = re.compile(r'\s*=\s*')
+callback_type_re = re.compile(r'^typedef\s+\w+(\s*\*)?\s*\(\s*\*')
+callback_re  = re.compile(r'typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
+struct_type_re = re.compile(r'^typedef\s+struct\s*(\S+)\s*$')
+struct_re    = re.compile(r'typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
+typedef_re   = re.compile(r'^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
+forward_re   = re.compile(r'.+\(\s*(.+?)\s*\)(\s*\S+)')
+libvlc_re    = re.compile(r'libvlc_[a-z_]+')
+param_re     = re.compile(r'\s*(const\s*|unsigned\s*|struct\s*)?(\S+\s*\**)\s+(.+)')
+decllist_re  = re.compile(r'\s*;\s*')
+paramlist_re = re.compile(r'\s*,\s*')
+version_re   = re.compile(r'vlc[\-]\d+[.]\d+[.]\d+.*')
+LIBVLC_V_re  = re.compile(r'\s*#\s*define\s+LIBVLC_VERSION_([A-Z]+)\s+\(*(\d+)\)*')
+define_re    = re.compile(r'^\s*#\s*define\s+\w+\s+.+?$')
 
 def endot(text):
     """Terminate string with a period.
@@ -352,7 +352,7 @@ class Func(_Source):
                     o.append(' '.join(t.split()))
                     c = ['']  # drop continuation line(s)
                 else:
-                    p.append(at_param_re.sub('\\1:\\2', t))
+                    p.append(at_param_re.sub(r'\1:\2', t))
                     c = p
             elif '@return' in t:
                 r.append(t.replace('@return ', '@return: '))
@@ -429,14 +429,14 @@ class Val(object):
         if context is not None:
             # A context (enum type name) is provided. Strip out the
             # common prefix.
-            prefix = os.path.commonprefix( (enum, re.sub('_t$', '_', context)) )
+            prefix = os.path.commonprefix( (enum, re.sub(r'_t$', r'_', context)) )
             n = enum.replace(prefix, '', 1)
         else:
             # No prefix. Fallback on the previous version (which
             # considers only the last _* portion of the name)
             n = t[-1]
         # Special case for debug levels and roles (with non regular name)
-        n = re.sub('^(LIBVLC_|role_|marquee_|adjust_|AudioChannel_|AudioOutputDevice_)', '', n)
+        n = re.sub(r'^(LIBVLC_|role_|marquee_|adjust_|AudioChannel_|AudioOutputDevice_)', '', n)
         if n[0].isdigit():  # can't start with a number
             n = '_' + n
         if n == 'None': # can't use a reserved python keyword
@@ -522,7 +522,7 @@ class Parser(object):
                 if '=' in n:  # has value
                     n, v = enum_pair_re.split(n)
                     # Bit-shifted characters cannot be directly evaluated in python
-                    m = re.search("'(.)'\s*(<<|>>)\s*(.+)", v.strip())
+                    m = re.search(r"'(.)'\s*(<<|>>)\s*(.+)", v.strip())
                     if m:
                         v = "%s %s %s" % (ord(m.group(1)), m.group(2), m.group(3))
                     try:  # handle expressions
@@ -557,7 +557,7 @@ class Parser(object):
 
         @return: yield a Struct instance for each struct.
         """
-        for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile('^\}(\s*\S+)?\s*;$')):
+        for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile(r'^\}(\s*\S+)?\s*;$')):
             fields = [ self.parse_param(t.strip()) for t in decllist_re.split(body) if t.strip() and not '%s()' % name in t ]
             fields = [ f for f in fields if f is not None ]
 
@@ -893,7 +893,7 @@ class _Generator(object):
 class PythonGenerator(_Generator):
     """Generate Python bindings.
     """
-    type_re = re.compile('libvlc_(.+?)(_t)?$')  # Python
+    type_re = re.compile(r'libvlc_(.+?)(_t)?$')  # Python
 
     # C-type to Python/ctypes type conversion.  Note, enum
     # type conversions are generated (cf convert_enums).
@@ -1308,7 +1308,7 @@ class JavaGenerator(_Generator):
     """Generate Java/JNA bindings.
     """
     comment_line = '//'
-    type_re      = re.compile('libvlc_(.+?)(_[te])?$')
+    type_re      = re.compile(r'libvlc_(.+?)(_[te])?$')
 
     # C-type to Java/JNA type conversion.
     type2class = {
@@ -1442,10 +1442,10 @@ def prepare_package(output):
     libvlc_version = None
     with open(output, 'r') as f:
         for l in f:
-            m = re.search('__version__\s*=\s*"(.+)"', l)
+            m = re.search(r'__version__\s*=\s*"(.+)"', l)
             if m:
                 bindings_version = m.group(1)
-            m = re.search('__libvlc_version__\s*=\s*"(.+)"', l)
+            m = re.search(r'__libvlc_version__\s*=\s*"(.+)"', l)
             if m:
                 libvlc_version = m.group(1)
             if bindings_version and libvlc_version:
