@@ -54,7 +54,7 @@ $(VERSIONED_NAME): generator/generate.py generator/templates/header.py generator
 	-mkdir -p $(VERSIONED_PATH)
 	$(GENERATE) $(INSTALLED_INCLUDES) -o $@
 
-doc: $(MODULE_NAME)
+doc: $(VERSIONED_NAME)
 	-epydoc -v -o doc $<
 
 test: $(MODULE_NAME)
