@@ -33,7 +33,11 @@ import ctypes
 import re
 import os
 import unittest
-from unittest.mock import MagicMock
+try:
+    from unittest.mock import MagicMock # python3
+except ImportError:
+    MagicMock = None
+
 try:
     import urllib.parse as urllib # python3
 except ImportError:
@@ -42,29 +46,34 @@ except ImportError:
 try:
     from pathlib import Path
 except ImportError:
-    pass
+    Path = None
 
 try:
     import vlc
 except ImportError:
     import generated.vlc as vlc
 
-from generator import generate
+try:
+    from generator import generate
+except ImportError:
+    generate = None
 
 SAMPLE = os.path.join(os.path.dirname(__file__), 'samples/sample.mp4')
 print ("Checking " + vlc.__file__)
 
 
 class TestAuxMethods(unittest.TestCase):
-    def test_try_fspath_incompatible_object(self):
-        test_object = MagicMock()
-        result = vlc.try_fspath(test_object)
-        self.assertIs(result, test_object)
+    if MagicMock is not None:
+        def test_try_fspath_incompatible_object(self):
+            test_object = MagicMock()
+            result = vlc.try_fspath(test_object)
+            self.assertIs(result, test_object)
 
-    def test_try_fspath_path_like_object(self):
-        test_object = Path('test', 'path')
-        result = vlc.try_fspath(test_object)
-        self.assertEqual(result, os.path.join('test', 'path'))
+    if Path is not None:
+        def test_try_fspath_path_like_object(self):
+            test_object = Path('test', 'path')
+            result = vlc.try_fspath(test_object)
+            self.assertEqual(result, os.path.join('test', 'path'))
 
     def test_try_fspath_str_object(self):
         test_object = os.path.join('test', 'path')
@@ -95,8 +104,9 @@ class TestVLCAPI(unittest.TestCase):
     def test_enum_marquee_int_option(self):
         self.assertEqual(vlc.VideoMarqueeOption.Size.value, 6)
 
-    def test_enum_output_device_type(self):
-        self.assertEqual(vlc.AudioOutputDeviceTypes._2F2R.value, 4)
+    if hasattr(vlc, 'AudioOutputDeviceTypes'):
+        def test_enum_output_device_type(self):
+            self.assertEqual(vlc.AudioOutputDeviceTypes._2F2R.value, 4)
 
     def test_enum_output_channel(self):
         self.assertEqual(vlc.AudioOutputChannel.Dolbys.value, 5)
@@ -214,12 +224,14 @@ class TestVLCAPI(unittest.TestCase):
         player.play()
 
 
-class TestREs(unittest.TestCase):
-    def test_api_re_comment(self):
-        self.assertIsNone(generate.api_re.match('/* Avoid unhelpful warnings from libvlc with our deprecated APIs */'))
+if generate is not None:
+    # Test internal generator only in python3
+    class TestREs(unittest.TestCase):
+        def test_api_re_comment(self):
+            self.assertIsNone(generate.api_re.match('/* Avoid unhelpful warnings from libvlc with our deprecated APIs */'))
 
-    def test_api_re_match(self):
-        self.assertIsInstance(generate.api_re.match('LIBVLC_API void libvlc_clearerr (void);'), re.Match)
+        def test_api_re_match(self):
+            self.assertIsInstance(generate.api_re.match('LIBVLC_API void libvlc_clearerr (void);'), re.Match)
 
 
 if __name__ == '__main__':
