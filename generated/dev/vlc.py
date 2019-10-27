@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-8952-g58036e27b2110"
-__libvlc_version__ = "4.0.0-dev-8952-g58036e27b2"
-__generator_version__ = "1.10"
-build_date  = "Sat Aug  3 20:13:06 2019 4.0.0-dev-8952-g58036e27b2"
+__version__ = "4.0.0-dev-9885-g4cb5eaef9c111"
+__libvlc_version__ = "4.0.0-dev-9885-g4cb5eaef9c"
+__generator_version__ = "1.11"
+build_date  = "Sun Oct 27 20:26:27 2019 4.0.0-dev-9885-g4cb5eaef9c"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -257,6 +257,15 @@ def get_default_instance():
     if _default_instance is None:
         _default_instance = Instance()
     return _default_instance
+
+def try_fspath(path):
+    """Try calling os.fspath
+    os.fspath is only available from py3.6
+    """
+    try:
+        return os.fspath(path)
+    except (AttributeError, TypeError):
+        return path
 
 _Cfunctions = {}  # from LibVLC __version__
 _Globals = globals()  # sys.modules[__name__].__dict__
@@ -1010,30 +1019,6 @@ VideoAdjustOption.Enable     = VideoAdjustOption(0)
 VideoAdjustOption.Gamma      = VideoAdjustOption(5)
 VideoAdjustOption.Hue        = VideoAdjustOption(3)
 VideoAdjustOption.Saturation = VideoAdjustOption(4)
-
-class AudioOutputDeviceTypes(_Enum):
-    '''Audio device types.
-    '''
-    _enum_names_ = {
-        -1: 'Error',
-        1: 'Mono',
-        2: 'Stereo',
-        4: '_2F2R',
-        5: '_3F2R',
-        6: '_5_1',
-        7: '_6_1',
-        8: '_7_1',
-        10: 'SPDIF',
-    }
-AudioOutputDeviceTypes.Error  = AudioOutputDeviceTypes(-1)
-AudioOutputDeviceTypes.Mono   = AudioOutputDeviceTypes(1)
-AudioOutputDeviceTypes.SPDIF  = AudioOutputDeviceTypes(10)
-AudioOutputDeviceTypes.Stereo = AudioOutputDeviceTypes(2)
-AudioOutputDeviceTypes._2F2R  = AudioOutputDeviceTypes(4)
-AudioOutputDeviceTypes._3F2R  = AudioOutputDeviceTypes(5)
-AudioOutputDeviceTypes._5_1   = AudioOutputDeviceTypes(6)
-AudioOutputDeviceTypes._6_1   = AudioOutputDeviceTypes(7)
-AudioOutputDeviceTypes._7_1   = AudioOutputDeviceTypes(8)
 
 class AudioOutputChannel(_Enum):
     '''Audio channels.
@@ -2123,7 +2108,7 @@ class Instance(_Ctype):
     def media_player_new(self, uri=None):
         """Create a new MediaPlayer instance.
 
-        @param uri: an optional URI to play in the player.
+        @param uri: an optional URI to play in the player as a str, bytes or PathLike object.
         """
         p = libvlc_media_player_new(self)
         if uri:
@@ -2155,8 +2140,10 @@ class Instance(_Ctype):
         Alternatively, options can be added to the media using the
         Media.add_options method (with the same limitation).
 
+        @param mrl: A str, bytes or PathLike object
         @param options: optional media option=value strings
         """
+        mrl = try_fspath(mrl)
         if ':' in mrl and mrl.index(':') > 1:
             # Assume it is a URL
             m = libvlc_media_new_location(self, str_to_bytes(mrl))
@@ -2168,9 +2155,18 @@ class Instance(_Ctype):
         m._instance = self
         return m
 
+    def media_new_path(self, path):
+        """Create a media for a certain file path.
+        See L{media_release}.
+        @param path: A str, byte, or PathLike object representing a local filesystem path.
+        @return: the newly created media or None on error.
+        """
+        path = try_fspath(path)
+        return libvlc_media_new_path(self, str_to_bytes(path))
+
     def media_list_new(self, mrls=None):
         """Create a new MediaList instance.
-        @param mrls: optional list of MRL strings
+        @param mrls: optional list of MRL strings, bytes, or PathLike objects.
         """
         l = libvlc_media_list_new(self)
         # We should take the lock, but since we did not leak the
@@ -2323,15 +2319,6 @@ class Instance(_Ctype):
         @return: the newly created media or None on error.
         '''
         return libvlc_media_new_location(self, str_to_bytes(psz_mrl))
-
-
-    def media_new_path(self, path):
-        '''Create a media for a certain file path.
-        See L{media_release}.
-        @param path: local filesystem path.
-        @return: the newly created media or None on error.
-        '''
-        return libvlc_media_new_path(self, str_to_bytes(path))
 
 
     def media_new_fd(self, fd):
@@ -2888,6 +2875,7 @@ class MediaList(_Ctype):
         @param mrl: a media instance or a MRL.
         @return: 0 on success, -1 if the media list is read-only.
         """
+        mrl = try_fspath(mrl)
         if isinstance(mrl, basestring):
             mrl = (self.get_instance() or get_default_instance()).media_new(mrl)
         return libvlc_media_list_add_media(self, mrl)
@@ -3483,10 +3471,10 @@ class MediaPlayer(_Ctype):
         The drawable is an NSObject that follow the VLCVideoViewEmbedding
         protocol:
         @code.m
-        \@protocol VLCVideoViewEmbedding <NSObject>
+        @protocol VLCVideoViewEmbedding <NSObject>
         - (void)addVoutSubview:(NSView *)view;
         - (void)removeVoutSubview:(NSView *)view;
-        \@end
+        @end
         @endcode
         Or it can be an NSView object.
         If you want to use it along with Qt see the QMacCocoaViewContainer. Then
@@ -6195,10 +6183,10 @@ def libvlc_media_player_set_nsobject(p_mi, drawable):
     The drawable is an NSObject that follow the VLCVideoViewEmbedding
     protocol:
     @code.m
-    \@protocol VLCVideoViewEmbedding <NSObject>
+    @protocol VLCVideoViewEmbedding <NSObject>
     - (void)addVoutSubview:(NSView *)view;
     - (void)removeVoutSubview:(NSView *)view;
-    \@end
+    @end
     @endcode
     Or it can be an NSView object.
     If you want to use it along with Qt see the QMacCocoaViewContainer. Then
