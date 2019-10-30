@@ -40,6 +40,7 @@ from gi.repository import Gtk
 Gdk.threads_init ()
 
 import sys
+import ctypes
 import vlc
 
 from gettext import gettext as _
@@ -50,6 +51,16 @@ if 'linux' in sys.platform:
     instance = vlc.Instance("--no-xlib")
 else:
     instance = vlc.Instance()
+
+
+def get_window_pointer(window):
+    """ Use the window.__gpointer__ PyCapsule to get the C void* pointer to the window
+    """
+    # get the c gpointer of the gdk window
+    ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
+    ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object]
+    return ctypes.pythonapi.PyCapsule_GetPointer(window.__gpointer__, None)
+
 
 class VLCWidget(Gtk.DrawingArea):
     """Simple VLC widget.
@@ -64,7 +75,16 @@ class VLCWidget(Gtk.DrawingArea):
         self.player = instance.media_player_new()
         def handle_embed(*args):
             if sys.platform == 'win32':
-                self.player.set_hwnd(self.get_window().get_handle())
+                # get the win32 handle
+                gdkdll = ctypes.CDLL('libgdk-3-0.dll')
+                handle = gdkdll.gdk_win32_window_get_handle(get_window_pointer(self.get_window()))
+                self.player.set_hwnd(handle)
+            elif sys.platform == 'darwin':
+                # get the nsview pointer. NB need to manually specify function signature
+                gdkdll = ctypes.CDLL('libgdk-3.0.dll')
+                get_nsview = gdkdll.gdk_quaerz_window_get_nsview
+                get_nsview.restype, get_nsview.argtypes = [ctypes.c_void_p],  ctypes.c_void_p
+                self.player.set_nsobject(get_nsview(get_window_pointer(self.get_window())))
             else:
                 self.player.set_xwindow(self.get_window().get_xid())
             return True
