@@ -233,6 +233,34 @@ if generate is not None:
         def test_api_re_match(self):
             self.assertIsInstance(generate.api_re.match('LIBVLC_API void libvlc_clearerr (void);'), re.Match)
 
+    def test_at_param_re(self):
+        match = generate.at_param_re.match('@param p_mi media player')
+        self.assertEqual(match.group(1, 2), ('@param p_mi', ' media player'))
+
+    def test_class_re_method(self):
+        self.assertIsNone(generate.class_re.match('    def __new__(cls, arg=None):\n'))
+
+    def test_class_re(self):
+        match = generate.class_re.match('class Instance:\n')
+        self.assertEqual(match.group(1), 'Instance')
+
+    def test_def_re(self):
+        self.assertEqual(
+            generate.def_re.findall(
+                '\n    def __new__(cls, *args):\n\n   def get_instance(self):\n\n    def add_media(self, mrl):\n\n'),
+            ['__new__', 'get_instance', 'add_media'])
+
+    def test_enum_pair_re_1(self):
+        self.assertEqual(generate.enum_pair_re.split('LIBVLC_WARNING=3'), ['LIBVLC_WARNING', '3'])
+
+    def test_enum_pair_re_2(self):
+        self.assertEqual(
+            generate.enum_pair_re.split('libvlc_AudioChannel_Left    =  3'), ['libvlc_AudioChannel_Left', '3'])
+
+    def test_forward_re(self):
+        match = generate.forward_re.match('VLC_FORWARD_DECLARE_OBJECT(libvlc_media_list_t *) libvlc_media_subitems')
+        self.assertEqual(match.groups(), ('libvlc_media_list_t *', ' libvlc_media_subitems'))
+
 
 if __name__ == '__main__':
     logging.basicConfig()
