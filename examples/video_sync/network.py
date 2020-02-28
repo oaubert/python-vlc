@@ -27,8 +27,9 @@ Date: 25 January 2019
 import os
 import platform
 import socket
-import threading
 import sys
+import struct
+import threading
 import logging
 from concurrent import futures
 
@@ -104,11 +105,13 @@ class Server:
 
     def data_sender(self):
         while True:
-            data = "{},".format(self.data_queue.get())
+            data = self.data_queue.get()
+            data = str(data).encode()
+            msg = struct.pack(">I", len(data)) + data
 
             with futures.ThreadPoolExecutor(max_workers=5) as ex:
                 for client in self.clients:
-                    ex.submit(self.sendall, client, data.encode())
+                    ex.submit(self.sendall, client, msg)
 
     def sendall(self, client, data):
         """Wraps socket module's `sendall` function"""
@@ -153,22 +156,42 @@ class Client:
         thread.daemon = True
         thread.start()
 
+    def recv_all(self, size):
+        """Helper function to recv `size` number of bytes, or return False"""
+        data = bytearray()
+
+        while (len(data) < size):
+            packet = self.sock.recv(size - len(data))
+            if not packet:
+                return False
+
+            data.extend(packet)
+
+        return data
+
+    def recv_msg(self):
+        """Receive the message size, n, and receive n bytes into a buffer"""
+        raw_msg_size = self.recv_all(4)
+        if not raw_msg_size:
+            return False
+
+        msg_size = struct.unpack(">I", raw_msg_size)[0]
+        return self.recv_all(msg_size)
+
     def data_receiver(self):
         """Handles receiving, parsing, and queueing data"""
         logger.info("New data receiver thread started.")
 
         try:
             while True:
-                data = self.sock.recv(4096)
-                if data:
-                    data = data.decode()
-
-                    for char in data.split(','):
-                        if char:
-                            if char == 'd':
-                                self.data_queue.queue.clear()
-                            else:
-                                self.data_queue.put(char)
+                raw_data = self.recv_msg()
+                if raw_data:
+                    data = raw_data.decode()
+                    if 'd' in set(data):
+                        self.data_queue.queue.clear()
+                        continue
+                    else:
+                        self.data_queue.put(data)
         except:
             logger.exception("Closing socket: %s", self.sock)
             self.sock.close()
