@@ -106,8 +106,10 @@ _blacklist = {
     'libvlc_dialog_set_callbacks': '',
     # Its signature is a mess
     'libvlc_video_direct3d_set_resize_cb': '',
+    'libvlc_video_output_set_resize_cb' : '' ,
     # It depends on the previous one
     'libvlc_video_direct3d_set_callbacks': '',
+    'libvlc_video_set_output_callbacks': '',
 }
 
 # Set of functions that return a string that the caller is
@@ -959,6 +961,9 @@ class PythonGenerator(_Generator):
         'libvlc_video_direct3d_device_cfg_t*': 'Direct3dDeviceCfg',
         'libvlc_video_direct3d_cfg_t*': 'Direct3dCfg',
         'libvlc_video_output_cfg_t*': 'VideoOutputCfg',
+        'libvlc_video_setup_device_cfg_t*': 'VideoSetupDeviceCfg',
+        'libvlc_video_setup_device_info_t*': 'VideoSetupDeviceInfo',
+        'libvlc_video_render_cfg_t*': 'VideoRenderCfg',
         'libvlc_video_direct3d_hdr10_metadata_t*': 'Direct3dHdr10Metadata',
 
         'FILE*':                       'FILE_ptr',
@@ -1160,6 +1165,8 @@ class _Enum(ctypes.c_uint):
             return
         # Generate classes
         for f in self.parser.callbacks:
+            if f.name in _blacklist:
+                continue
             name = self.class4(f.name)  #PYCHOK flake
             docs = self.epylink(f.epydocs(0, 4))
             self.output('''class %(name)s(ctypes.c_void_p):
