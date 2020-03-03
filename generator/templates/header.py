@@ -745,6 +745,31 @@ class Direct3dHdr10Metadata(_Cstruct):
         ('MaxFrameAverageLightLevel', ctypes.c_uint16),
         ]
 
+class VideoSetupDeviceCfg(_Cstruct):
+    _fields_ = [
+        ('hardware_decoding', ctypes.c_bool),
+    ]
+
+class VideoSetupDeviceInfo(_Cstruct):
+    # FIXME: this is normally a union for D3D11/D3D9. We only define
+    # the mapping for d3d11 here
+    _fields_ = [
+        ('device_context', ctypes.c_void_p),
+    ]
+
+class VideoRenderCfg(_Cstruct):
+    _fields_ = [
+        ('width', ctypes.c_uint),
+        ('height', ctypes.c_uint),
+        ('bitdepth', ctypes.c_uint),
+        ('full_range', ctypes.c_bool),
+        # FIXME: should be references to enums
+        ('colorspace', ctypes.c_uint),
+        ('primaries', ctypes.c_uint),
+        ('transfer', ctypes.c_uint),
+        ('device', ctypes.c_void_p),
+        ]
+
 # Generated callback definitions #
 # GENERATED_CALLBACKS
 # End of generated enum types #

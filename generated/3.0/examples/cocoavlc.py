@@ -67,14 +67,14 @@ except ImportError:
     from urllib.parse import unquote as mrl_unquote  # Python 3+
 
 __all__  = ('AppVLC',)
-__version__ = '19.01.31'
+__version__ = '19.08.26'
 
 _Adjust  = vlc.VideoAdjustOption  # Enum
 # <http://Wiki.VideoLan.org/Documentation:Modules/adjust>
 _Adjust3 = {_Adjust.Brightness: (0, 1, 2),
             _Adjust.Contrast:   (0, 1, 2),
             _Adjust.Gamma:   (0.01, 1, 10),
-            _Adjust.Hue:        (0, 0, 360),
+            _Adjust.Hue:     (-180, 0, 180),
             _Adjust.Saturation: (0, 1, 3)}
 _Argv0   = os.path.splitext(os.path.basename(__file__))[0]
 _macOS   = platform.mac_ver()[0:3:2]  # PYCHOK false

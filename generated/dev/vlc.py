@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-9885-g4cb5eaef9c111"
-__libvlc_version__ = "4.0.0-dev-9885-g4cb5eaef9c"
-__generator_version__ = "1.11"
-build_date  = "Sun Oct 27 20:26:27 2019 4.0.0-dev-9885-g4cb5eaef9c"
+__version__ = "4.0.0-dev-11151-g8634945c56112"
+__libvlc_version__ = "4.0.0-dev-11151-g8634945c56"
+__generator_version__ = "1.12"
+build_date  = "Tue Mar  3 15:13:17 2020 4.0.0-dev-11151-g8634945c56"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -958,6 +958,18 @@ VideoTransferFunc.PQ        = VideoTransferFunc(6)
 VideoTransferFunc.SMPTE_240 = VideoTransferFunc(7)
 VideoTransferFunc.SRGB      = VideoTransferFunc(2)
 
+class VideoMetadataType(_Enum):
+    '''Callback prototype to load opengl functions
+\param opaque private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [in]
+\param fct_name name of the opengl function to load
+\return a pointer to the named opengl function the null otherwise
+\version libvlc 4.0.0 or later.
+    '''
+    _enum_names_ = {
+        0: 'frame_hdr10',
+    }
+VideoMetadataType.frame_hdr10 = VideoMetadataType(0)
+
 class VideoEngine(_Enum):
     '''Enumeration of the video engine to be used on output.
 can be passed to @a libvlc_video_set_output_callbacks.
@@ -965,20 +977,13 @@ can be passed to @a libvlc_video_set_output_callbacks.
     _enum_names_ = {
         0: 'opengl',
         1: 'gles2',
+        2: 'd3d11',
+        3: 'd3d9',
     }
+VideoEngine.d3d11  = VideoEngine(2)
+VideoEngine.d3d9   = VideoEngine(3)
 VideoEngine.gles2  = VideoEngine(1)
 VideoEngine.opengl = VideoEngine(0)
-
-class VideoDirect3DEngine(_Enum):
-    '''Enumeration of the video engine to be used on output.
-can be passed to @a libvlc_video_direct3d_set_callbacks.
-    '''
-    _enum_names_ = {
-        0: 'd3d11',
-        1: 'd3d9',
-    }
-VideoDirect3DEngine.d3d11 = VideoDirect3DEngine(0)
-VideoDirect3DEngine.d3d9  = VideoDirect3DEngine(1)
 
 class VideoLogoOption(_Enum):
     '''Option values for libvlc_video_{get,set}_logo_{int,string}.
@@ -1424,6 +1429,31 @@ class Direct3dHdr10Metadata(_Cstruct):
         ('MaxFrameAverageLightLevel', ctypes.c_uint16),
         ]
 
+class VideoSetupDeviceCfg(_Cstruct):
+    _fields_ = [
+        ('hardware_decoding', ctypes.c_bool),
+    ]
+
+class VideoSetupDeviceInfo(_Cstruct):
+    # FIXME: this is normally a union for D3D11/D3D9. We only define
+    # the mapping for d3d11 here
+    _fields_ = [
+        ('device_context', ctypes.c_void_p),
+    ]
+
+class VideoRenderCfg(_Cstruct):
+    _fields_ = [
+        ('width', ctypes.c_uint),
+        ('height', ctypes.c_uint),
+        ('bitdepth', ctypes.c_uint),
+        ('full_range', ctypes.c_bool),
+        # FIXME: should be references to enums
+        ('colorspace', ctypes.c_uint),
+        ('primaries', ctypes.c_uint),
+        ('transfer', ctypes.c_uint),
+        ('device', ctypes.c_void_p),
+        ]
+
 # Generated callback definitions #
 class Callback(ctypes.c_void_p):
     """Callback function notification.
@@ -1519,89 +1549,70 @@ class VideoFormatCb(ctypes.c_void_p):
     pass
 class VideoCleanupCb(ctypes.c_void_p):
     """Callback prototype to configure picture buffers format.
-    @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() (and possibly modified by @ref libvlc_video_format_cb) [IN].
+    @param opaque: private pointer as passed to L{libvlc_video_set_format_callbacks}() (and possibly modified by @ref libvlc_video_format_cb) [IN].
     """
     pass
-class VideoSetupCb(ctypes.c_void_p):
+class VideoOutputSetupCb(ctypes.c_void_p):
     """Callback prototype called to initialize user data.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-    @return: true on success.
-    @version: LibVLC 4.0.0 or later.
+    Setup the rendering environment.
+    @param opaque: private pointer passed to the @a libvlc_video_set_output_callbacks() on input. The callback can change this value on output to be passed to all the other callbacks set on @a libvlc_video_set_output_callbacks(). [IN/OUT].
+    @param cfg: requested configuration of the video device [IN].
+    @return: out libvlc_video_setup_device_info_t* to fill.
+    @version: LibVLC 4.0.0 or later For \ref libvlc_video_engine_d3d9 the output must be a IDirect3D9*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0. For \ref libvlc_video_engine_d3d11 the output must be a ID3D11DeviceContext*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled.
     """
     pass
-class VideoCleanupCb(ctypes.c_void_p):
+class VideoOutputCleanupCb(ctypes.c_void_p):
     """Callback prototype called to release user data.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
+    @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
     @version: LibVLC 4.0.0 or later.
     """
     pass
 class VideoUpdateOutputCb(ctypes.c_void_p):
     """Callback prototype called on video size changes.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-    @param width: video width in pixel [IN].
-    @param height: video height in pixel [IN].
-    @version: LibVLC 4.0.0 or later.
-    """
-    pass
-class VideoSwapCb(ctypes.c_void_p):
-    """Callback prototype called after performing drawing calls.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-    @version: LibVLC 4.0.0 or later.
-    """
-    pass
-class VideoMakecurrentCb(ctypes.c_void_p):
-    """Callback prototype to set up the OpenGL context for rendering.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-    @param enter: true to set the context as current, false to unset it [IN].
-    @return: true on success.
-    @version: LibVLC 4.0.0 or later.
-    """
-    pass
-class VideoGetprocaddressCb(ctypes.c_void_p):
-    """Callback prototype to load opengl functions.
-    @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-    @param fct_name: name of the opengl function to load.
-    @return: a pointer to the named OpenGL function the None otherwise.
-    @version: LibVLC 4.0.0 or later.
-    """
-    pass
-class VideoDirect3DDeviceSetupCb(ctypes.c_void_p):
-    """Setup the rendering environment.
-    @param opaque: private pointer passed to the @a libvlc_video_direct3d_set_callbacks() on input. The callback can change this value on output to be passed to all the other callbacks set on @a libvlc_video_direct3d_set_callbacks(). [IN/OUT].
-    @param cfg: requested configuration of the video device [IN].
-    @return: out libvlc_video_direct3d_device_setup_t* to fill.
-    @version: LibVLC 4.0.0 or later For \ref libvlc_video_direct3d_engine_d3d9 the output must be a IDirect3D9*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0. For \ref libvlc_video_direct3d_engine_d3d11 the output must be a ID3D11DeviceContext*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled.
-    """
-    pass
-class VideoDirect3DDeviceCleanupCb(ctypes.c_void_p):
-    """Cleanup the rendering environment initialized during \ref libvlc_video_direct3d_device_setup_cb.
-    @param opaque: private pointer set on the opaque parameter of @a libvlc_video_direct3d_device_setup_cb() [IN].
-    @version: LibVLC 4.0.0 or later.
-    """
-    pass
-class VideoDirect3DUpdateOutputCb(ctypes.c_void_p):
-    """Update the rendering output setup.
-    @param opaque: private pointer set on the opaque parameter of @a libvlc_video_direct3d_device_setup_cb() [IN].
+    Update the rendering output setup.
+    @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
     @param cfg: configuration of the video that will be rendered [IN].
     @return: output configuration describing with how the rendering is setup.
     @version: LibVLC 4.0.0 or later @note the configuration device for Direct3D9 is the IDirect3DDevice9 that VLC uses to render. The host must set a Render target and call Present() when it needs the drawing from VLC to be done. This object is not valid anymore after Cleanup is called. Tone mapping, range and color conversion will be done depending on the values set in the output structure.
     """
     pass
-class VideoDirect3DStartEndRenderingCb(ctypes.c_void_p):
-    """Tell the host the rendering is about to start/has finished.
-    @param opaque: private pointer set on the opaque parameter of @a libvlc_video_direct3d_device_setup_cb() [IN].
-    @param enter: true if the rendering is about to start, false if it's finished.
-    @param hdr10: libvlc_video_direct3d_hdr10_metadata_t* or None [IN].
+class VideoSwapCb(ctypes.c_void_p):
+    """Callback prototype called after performing drawing calls.
+    @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
+    @version: LibVLC 4.0.0 or later.
+    """
+    pass
+class VideoMakecurrentCb(ctypes.c_void_p):
+    """Callback prototype to set up the OpenGL context for rendering.
+    Tell the host the rendering is about to start/has finished.
+    @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
+    @param enter: true to set the context as current, false to unset it [IN].
     @return: true on success.
     @version: LibVLC 4.0.0 or later On Direct3D11 the following may change on the provided ID3D11DeviceContext* between \ref enter being true and \ref enter being false: - IASetPrimitiveTopology() - IASetInputLayout() - IASetVertexBuffers() - IASetIndexBuffer() - VSSetConstantBuffers() - VSSetShader() - PSSetSamplers() - PSSetConstantBuffers() - PSSetShaderResources() - PSSetShader() - RSSetViewports() - DrawIndexed().
     """
     pass
-class VideoDirect3DSelectPlaneCb(ctypes.c_void_p):
+class VideoGetprocaddressCb(ctypes.c_void_p):
+    """Callback prototype to load opengl functions.
+    @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
+    @param fct_name: name of the opengl function to load.
+    @return: a pointer to the named OpenGL function the None otherwise.
+    @version: LibVLC 4.0.0 or later.
+    """
+    pass
+class VideoFramemetadataCb(ctypes.c_void_p):
+    """Callback prototype to receive metadata before rendering.
+    @param opaque: private pointer passed to the @a libvlc_video_set_output_callbacks() [IN].
+    @param type: type of data passed in metadata [IN].
+    @param metadata: the type of metadata [IN].
+    @version: LibVLC 4.0.0 or later.
+    """
+    pass
+class VideoOutputSelectPlaneCb(ctypes.c_void_p):
     """Tell the host the rendering for the given plane is about to start.
-    @param opaque: private pointer set on the opaque parameter of @a libvlc_video_direct3d_device_setup_cb() [IN].
+    @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
     @param plane: number of the rendering plane to select.
     @return: true on success.
-    @version: LibVLC 4.0.0 or later @note This is only used with \ref libvlc_video_direct3d_engine_d3d11. The host should call OMSetRenderTargets for Direct3D11. If this callback is not used (set to None in @a libvlc_video_direct3d_set_callbacks()) OMSetRenderTargets has to be set during the @a libvlc_video_direct3d_start_end_rendering_cb() entering call. The number of planes depend on the DXGI_FORMAT returned during the \ref LIBVLC_VIDEO_UPDATE_OUTPUT call. It's usually one plane except for semi-planar formats like DXGI_FORMAT_NV12 or DXGI_FORMAT_P010.
+    @version: LibVLC 4.0.0 or later @note This is only used with \ref libvlc_video_engine_d3d11. The host should call OMSetRenderTargets for Direct3D11. If this callback is not used (set to None in @a libvlc_video_set_output_callbacks()) OMSetRenderTargets has to be set during the @a libvlc_video_makeCurrent_cb() entering call. The number of planes depend on the DXGI_FORMAT returned during the \ref LIBVLC_VIDEO_UPDATE_OUTPUT call. It's usually one plane except for semi-planar formats like DXGI_FORMAT_NV12 or DXGI_FORMAT_P010.
     """
     pass
 class AudioPlayCb(ctypes.c_void_p):
@@ -1693,7 +1704,7 @@ class CallbackDecorators(object):
         @param fmt: printf() format string (as defined by ISO C11).
         @param args: variable argument list for the format @note Log message handlers B{must} be thread-safe. @warning The message context pointer, the format string parameters and the variable arguments are only valid until the callback returns.
     '''
-    MediaOpenCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64))
+    MediaOpenCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64))
     MediaOpenCb.__doc__ = '''Callback prototype to open a custom bitstream input media.
         The same media item can be opened multiple times. Each time, this callback
         is invoked. It should allocate and initialize any instance-specific
@@ -1702,14 +1713,14 @@ class CallbackDecorators(object):
         @param opaque: private pointer as passed to L{libvlc_media_new_callbacks}().
         @return: datap storage space for a private data pointer, sizep byte length of the bitstream or UINT64_MAX if unknown.
     '''
-    MediaReadCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t)
+    MediaReadCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_ssize_t), ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t)
     MediaReadCb.__doc__ = '''Callback prototype to read data from a custom bitstream input media.
         @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
         @param buf: start address of the buffer to read data into.
         @param len: bytes length of the buffer.
         @return: strictly positive number of bytes read, 0 on end-of-stream, or -1 on non-recoverable error @note If no data is immediately available, then the callback should sleep. @warning The application is responsible for avoiding deadlock situations.
     '''
-    MediaSeekCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64)
+    MediaSeekCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ctypes.c_void_p, ctypes.c_uint64)
     MediaSeekCb.__doc__ = '''Callback prototype to seek a custom bitstream input media.
         @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
         @param offset: absolute byte offset to seek to.
@@ -1719,7 +1730,7 @@ class CallbackDecorators(object):
     MediaCloseCb.__doc__ = '''Callback prototype to close a custom bitstream input media.
         @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
     '''
-    VideoLockCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p))
+    VideoLockCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p))
     VideoLockCb.__doc__ = '''Callback prototype to allocate and lock a picture buffer.
         Whenever a new video frame needs to be decoded, the lock callback is
         invoked. Depending on the video chroma, one or three pixel planes of
@@ -1747,7 +1758,7 @@ class CallbackDecorators(object):
         @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
         @param picture: private pointer returned from the @ref libvlc_video_lock_cb callback [IN].
     '''
-    VideoFormatCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
+    VideoFormatCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
     VideoFormatCb.__doc__ = '''Callback prototype to configure picture buffers format.
         This callback gets the format of the video as output by the video decoder
         and the chain of video filters (if any). It can opt to change any parameter
@@ -1765,78 +1776,62 @@ class CallbackDecorators(object):
     '''
     VideoCleanupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
     VideoCleanupCb.__doc__ = '''Callback prototype to configure picture buffers format.
-        @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() (and possibly modified by @ref libvlc_video_format_cb) [IN].
+        @param opaque: private pointer as passed to L{libvlc_video_set_format_callbacks}() (and possibly modified by @ref libvlc_video_format_cb) [IN].
     '''
-    VideoSetupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
-    VideoSetupCb.__doc__ = '''Callback prototype called to initialize user data.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-        @return: true on success.
-        @version: LibVLC 4.0.0 or later.
-    '''
-    VideoCleanupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
-    VideoCleanupCb.__doc__ = '''Callback prototype called to release user data.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-        @version: LibVLC 4.0.0 or later.
-    '''
-    VideoUpdateOutputCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint)
-    VideoUpdateOutputCb.__doc__ = '''Callback prototype called on video size changes.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-        @param width: video width in pixel [IN].
-        @param height: video height in pixel [IN].
-        @version: LibVLC 4.0.0 or later.
-    '''
-    VideoSwapCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
-    VideoSwapCb.__doc__ = '''Callback prototype called after performing drawing calls.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-        @version: LibVLC 4.0.0 or later.
-    '''
-    VideoMakecurrentCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool)
-    VideoMakecurrentCb.__doc__ = '''Callback prototype to set up the OpenGL context for rendering.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-        @param enter: true to set the context as current, false to unset it [IN].
-        @return: true on success.
-        @version: LibVLC 4.0.0 or later.
-    '''
-    VideoGetprocaddressCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p, ctypes.c_char_p)
-    VideoGetprocaddressCb.__doc__ = '''Callback prototype to load opengl functions.
-        @param opaque: private pointer passed to the @a L{libvlc_video_set_output_callbacks}() [IN].
-        @param fct_name: name of the opengl function to load.
-        @return: a pointer to the named OpenGL function the None otherwise.
-        @version: LibVLC 4.0.0 or later.
-    '''
-    VideoDirect3DDeviceSetupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), Direct3dDeviceCfg, Direct3dDeviceSetup)
-    VideoDirect3DDeviceSetupCb.__doc__ = '''Setup the rendering environment.
-        @param opaque: private pointer passed to the @a libvlc_video_direct3d_set_callbacks() on input. The callback can change this value on output to be passed to all the other callbacks set on @a libvlc_video_direct3d_set_callbacks(). [IN/OUT].
+    VideoOutputSetupCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_bool), ctypes.POINTER(ctypes.c_void_p), VideoSetupDeviceCfg, VideoSetupDeviceInfo)
+    VideoOutputSetupCb.__doc__ = '''Callback prototype called to initialize user data.
+        Setup the rendering environment.
+        @param opaque: private pointer passed to the @a libvlc_video_set_output_callbacks() on input. The callback can change this value on output to be passed to all the other callbacks set on @a libvlc_video_set_output_callbacks(). [IN/OUT].
         @param cfg: requested configuration of the video device [IN].
-        @return: out libvlc_video_direct3d_device_setup_t* to fill.
-        @version: LibVLC 4.0.0 or later For \ref libvlc_video_direct3d_engine_d3d9 the output must be a IDirect3D9*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0. For \ref libvlc_video_direct3d_engine_d3d11 the output must be a ID3D11DeviceContext*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled.
+        @return: out libvlc_video_setup_device_info_t* to fill.
+        @version: LibVLC 4.0.0 or later For \ref libvlc_video_engine_d3d9 the output must be a IDirect3D9*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0. For \ref libvlc_video_engine_d3d11 the output must be a ID3D11DeviceContext*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled.
     '''
-    VideoDirect3DDeviceCleanupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
-    VideoDirect3DDeviceCleanupCb.__doc__ = '''Cleanup the rendering environment initialized during \ref libvlc_video_direct3d_device_setup_cb.
-        @param opaque: private pointer set on the opaque parameter of @a libvlc_video_direct3d_device_setup_cb() [IN].
+    VideoOutputCleanupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
+    VideoOutputCleanupCb.__doc__ = '''Callback prototype called to release user data.
+        @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
         @version: LibVLC 4.0.0 or later.
     '''
-    VideoDirect3DUpdateOutputCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, Direct3dCfg, VideoOutputCfg)
-    VideoDirect3DUpdateOutputCb.__doc__ = '''Update the rendering output setup.
-        @param opaque: private pointer set on the opaque parameter of @a libvlc_video_direct3d_device_setup_cb() [IN].
+    VideoUpdateOutputCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_bool), ctypes.c_void_p, VideoRenderCfg, VideoOutputCfg)
+    VideoUpdateOutputCb.__doc__ = '''Callback prototype called on video size changes.
+        Update the rendering output setup.
+        @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
         @param cfg: configuration of the video that will be rendered [IN].
         @return: output configuration describing with how the rendering is setup.
         @version: LibVLC 4.0.0 or later @note the configuration device for Direct3D9 is the IDirect3DDevice9 that VLC uses to render. The host must set a Render target and call Present() when it needs the drawing from VLC to be done. This object is not valid anymore after Cleanup is called. Tone mapping, range and color conversion will be done depending on the values set in the output structure.
     '''
-    VideoDirect3DStartEndRenderingCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool, Direct3dHdr10Metadata)
-    VideoDirect3DStartEndRenderingCb.__doc__ = '''Tell the host the rendering is about to start/has finished.
-        @param opaque: private pointer set on the opaque parameter of @a libvlc_video_direct3d_device_setup_cb() [IN].
-        @param enter: true if the rendering is about to start, false if it's finished.
-        @param hdr10: libvlc_video_direct3d_hdr10_metadata_t* or None [IN].
+    VideoSwapCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
+    VideoSwapCb.__doc__ = '''Callback prototype called after performing drawing calls.
+        @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
+        @version: LibVLC 4.0.0 or later.
+    '''
+    VideoMakecurrentCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_bool), ctypes.c_void_p, ctypes.c_bool)
+    VideoMakecurrentCb.__doc__ = '''Callback prototype to set up the OpenGL context for rendering.
+        Tell the host the rendering is about to start/has finished.
+        @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
+        @param enter: true to set the context as current, false to unset it [IN].
         @return: true on success.
         @version: LibVLC 4.0.0 or later On Direct3D11 the following may change on the provided ID3D11DeviceContext* between \ref enter being true and \ref enter being false: - IASetPrimitiveTopology() - IASetInputLayout() - IASetVertexBuffers() - IASetIndexBuffer() - VSSetConstantBuffers() - VSSetShader() - PSSetSamplers() - PSSetConstantBuffers() - PSSetShaderResources() - PSSetShader() - RSSetViewports() - DrawIndexed().
     '''
-    VideoDirect3DSelectPlaneCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t)
-    VideoDirect3DSelectPlaneCb.__doc__ = '''Tell the host the rendering for the given plane is about to start.
-        @param opaque: private pointer set on the opaque parameter of @a libvlc_video_direct3d_device_setup_cb() [IN].
+    VideoGetprocaddressCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p)
+    VideoGetprocaddressCb.__doc__ = '''Callback prototype to load opengl functions.
+        @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
+        @param fct_name: name of the opengl function to load.
+        @return: a pointer to the named OpenGL function the None otherwise.
+        @version: LibVLC 4.0.0 or later.
+    '''
+    VideoFramemetadataCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, VideoMetadataType, ctypes.c_void_p)
+    VideoFramemetadataCb.__doc__ = '''Callback prototype to receive metadata before rendering.
+        @param opaque: private pointer passed to the @a libvlc_video_set_output_callbacks() [IN].
+        @param type: type of data passed in metadata [IN].
+        @param metadata: the type of metadata [IN].
+        @version: LibVLC 4.0.0 or later.
+    '''
+    VideoOutputSelectPlaneCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_bool), ctypes.c_void_p, ctypes.c_size_t)
+    VideoOutputSelectPlaneCb.__doc__ = '''Tell the host the rendering for the given plane is about to start.
+        @param opaque: private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [IN].
         @param plane: number of the rendering plane to select.
         @return: true on success.
-        @version: LibVLC 4.0.0 or later @note This is only used with \ref libvlc_video_direct3d_engine_d3d11. The host should call OMSetRenderTargets for Direct3D11. If this callback is not used (set to None in @a libvlc_video_direct3d_set_callbacks()) OMSetRenderTargets has to be set during the @a libvlc_video_direct3d_start_end_rendering_cb() entering call. The number of planes depend on the DXGI_FORMAT returned during the \ref LIBVLC_VIDEO_UPDATE_OUTPUT call. It's usually one plane except for semi-planar formats like DXGI_FORMAT_NV12 or DXGI_FORMAT_P010.
+        @version: LibVLC 4.0.0 or later @note This is only used with \ref libvlc_video_engine_d3d11. The host should call OMSetRenderTargets for Direct3D11. If this callback is not used (set to None in @a libvlc_video_set_output_callbacks()) OMSetRenderTargets has to be set during the @a libvlc_video_makeCurrent_cb() entering call. The number of planes depend on the DXGI_FORMAT returned during the \ref LIBVLC_VIDEO_UPDATE_OUTPUT call. It's usually one plane except for semi-planar formats like DXGI_FORMAT_NV12 or DXGI_FORMAT_P010.
     '''
     AudioPlayCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.c_int64)
     AudioPlayCb.__doc__ = '''Callback prototype for audio playback.
@@ -1891,7 +1886,7 @@ class CallbackDecorators(object):
         @param volume: software volume (1. = nominal, 0. = mute).
         @param mute: muted flag.
     '''
-    AudioSetupCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
+    AudioSetupCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
     AudioSetupCb.__doc__ = '''Callback prototype to setup the audio playback.
         This is called when the media player needs to create a new audio output.
         @param opaque: pointer to the data pointer passed to L{libvlc_audio_set_callbacks}() [IN/OUT].
@@ -2544,10 +2539,9 @@ class Media(_Ctype):
 
     def get_meta(self, e_meta):
         '''Read the meta of the media.
-        Note, you need to call L{parse}() or play the media at least once
-        before calling this function.
+        Note, you need to call L{parse_with_options}() or play the media
+        at least once before calling this function.
         If the media has not yet been parsed this will return None.
-        See L{parse}
         See L{parse_with_options}
         See libvlc_MediaMetaChanged.
         @param e_meta: the meta to read.
@@ -2608,9 +2602,10 @@ class Media(_Ctype):
 
     def get_duration(self):
         '''Get duration (in ms) of media descriptor object item.
-        Note, you need to call L{parse}() or play the media at least once
-        before calling this function.
+        Note, you need to call L{parse_with_options}() or play the media
+        at least once before calling this function.
         Not doing this will result in an undefined result.
+        See L{parse_with_options}.
         @return: duration of media item or -1 on error.
         '''
         return libvlc_media_get_duration(self)
@@ -2619,7 +2614,6 @@ class Media(_Ctype):
     def parse_with_options(self, parse_flag, timeout):
         '''Parse the media asynchronously with options.
         This fetches (local or network) art, meta data and/or tracks information.
-        This method is the extended version of L{parse_with_options}().
         To track when this is over you can listen to libvlc_MediaParsedChanged
         event. However if this functions returns an error, you will not receive any
         events.
@@ -2653,7 +2647,8 @@ class Media(_Ctype):
     def get_parsed_status(self):
         '''Get Parsed status for media descriptor object.
         See libvlc_MediaParsedChanged
-        See L{MediaParsedStatus}.
+        See L{MediaParsedStatus}
+        See L{parse_with_options}.
         @return: a value of the L{MediaParsedStatus} enum.
         @version: LibVLC 3.0.0 or later.
         '''
@@ -2696,7 +2691,7 @@ class Media(_Ctype):
         @param height: the thumbnail height.
         @param picture_type: The thumbnail picture type \saL{PictureType}.
         @param timeout: A timeout value in ms, or 0 to disable timeout.
-        @return: A valid opaque request object, or None in case of failure. It must be released by L{thumbnail_cancel}().
+        @return: A valid opaque request object, or None in case of failure. It may be cancelled by L{thumbnail_request_cancel}(). It must be released by L{thumbnail_request_destroy}().
         @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
         '''
         return libvlc_media_thumbnail_request_by_time(self, time, speed, width, height, crop, picture_type, timeout)
@@ -2712,7 +2707,7 @@ class Media(_Ctype):
         @param height: the thumbnail height.
         @param picture_type: The thumbnail picture type \saL{PictureType}.
         @param timeout: A timeout value in ms, or 0 to disable timeout.
-        @return: A valid opaque request object, or None in case of failure. It must be released by L{thumbnail_cancel}().
+        @return: A valid opaque request object, or None in case of failure. It may be cancelled by L{thumbnail_request_cancel}(). It must be released by L{thumbnail_request_destroy}().
         @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
         '''
         return libvlc_media_thumbnail_request_by_pos(self, pos, speed, width, height, crop, picture_type, timeout)
@@ -3372,7 +3367,12 @@ class MediaPlayer(_Ctype):
 
 
     def stop_async(self):
-        '''Stop (no effect if there is no media).
+        '''Stop asynchronously
+        @note: This function is asynchronous. In case of success, the user should
+        wait for the libvlc_MediaPlayerStopped event to know when the stop is
+        finished.
+        @return: 0 if the player is being stopped, -1 otherwise (no-op).
+        @version: LibVLC 4.0.0 or later.
         '''
         return libvlc_media_player_stop_async(self)
 
@@ -3445,24 +3445,6 @@ class MediaPlayer(_Ctype):
         @version: LibVLC 2.0.0 or later.
         '''
         return libvlc_video_set_format_callbacks(self, setup, cleanup)
-
-
-    def video_set_output_callbacks(self, engine, setup_cb, cleanup_cb, update_output_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque):
-        '''Set callbacks and data to render decoded video to a custom texture
-        @warning: VLC will perform video rendering in its own thread and at its own rate,
-        You need to provide your own synchronisation mechanism.
-        OpenGL context need to be created before playing a media.
-        @param engine: the GPU engine to use.
-        @param setup_cb: callback called to initialize user data.
-        @param cleanup_cb: callback called to clean up user data.
-        @param update_output_cb: callback called to get the size of the video.
-        @param swap_cb: callback called after rendering a video frame (cannot be None).
-        @param makeCurrent_cb: callback called to enter/leave the opengl context (cannot be None for \ref libvlc_video_engine_opengl and for \ref libvlc_video_engine_gles2).
-        @param getProcAddress_cb: opengl function loading callback (cannot be None for \ref libvlc_video_engine_opengl and for \ref libvlc_video_engine_gles2).
-        @param opaque: private pointer passed to callbacks \retval true engine selected and callbacks set \retval false engine type unknown, callbacks not set.
-        @version: LibVLC 4.0.0 or later.
-        '''
-        return libvlc_video_set_output_callbacks(self, engine, setup_cb, cleanup_cb, update_output_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque)
 
 
     def set_nsobject(self, drawable):
@@ -5243,10 +5225,9 @@ def libvlc_media_duplicate(p_md):
 
 def libvlc_media_get_meta(p_md, e_meta):
     '''Read the meta of the media.
-    Note, you need to call L{libvlc_media_parse}() or play the media at least once
-    before calling this function.
+    Note, you need to call L{libvlc_media_parse_with_options}() or play the media
+    at least once before calling this function.
     If the media has not yet been parsed this will return None.
-    See L{libvlc_media_parse}
     See L{libvlc_media_parse_with_options}
     See libvlc_MediaMetaChanged.
     @param p_md: the media descriptor.
@@ -5328,9 +5309,10 @@ def libvlc_media_event_manager(p_md):
 
 def libvlc_media_get_duration(p_md):
     '''Get duration (in ms) of media descriptor object item.
-    Note, you need to call L{libvlc_media_parse}() or play the media at least once
-    before calling this function.
+    Note, you need to call L{libvlc_media_parse_with_options}() or play the media
+    at least once before calling this function.
     Not doing this will result in an undefined result.
+    See L{libvlc_media_parse_with_options}.
     @param p_md: media descriptor object.
     @return: duration of media item or -1 on error.
     '''
@@ -5342,7 +5324,6 @@ def libvlc_media_get_duration(p_md):
 def libvlc_media_parse_with_options(p_md, parse_flag, timeout):
     '''Parse the media asynchronously with options.
     This fetches (local or network) art, meta data and/or tracks information.
-    This method is the extended version of L{libvlc_media_parse_with_options}().
     To track when this is over you can listen to libvlc_MediaParsedChanged
     event. However if this functions returns an error, you will not receive any
     events.
@@ -5382,7 +5363,8 @@ def libvlc_media_parse_stop(p_md):
 def libvlc_media_get_parsed_status(p_md):
     '''Get Parsed status for media descriptor object.
     See libvlc_MediaParsedChanged
-    See L{MediaParsedStatus}.
+    See L{MediaParsedStatus}
+    See L{libvlc_media_parse_with_options}.
     @param p_md: media descriptor object.
     @return: a value of the L{MediaParsedStatus} enum.
     @version: LibVLC 3.0.0 or later.
@@ -5418,13 +5400,13 @@ def libvlc_media_get_user_data(p_md):
 
 def libvlc_media_tracks_get(p_md, tracks):
     '''Get media descriptor's elementary streams description
-    Note, you need to call L{libvlc_media_parse}() or play the media at least once
-    before calling this function.
+    Note, you need to call L{libvlc_media_parse_with_options}() or play the media
+    at least once before calling this function.
     Not doing this will result in an empty array.
     @param p_md: media descriptor object.
     @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed with L{libvlc_media_tracks_release}.
     @return: the number of Elementary Streams (zero on error).
-    @version: LibVLC 2.1.0 and later.
+    @version: LibVLC 2.1.0 and later. See L{libvlc_media_parse_with_options}.
     '''
     f = _Cfunctions.get('libvlc_media_tracks_get', None) or \
         _Cfunction('libvlc_media_tracks_get', ((1,), (1,),), None,
@@ -5433,12 +5415,12 @@ def libvlc_media_tracks_get(p_md, tracks):
 
 def libvlc_media_get_codec_description(i_type, i_codec):
     '''Get codec description from media elementary stream
-    Note, you need to call L{libvlc_media_parse}() or play the media at least once
-    before calling this function.
+    Note, you need to call L{libvlc_media_parse_with_options}() or play the media
+    at least once before calling this function.
     @param i_type: i_type from L{MediaTrack}.
     @param i_codec: i_codec or i_original_fourcc from L{MediaTrack}.
     @return: codec description.
-    @version: LibVLC 3.0.0 and later. See L{MediaTrack}.
+    @version: LibVLC 3.0.0 and later. See L{MediaTrack} See L{libvlc_media_parse_with_options}.
     '''
     f = _Cfunctions.get('libvlc_media_get_codec_description', None) or \
         _Cfunction('libvlc_media_get_codec_description', ((1,), (1,),), None,
@@ -5478,7 +5460,7 @@ def libvlc_media_thumbnail_request_by_time(md, time, speed, width, height, crop,
     @param height: the thumbnail height.
     @param picture_type: The thumbnail picture type \saL{PictureType}.
     @param timeout: A timeout value in ms, or 0 to disable timeout.
-    @return: A valid opaque request object, or None in case of failure. It must be released by L{libvlc_media_thumbnail_cancel}().
+    @return: A valid opaque request object, or None in case of failure. It may be cancelled by L{libvlc_media_thumbnail_request_cancel}(). It must be released by L{libvlc_media_thumbnail_request_destroy}().
     @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
     '''
     f = _Cfunctions.get('libvlc_media_thumbnail_request_by_time', None) or \
@@ -5497,7 +5479,7 @@ def libvlc_media_thumbnail_request_by_pos(md, pos, speed, width, height, crop, p
     @param height: the thumbnail height.
     @param picture_type: The thumbnail picture type \saL{PictureType}.
     @param timeout: A timeout value in ms, or 0 to disable timeout.
-    @return: A valid opaque request object, or None in case of failure. It must be released by L{libvlc_media_thumbnail_cancel}().
+    @return: A valid opaque request object, or None in case of failure. It may be cancelled by L{libvlc_media_thumbnail_request_cancel}(). It must be released by L{libvlc_media_thumbnail_request_destroy}().
     @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
     '''
     f = _Cfunctions.get('libvlc_media_thumbnail_request_by_pos', None) or \
@@ -5505,12 +5487,21 @@ def libvlc_media_thumbnail_request_by_pos(md, pos, speed, width, height, crop, p
                     MediaThumbnailRequest, Media, ctypes.c_float, ThumbnailerSeekSpeed, ctypes.c_int, ctypes.c_int, ctypes.c_bool, PictureType, ctypes.c_longlong)
     return f(md, pos, speed, width, height, crop, picture_type, timeout)
 
-def libvlc_media_thumbnail_cancel(p_req):
-    '''@brief L{libvlc_media_thumbnail_cancel} cancels a thumbnailing request.
+def libvlc_media_thumbnail_request_cancel(p_req):
+    '''@brief libvlc_media_thumbnail_cancel cancels a thumbnailing request.
     @param p_req: An opaque thumbnail request object. Cancelling the request will still cause libvlc_MediaThumbnailGenerated event to be emited, with a None L{Picture} If the request is cancelled after its completion, the behavior is undefined.
     '''
-    f = _Cfunctions.get('libvlc_media_thumbnail_cancel', None) or \
-        _Cfunction('libvlc_media_thumbnail_cancel', ((1,),), None,
+    f = _Cfunctions.get('libvlc_media_thumbnail_request_cancel', None) or \
+        _Cfunction('libvlc_media_thumbnail_request_cancel', ((1,),), None,
+                    None, MediaThumbnailRequest)
+    return f(p_req)
+
+def libvlc_media_thumbnail_request_destroy(p_req):
+    '''@brief libvlc_media_thumbnail_destroy destroys a thumbnail request.
+    @param p_req: An opaque thumbnail request object. If the request has not completed or hasn't been cancelled yet, the behavior is undefined.
+    '''
+    f = _Cfunctions.get('libvlc_media_thumbnail_request_destroy', None) or \
+        _Cfunction('libvlc_media_thumbnail_request_destroy', ((1,),), None,
                     None, MediaThumbnailRequest)
     return f(p_req)
 
@@ -6066,12 +6057,17 @@ def libvlc_media_player_pause(p_mi):
     return f(p_mi)
 
 def libvlc_media_player_stop_async(p_mi):
-    '''Stop (no effect if there is no media).
+    '''Stop asynchronously
+    @note: This function is asynchronous. In case of success, the user should
+    wait for the libvlc_MediaPlayerStopped event to know when the stop is
+    finished.
     @param p_mi: the Media Player.
+    @return: 0 if the player is being stopped, -1 otherwise (no-op).
+    @version: LibVLC 4.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_media_player_stop_async', None) or \
         _Cfunction('libvlc_media_player_stop_async', ((1,),), None,
-                    None, MediaPlayer)
+                    ctypes.c_int, MediaPlayer)
     return f(p_mi)
 
 def libvlc_media_player_set_renderer(p_mi, p_item):
@@ -6155,27 +6151,6 @@ def libvlc_video_set_format_callbacks(mp, setup, cleanup):
         _Cfunction('libvlc_video_set_format_callbacks', ((1,), (1,), (1,),), None,
                     None, MediaPlayer, VideoFormatCb, VideoCleanupCb)
     return f(mp, setup, cleanup)
-
-def libvlc_video_set_output_callbacks(mp, engine, setup_cb, cleanup_cb, update_output_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque):
-    '''Set callbacks and data to render decoded video to a custom texture
-    @warning: VLC will perform video rendering in its own thread and at its own rate,
-    You need to provide your own synchronisation mechanism.
-    OpenGL context need to be created before playing a media.
-    @param mp: the media player.
-    @param engine: the GPU engine to use.
-    @param setup_cb: callback called to initialize user data.
-    @param cleanup_cb: callback called to clean up user data.
-    @param update_output_cb: callback called to get the size of the video.
-    @param swap_cb: callback called after rendering a video frame (cannot be None).
-    @param makeCurrent_cb: callback called to enter/leave the opengl context (cannot be None for \ref libvlc_video_engine_opengl and for \ref libvlc_video_engine_gles2).
-    @param getProcAddress_cb: opengl function loading callback (cannot be None for \ref libvlc_video_engine_opengl and for \ref libvlc_video_engine_gles2).
-    @param opaque: private pointer passed to callbacks \retval true engine selected and callbacks set \retval false engine type unknown, callbacks not set.
-    @version: LibVLC 4.0.0 or later.
-    '''
-    f = _Cfunctions.get('libvlc_video_set_output_callbacks', None) or \
-        _Cfunction('libvlc_video_set_output_callbacks', ((1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,),), None,
-                    ctypes.c_bool, MediaPlayer, VideoEngine, VideoSetupCb, VideoCleanupCb, VideoUpdateOutputCb, VideoSwapCb, VideoMakecurrentCb, VideoGetprocaddressCb, ctypes.c_void_p)
-    return f(mp, engine, setup_cb, cleanup_cb, update_output_cb, swap_cb, makeCurrent_cb, getProcAddress_cb, opaque)
 
 def libvlc_media_player_set_nsobject(p_mi, drawable):
     '''Set the NSView handler where the media player should render its video output.
@@ -7834,10 +7809,10 @@ def libvlc_media_list_player_set_playback_mode(p_mlp, e_mode):
 #  libvlc_dialog_set_callbacks
 #  libvlc_printerr
 #  libvlc_set_exit_handler
-#  libvlc_video_direct3d_set_callbacks
-#  libvlc_video_direct3d_set_resize_cb
+#  libvlc_video_output_set_resize_cb
+#  libvlc_video_set_output_callbacks
 
-# 34 function(s) not wrapped as methods:
+# 35 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
 #  libvlc_audio_equalizer_get_preset_count
@@ -7863,7 +7838,8 @@ def libvlc_media_list_player_set_playback_mode(p_mlp, e_mode):
 #  libvlc_media_discoverer_list_release
 #  libvlc_media_get_codec_description
 #  libvlc_media_slaves_release
-#  libvlc_media_thumbnail_cancel
+#  libvlc_media_thumbnail_request_cancel
+#  libvlc_media_thumbnail_request_destroy
 #  libvlc_media_tracks_release
 #  libvlc_module_description_list_release
 #  libvlc_new
