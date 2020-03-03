@@ -1173,10 +1173,10 @@ class _Enum(ctypes.c_uint):
             name = self.class4(f.name)  #PYCHOK flake
 
             # return value and arg classes
-            # Note: The f.type != 'void**' is a hack to generate a
+            # Note: The f.type == 'void**' is a hack to generate a
             # valid ctypes signature, specifically for the
             # libvlc_video_lock_cb callback. It should be fixed in a better way (more generic)
-            types = ', '.join([self.class4('void*' if f.type != 'void**' else f.type)] +  #PYCHOK flake
+            types = ', '.join([self.class4('void*' if f.type == 'void**' else f.type)] +  #PYCHOK flake
                               [self.class4(p.type, p.flags(f.out)[0]) for p in f.pars])
 
             # xformed doc string with first @param
