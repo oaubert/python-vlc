@@ -68,3 +68,17 @@ To generate the reference PyPI module (including setup.py, examples
 and metadata files), use
 
     make dist
+
+How to contribute
+-----------------
+
+There are short-terms contributions (reporting and fixing bugs,
+contributing unit tests, contributing examples). A number of libvlc
+functions are currently blacklisted (search for `_blacklist` in the
+generator code), mostly because of their signature complexity. They
+would benefit some work.
+
+Longer terms goals include the rewriting of the generator to use a
+proper parser for the C-syntax (for the moment, the parser relies on
+regexp-based expression, which works thanks to the coding style
+applied in the code, but remains very fragile).
