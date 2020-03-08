@@ -154,6 +154,9 @@ def find_lib():
                         plugin_path = os.path.dirname(p)
                         break
             if plugin_path is not None:  # try loading
+                 # PyInstaller Windows fix
+                if 'PyInstallerCDLL' in ctypes.CDLL.__name__:
+                    ctypes.windll.kernel32.SetDllDirectoryW(None)
                 p = os.getcwd()
                 os.chdir(plugin_path)
                  # if chdir failed, this will raise an exception
