@@ -699,6 +699,11 @@ class Parser(object):
             m = forward_re.match(param_raw)
             param_raw = m.group(1) + m.group(2)
 
+        # is this a function pointer?
+        RE_FUNC_POINTER = r'\(.+\)\s*\(.+\)'
+        if re.search(RE_FUNC_POINTER, param_raw):
+            return None
+
         # is this parameter a pointer?
         split_pointer = param_raw.split('*')
         if len(split_pointer) > 1:
