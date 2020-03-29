@@ -389,9 +389,10 @@ class Func(_Source):
 class Par(object):
     """C function parameter.
     """
-    def __init__(self, name, type):
+    def __init__(self, name, type, constness):
         self.name = name
         self.type = type  # C type
+        self.constness = constness
 
     def __repr__(self):
         return "%s (%s)" % (self.name, self.type)
@@ -728,6 +729,8 @@ class Parser(object):
             # ASSUMPTION
             # just indirection level 0 and 1 can be const
             for deref_level_constness in constness[2:]: assert(not deref_level_constness)
+
+            param_constness = constness[:2]
         # ... or is it a simple variable?
         else:
             # WARNING: workaround for "union { struct {"
@@ -742,7 +745,7 @@ class Parser(object):
 
             # normalize spaces
             param_raw = re.sub('\s+', ' ', param_raw)
-            # TODO remove struct and const
+
             try:
                 split_value = param_raw.split(' ')
                 if len(split_value) > 1:
@@ -754,7 +757,9 @@ class Parser(object):
             except:
                 param_name = ''
 
-        return Par(param_name.strip(), param_type.strip())
+            param_constness = [False]
+
+        return Par(param_name.strip(), param_type.strip(), param_constness)
 
     def parse_version(self, h_files):
         """Get the libvlc version from the C header files:
