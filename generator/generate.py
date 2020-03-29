@@ -159,7 +159,6 @@ struct_re    = re.compile(r'typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S
 typedef_re   = re.compile(r'^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
 forward_re   = re.compile(r'.+\(\s*(.+?)\s*\)(\s*\S+)')
 libvlc_re    = re.compile(r'libvlc_[a-z_]+')
-param_re     = re.compile(r'\s*(const\s*|unsigned\s*|struct\s*)?(\S+\s*\**)\s+(.+)')
 decllist_re  = re.compile(r'\s*;\s*')
 paramlist_re = re.compile(r'\s*,\s*')
 version_re   = re.compile(r'vlc[\-]\d+[.]\d+[.]\d+.*')
@@ -687,7 +686,7 @@ class Parser(object):
                     d = []
         f.close()
 
-    def parse_param(self, param):
+    def parse_param(self, param_raw):
         """Parse a C parameter expression.
 
         It is used to parse the type/name of functions
@@ -695,23 +694,48 @@ class Parser(object):
 
         @return: a Par instance.
         """
-        t = param.replace('const', '').strip()
-        if _VLC_FORWARD_ in t:
-            m = forward_re.match(t)
-            t = m.group(1) + m.group(2)
+        param_raw = param_raw.strip()
+        if _VLC_FORWARD_ in param_raw:
+            m = forward_re.match(param_raw)
+            param_raw = m.group(1) + m.group(2)
 
-        m = param_re.search(t)
-        if m:
-            _, t, n = m.groups()
-            while n.startswith('*'):
-                n  = n[1:].lstrip()
-                t += '*'
-##          if n == 'const*':
-##              # K&R: [const] char* const*
-##              n = ''
-        else:  # K&R: only [const] type
-            n = ''
-        return Par(n, t.replace(' ', ''))
+        # is this parameter a pointer?
+        split_pointer = param_raw.split('*')
+        if len(split_pointer) > 1:
+            param_name = split_pointer[-1]
+            # TODO extract constness
+            param_type = split_pointer[0].replace('const', '').strip()
+            # remove the struct keyword, this information is currently not used
+            param_type = param_type.replace('struct ', '').strip()
+
+            param_type += '*' * (len(split_pointer) - 1 )
+        # ... or is it a simple variable?
+        else:
+            # WARNING: workaround for "union { struct {"
+            param_raw = param_raw.split('{')[-1]
+
+            # ASSUMPTIONs
+            # these allows to constrain param_raw to these options:
+            #  - named:     "type name" (e.g. "int param")
+            #  - anonymous: "type"      (e.g. "int")
+            assert('struct' not in param_raw)
+            assert('const' not in param_raw)
+
+            # normalize spaces
+            param_raw = re.sub('\s+', ' ', param_raw)
+            # TODO remove struct and const
+            try:
+                split_value = param_raw.split(' ')
+                if len(split_value) > 1:
+                    param_name = split_value[-1]
+                    param_type = ' '.join(split_value[:-1])
+                else:
+                    param_type = split_value[0]
+                    param_name = ''
+            except:
+                param_name = ''
+
+        return Par(param_name.strip(), param_type.strip())
 
     def parse_version(self, h_files):
         """Get the libvlc version from the C header files:
@@ -971,6 +995,7 @@ class PythonGenerator(_Generator):
         '...':       'ctypes.c_void_p',
         'va_list':   'ctypes.c_void_p',
         'char*':     'ctypes.c_char_p',
+        'unsigned char*':     'ctypes.c_char_p',
         'bool':      'ctypes.c_bool',
         'bool*':      'ctypes.POINTER(ctypes.c_bool)',
         'char**':    'ListPOINTER(ctypes.c_char_p)',
@@ -988,6 +1013,7 @@ class PythonGenerator(_Generator):
         'size_t*':   'ctypes.POINTER(ctypes.c_size_t)',
         'ssize_t*':   'ctypes.POINTER(ctypes.c_ssize_t)',
         'unsigned':  'ctypes.c_uint',
+        'unsigned int':  'ctypes.c_uint',
         'unsigned*': 'ctypes.POINTER(ctypes.c_uint)',  # _video_get_size
         'void':      'None',
         'void*':     'ctypes.c_void_p',
