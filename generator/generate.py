@@ -707,13 +707,27 @@ class Parser(object):
         # is this parameter a pointer?
         split_pointer = param_raw.split('*')
         if len(split_pointer) > 1:
+            param_type = split_pointer[0]
             param_name = split_pointer[-1]
-            # TODO extract constness
+            param_deref_levels = len(split_pointer) - 1
+
+            # it is a pointer, so it should have at least 1 level of indirection
+            assert(param_deref_levels > 0)
+
+            # PARAM TYPE
             param_type = split_pointer[0].replace('const', '').strip()
             # remove the struct keyword, this information is currently not used
             param_type = param_type.replace('struct ', '').strip()
 
-            param_type += '*' * (len(split_pointer) - 1 )
+            # POINTER SEMANTIC
+            # add back the information of how many dereference levels there are
+            param_type += '*' * param_deref_levels
+
+            constness = ['const' in deref_level for deref_level in split_pointer]
+
+            # ASSUMPTION
+            # just indirection level 0 and 1 can be const
+            for deref_level_constness in constness[2:]: assert(not deref_level_constness)
         # ... or is it a simple variable?
         else:
             # WARNING: workaround for "union { struct {"
