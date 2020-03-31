@@ -395,7 +395,7 @@ class Par(object):
         self.constness = constness
 
     def __repr__(self):
-        return "%s (%s)" % (self.name, self.type)
+        return "%s (%s) %s" % (self.name, self.type, self.constness)
 
     def dump(self, out=()):  # for debug
         if self.name in out:
