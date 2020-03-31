@@ -422,6 +422,7 @@ class Par(object):
         else:
             f = {'int*':      Flag.Out,
                  'unsigned*': Flag.Out,
+                 'unsigned char*': Flag.Out,
                  'libvlc_media_track_info_t**': Flag.Out,
                 }.get(self.type, Flag.In)  # default
         if default is None:
@@ -1048,6 +1049,7 @@ class PythonGenerator(_Generator):
 
     type2class_out = {
         'char**':    'ctypes.POINTER(ctypes.c_char_p)',
+        'unsigned char*':    'ctypes.POINTER(ctypes.c_char)',
     }
 
     # Python classes, i.e. classes for which we want to
