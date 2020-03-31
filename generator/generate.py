@@ -390,6 +390,14 @@ class Par(object):
     """C function parameter.
     """
     def __init__(self, name, type, constness):
+        """
+        constness:  a list of bools where each index refers to the constness
+                    of that level of indirection.
+                        [0] no indirection: is the value const?
+                        [1] pointer to value: is this pointer const?
+                        [2] pointer to pointer: is this pointer const?
+                        ... rare to see more than two levels of indirection
+        """
         self.name = name
         self.type = type  # C type
         self.constness = constness
