@@ -758,15 +758,12 @@ class Parser(object):
             # normalize spaces
             param_raw = re.sub('\s+', ' ', param_raw)
 
-            try:
-                split_value = param_raw.split(' ')
-                if len(split_value) > 1:
-                    param_name = split_value[-1]
-                    param_type = ' '.join(split_value[:-1])
-                else:
-                    param_type = split_value[0]
-                    param_name = ''
-            except:
+            split_value = param_raw.split(' ')
+            if len(split_value) > 1:
+                param_name = split_value[-1]
+                param_type = ' '.join(split_value[:-1])
+            else:
+                param_type = split_value[0]
                 param_name = ''
 
             param_constness = [False]
