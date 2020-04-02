@@ -8,6 +8,8 @@ else
     INSTALLED_INCLUDE_DIR=/usr/include/vlc
 endif
 
+PROJECT_ROOT=$(shell pwd)
+
 DEV_PATH=generated/dev
 VERSIONED_PATH=generated/3.0
 
@@ -58,12 +60,12 @@ doc: $(VERSIONED_NAME)
 	-epydoc -v -o doc $<
 
 test: $(MODULE_NAME)
-	PYTHONPATH=$(DEV_PATH) python tests/test.py
-	PYTHONPATH=$(VERSIONED_PATH) python tests/test.py
+	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python tests/test.py
+	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python tests/test.py
 
 test3: $(MODULE_NAME)
-	PYTHONPATH=$(DEV_PATH) python3 tests/test.py
-	PYTHONPATH=$(VERSIONED_PATH) python3 tests/test.py
+	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test.py
+	PYTHONPATH=$(VERSIONED_PATH):${PROJECT_ROOT} python3 tests/test.py
 
 publish: $(VERSIONED_NAME)
 	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist && twine upload dist/*
