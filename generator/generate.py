@@ -156,6 +156,7 @@ callback_type_re = re.compile(r'^typedef\s+\w+(\s*\*)?\s*\(\s*\*')
 callback_re  = re.compile(r'typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
 struct_type_re = re.compile(r'^typedef\s+struct\s*(\S+)\s*$')
 struct_re    = re.compile(r'typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
+func_pointer_re = re.compile(r'(\(?[^\(]+)\s+\((\*\s*\S*)\)(\(.*\))') # (ret_type, *pointer_name, ([params]))
 typedef_re   = re.compile(r'^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
 forward_re   = re.compile(r'.+\(\s*(.+?)\s*\)(\s*\S+)')
 libvlc_re    = re.compile(r'libvlc_[a-z_]+')
@@ -713,8 +714,7 @@ class Parser(object):
             param_raw = m.group(1) + m.group(2)
 
         # is this a function pointer?
-        RE_FUNC_POINTER = r'\(.+\)\s*\(.+\)'
-        if re.search(RE_FUNC_POINTER, param_raw):
+        if func_pointer_re.search(param_raw):
             return None
 
         # is this parameter a pointer?
