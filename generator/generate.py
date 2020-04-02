@@ -427,12 +427,15 @@ class Par(object):
         """
         if self.name in out:
             f = Flag.Out  # @param [OUT]
-        else:
+        elif not self.constness[0]:
             f = {'int*':      Flag.Out,
                  'unsigned*': Flag.Out,
                  'unsigned char*': Flag.Out,
                  'libvlc_media_track_info_t**': Flag.Out,
                 }.get(self.type, Flag.In)  # default
+        else:
+            f = Flag.In
+
         if default is None:
             return f,  # 1-tuple
         else:  # see ctypes 15.16.2.4 Function prototypes
