@@ -33,10 +33,6 @@ import ctypes
 import re
 import os
 import unittest
-try:
-    from unittest.mock import MagicMock # python3
-except ImportError:
-    MagicMock = None
 
 try:
     import urllib.parse as urllib # python3
@@ -63,12 +59,6 @@ print ("Checking " + vlc.__file__)
 
 
 class TestAuxMethods(unittest.TestCase):
-    if MagicMock is not None:
-        def test_try_fspath_incompatible_object(self):
-            test_object = MagicMock()
-            result = vlc.try_fspath(test_object)
-            self.assertIs(result, test_object)
-
     if Path is not None:
         def test_try_fspath_path_like_object(self):
             test_object = Path('test', 'path')
