@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.8112"
-__libvlc_version__ = "3.0.8"
-__generator_version__ = "1.12"
-build_date  = "Tue Mar  3 15:13:17 2020 3.0.8"
+__version__ = "3.0.9113"
+__libvlc_version__ = "3.0.9"
+__generator_version__ = "1.13"
+build_date  = "Wed Apr 29 13:13:52 2020 3.0.9"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -157,6 +157,9 @@ def find_lib():
                         plugin_path = os.path.dirname(p)
                         break
             if plugin_path is not None:  # try loading
+                 # PyInstaller Windows fix
+                if 'PyInstallerCDLL' in ctypes.CDLL.__name__:
+                    ctypes.windll.kernel32.SetDllDirectoryW(None)
                 p = os.getcwd()
                 os.chdir(plugin_path)
                  # if chdir failed, this will raise an exception
@@ -1573,7 +1576,7 @@ class CallbackDecorators(object):
         @param opaque: private pointer as passed to L{libvlc_media_new_callbacks}().
         @return: datap storage space for a private data pointer, sizep byte length of the bitstream or UINT64_MAX if unknown.
     '''
-    MediaReadCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_ssize_t), ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t)
+    MediaReadCb = ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_ssize_t), ctypes.c_void_p, ctypes.POINTER(ctypes.c_char), ctypes.c_size_t)
     MediaReadCb.__doc__ = '''Callback prototype to read data from a custom bitstream input media.
         @param opaque: private pointer as set by the @ref libvlc_media_open_cb callback.
         @param buf: start address of the buffer to read data into.
@@ -5870,7 +5873,7 @@ def libvlc_media_slaves_add(p_md, i_type, i_priority, psz_uri):
     '''
     f = _Cfunctions.get('libvlc_media_slaves_add', None) or \
         _Cfunction('libvlc_media_slaves_add', ((1,), (1,), (1,), (1,),), None,
-                    ctypes.c_int, Media, MediaSlaveType, ctypes.c_int, ctypes.c_char_p)
+                    ctypes.c_int, Media, MediaSlaveType, ctypes.c_uint, ctypes.c_char_p)
     return f(p_md, i_type, i_priority, psz_uri)
 
 def libvlc_media_slaves_clear(p_md):
@@ -5896,7 +5899,7 @@ def libvlc_media_slaves_get(p_md, ppp_slaves):
     '''
     f = _Cfunctions.get('libvlc_media_slaves_get', None) or \
         _Cfunction('libvlc_media_slaves_get', ((1,), (1,),), None,
-                    ctypes.c_int, Media, ctypes.POINTER(ctypes.POINTER(MediaSlave)))
+                    ctypes.c_uint, Media, ctypes.POINTER(ctypes.POINTER(MediaSlave)))
     return f(p_md, ppp_slaves)
 
 def libvlc_media_slaves_release(pp_slaves, i_count):
@@ -5907,7 +5910,7 @@ def libvlc_media_slaves_release(pp_slaves, i_count):
     '''
     f = _Cfunctions.get('libvlc_media_slaves_release', None) or \
         _Cfunction('libvlc_media_slaves_release', ((1,), (1,),), None,
-                    None, ctypes.POINTER(MediaSlave), ctypes.c_int)
+                    None, ctypes.POINTER(MediaSlave), ctypes.c_uint)
     return f(pp_slaves, i_count)
 
 def libvlc_renderer_item_hold(p_item):
@@ -7244,7 +7247,7 @@ def libvlc_media_player_set_video_title_display(p_mi, position, timeout):
     '''
     f = _Cfunctions.get('libvlc_media_player_set_video_title_display', None) or \
         _Cfunction('libvlc_media_player_set_video_title_display', ((1,), (1,), (1,),), None,
-                    None, MediaPlayer, Position, ctypes.c_int)
+                    None, MediaPlayer, Position, ctypes.c_uint)
     return f(p_mi, position, timeout)
 
 def libvlc_media_player_add_slave(p_mi, i_type, psz_uri, b_select):
@@ -7653,7 +7656,7 @@ def libvlc_video_take_snapshot(p_mi, num, psz_filepath, i_width, i_height):
     '''
     f = _Cfunctions.get('libvlc_video_take_snapshot', None) or \
         _Cfunction('libvlc_video_take_snapshot', ((1,), (1,), (1,), (1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, ctypes.c_uint, ctypes.c_char_p, ctypes.c_int, ctypes.c_int)
+                    ctypes.c_int, MediaPlayer, ctypes.c_uint, ctypes.c_char_p, ctypes.c_uint, ctypes.c_uint)
     return f(p_mi, num, psz_filepath, i_width, i_height)
 
 def libvlc_video_set_deinterlace(p_mi, psz_mode):
