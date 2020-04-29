@@ -160,11 +160,11 @@ def find_lib():
                 p = os.getcwd()
                 os.chdir(plugin_path)
                  # if chdir failed, this will raise an exception
-                dll = ctypes.CDLL(libname)
+                dll = ctypes.CDLL('.\\' + libname)
                  # restore cwd after dll has been loaded
                 os.chdir(p)
             else:  # may fail
-                dll = ctypes.CDLL(libname)
+                dll = ctypes.CDLL('.\\' + libname)
         else:
             plugin_path = os.path.dirname(p)
             dll = ctypes.CDLL(p)
