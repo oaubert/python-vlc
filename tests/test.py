@@ -221,7 +221,7 @@ if generate is not None:
             self.assertIsNone(generate.api_re.match('/* Avoid unhelpful warnings from libvlc with our deprecated APIs */'))
 
         def test_api_re_match(self):
-            self.assertIsInstance(generate.api_re.match('LIBVLC_API void libvlc_clearerr (void);'), re.Match)
+            self.assertIsNotNone(generate.api_re.match('LIBVLC_API void libvlc_clearerr (void);'))
 
         def test_at_param_re(self):
             match = generate.at_param_re.match('@param p_mi media player')
@@ -250,6 +250,57 @@ if generate is not None:
         def test_forward_re(self):
             match = generate.forward_re.match('VLC_FORWARD_DECLARE_OBJECT(libvlc_media_list_t *) libvlc_media_subitems')
             self.assertEqual(match.groups(), ('libvlc_media_list_t *', ' libvlc_media_subitems'))
+
+    class TestPar(unittest.TestCase):
+        def test_invalid(self):
+            INVALID_TESTS = [
+                # function pointers
+                "int(*name)()",
+                "int *(*name)()",
+                "void *(*name)(const char * buffer)",
+                "void(*name)(const char *, int)",
+                "void(*)(const char *, int)",
+            ]
+
+            for test_instance in INVALID_TESTS:
+                self.assertIsNone(generate.Par.parse_param(test_instance))
+
+        def test_valid(self):
+            VALID_TESTS = [
+                # named param
+                ('int integer_value', ('int', 'integer_value', [False])),
+                ('float decimal_value', ('float', 'decimal_value', [False])),
+
+                # anonymous param
+                ('float', ('float', '', [False])),
+
+                # pointer
+                ('int *pointer_to_integer', ('int*', 'pointer_to_integer', [False, False])),
+                ('const unsigned char * pointer_to_character', ('unsigned char*', 'pointer_to_character', [True, False])),
+                ('const unsigned char * const pointer_to_character', ('unsigned char*', 'pointer_to_character', [True, True])),
+
+                # pointer-to-pointers
+                ('int * const * ptr_to_constptr_to_int',    ('int**', 'ptr_to_constptr_to_int', [False, True, False])),
+                ('int *const * ptr_to_constptr_to_int',     ('int**', 'ptr_to_constptr_to_int', [False, True, False])),
+                ('int * const* ptr_to_constptr_to_int',     ('int**', 'ptr_to_constptr_to_int', [False, True, False])),
+                ('int* const* ptr_to_constptr_to_int',      ('int**', 'ptr_to_constptr_to_int', [False, True, False])),
+
+                ('const int * const * ptr_to_constptr_to_constint', ('int**', 'ptr_to_constptr_to_constint', [True, True, False])),
+                ('const int *const * ptr_to_constptr_to_constint',  ('int**', 'ptr_to_constptr_to_constint', [True, True, False])),
+                ('const int * const* ptr_to_constptr_to_constint',  ('int**', 'ptr_to_constptr_to_constint', [True, True, False])),
+                ('const int* const* ptr_to_constptr_to_constint',   ('int**', 'ptr_to_constptr_to_constint', [True, True, False])),
+
+                ('const int * * ptr_to_ptr_to_constint',    ('int**', 'ptr_to_ptr_to_constint', [True, False, False])),
+                ('const int ** ptr_to_ptr_to_constint',     ('int**', 'ptr_to_ptr_to_constint', [True, False, False])),
+                ('const int * *ptr_to_ptr_to_constint',     ('int**', 'ptr_to_ptr_to_constint', [True, False, False])),
+                ('const int* *ptr_to_ptr_to_constint',      ('int**', 'ptr_to_ptr_to_constint', [True, False, False])),
+            ]
+
+            for parse_raw, (expected_type, expected_name, expected_constness) in VALID_TESTS:
+                param = generate.Par.parse_param(parse_raw)
+                self.assertEqual(expected_type, param.type)
+                self.assertEqual(expected_name, param.name)
+                self.assertListEqual(expected_constness, param.constness)
 
 
 if __name__ == '__main__':

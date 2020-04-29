@@ -156,10 +156,10 @@ callback_type_re = re.compile(r'^typedef\s+\w+(\s*\*)?\s*\(\s*\*')
 callback_re  = re.compile(r'typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
 struct_type_re = re.compile(r'^typedef\s+struct\s*(\S+)\s*$')
 struct_re    = re.compile(r'typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
+func_pointer_re = re.compile(r'(\(?[^\(]+)\s*\((\*\s*\S*)\)(\(.*\))') # (ret_type, *pointer_name, ([params]))
 typedef_re   = re.compile(r'^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
 forward_re   = re.compile(r'.+\(\s*(.+?)\s*\)(\s*\S+)')
 libvlc_re    = re.compile(r'libvlc_[a-z_]+')
-param_re     = re.compile(r'\s*(const\s*|unsigned\s*|struct\s*)?(\S+\s*\**)\s+(.+)')
 decllist_re  = re.compile(r'\s*;\s*')
 paramlist_re = re.compile(r'\s*,\s*')
 version_re   = re.compile(r'vlc[\-]\d+[.]\d+[.]\d+.*')
@@ -390,12 +390,21 @@ class Func(_Source):
 class Par(object):
     """C function parameter.
     """
-    def __init__(self, name, type):
+    def __init__(self, name, type, constness):
+        """
+        constness:  a list of bools where each index refers to the constness
+                    of that level of indirection.
+                        [0] no indirection: is the value const?
+                        [1] pointer to value: is this pointer const?
+                        [2] pointer to pointer: is this pointer const?
+                        ... rare to see more than two levels of indirection
+        """
         self.name = name
         self.type = type  # C type
+        self.constness = constness
 
     def __repr__(self):
-        return "%s (%s)" % (self.name, self.type)
+        return "%s (%s) %s" % (self.name, self.type, self.constness)
 
     def dump(self, out=()):  # for debug
         if self.name in out:
@@ -419,15 +428,90 @@ class Par(object):
         """
         if self.name in out:
             f = Flag.Out  # @param [OUT]
-        else:
+        elif not self.constness[0]:
             f = {'int*':      Flag.Out,
                  'unsigned*': Flag.Out,
+                 'unsigned char*': Flag.Out,
                  'libvlc_media_track_info_t**': Flag.Out,
                 }.get(self.type, Flag.In)  # default
+        else:
+            f = Flag.In
+
         if default is None:
             return f,  # 1-tuple
         else:  # see ctypes 15.16.2.4 Function prototypes
             return f, self.name, default  #PYCHOK expected
+
+    @classmethod
+    def parse_param(cls, param_raw):
+        """Parse a C parameter expression.
+
+        It is used to parse the type/name of functions
+        and type/name of the function parameters.
+
+        @return: a Par instance.
+        """
+        param_raw = param_raw.strip()
+        if _VLC_FORWARD_ in param_raw:
+            m = forward_re.match(param_raw)
+            param_raw = m.group(1) + m.group(2)
+
+        # is this a function pointer?
+        if func_pointer_re.search(param_raw):
+            return None
+
+        # is this parameter a pointer?
+        split_pointer = param_raw.split('*')
+        if len(split_pointer) > 1:
+            param_type = split_pointer[0]
+            param_name = split_pointer[-1].split(' ')[-1]
+            param_deref_levels = len(split_pointer) - 1
+
+            # it is a pointer, so it should have at least 1 level of indirection
+            assert(param_deref_levels > 0)
+
+            # POINTER SEMANTIC
+            constness =     split_pointer[:-1]
+            constness +=    ['const' if len(split_pointer[-1].strip().split(' ')) > 1 else '']
+            param_constness = ['const' in deref_level for deref_level in constness]
+
+            # PARAM TYPE
+            param_type = split_pointer[0].replace('const ', '').strip()
+            # remove the struct keyword, this information is currently not used
+            param_type = param_type.replace('struct ', '').strip()
+
+            # add back the information of how many dereference levels there are
+            param_type += '*' * param_deref_levels
+
+            # ASSUMPTION
+            # just indirection level 0 and 1 can be const
+            for deref_level_constness in param_constness[2:]: assert(not deref_level_constness)
+        # ... or is it a simple variable?
+        else:
+            # WARNING: workaround for "union { struct {"
+            param_raw = param_raw.split('{')[-1]
+
+            # ASSUMPTIONs
+            # these allows to constrain param_raw to these options:
+            #  - named:     "type name" (e.g. "int param")
+            #  - anonymous: "type"      (e.g. "int")
+            assert('struct' not in param_raw)
+            assert('const' not in param_raw)
+
+            # normalize spaces
+            param_raw = re.sub('\s+', ' ', param_raw)
+
+            split_value = param_raw.split(' ')
+            if len(split_value) > 1:
+                param_name = split_value[-1]
+                param_type = ' '.join(split_value[:-1])
+            else:
+                param_type = split_value[0]
+                param_name = ''
+
+            param_constness = [False]
+
+        return Par(param_name.strip(), param_type.strip(), param_constness)
 
 class Val(object):
     """Enum name and value.
@@ -518,7 +602,7 @@ class Parser(object):
                 _blacklist[name] = type_
                 continue
 
-            pars = [self.parse_param(p) for p in paramlist_re.split(pars)]
+            pars = [Par.parse_param(p) for p in paramlist_re.split(pars)]
 
             yield Func(name, type_.replace(' ', '') + '*', pars, docs,
                        file_=self.h_file, line=line)
@@ -571,7 +655,7 @@ class Parser(object):
         @return: yield a Struct instance for each struct.
         """
         for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile(r'^\}(\s*\S+)?\s*;$')):
-            fields = [ self.parse_param(t.strip()) for t in decllist_re.split(body) if t.strip() and not '%s()' % name in t ]
+            fields = [ Par.parse_param(t.strip()) for t in decllist_re.split(body) if t.strip() and not '%s()' % name in t ]
             fields = [ f for f in fields if f is not None ]
 
             name = name.strip()
@@ -593,12 +677,12 @@ class Parser(object):
 
         for name, pars, docs, line in self.parse_groups(match_t, api_re.match, ');'):
 
-            f = self.parse_param(name)
+            f = Par.parse_param(name)
             if f.name in _blacklist:
                 _blacklist[f.name] = f.type
                 continue
 
-            pars = [self.parse_param(p) for p in paramlist_re.split(pars)]
+            pars = [Par.parse_param(p) for p in paramlist_re.split(pars)]
 
             if len(pars) == 1 and pars[0].type == 'void':
                 pars = []  # no parameters
@@ -686,32 +770,6 @@ class Parser(object):
                     # We have another typedef. Reset docstring.
                     d = []
         f.close()
-
-    def parse_param(self, param):
-        """Parse a C parameter expression.
-
-        It is used to parse the type/name of functions
-        and type/name of the function parameters.
-
-        @return: a Par instance.
-        """
-        t = param.replace('const', '').strip()
-        if _VLC_FORWARD_ in t:
-            m = forward_re.match(t)
-            t = m.group(1) + m.group(2)
-
-        m = param_re.search(t)
-        if m:
-            _, t, n = m.groups()
-            while n.startswith('*'):
-                n  = n[1:].lstrip()
-                t += '*'
-##          if n == 'const*':
-##              # K&R: [const] char* const*
-##              n = ''
-        else:  # K&R: only [const] type
-            n = ''
-        return Par(n, t.replace(' ', ''))
 
     def parse_version(self, h_files):
         """Get the libvlc version from the C header files:
@@ -971,6 +1029,7 @@ class PythonGenerator(_Generator):
         '...':       'ctypes.c_void_p',
         'va_list':   'ctypes.c_void_p',
         'char*':     'ctypes.c_char_p',
+        'unsigned char*':     'ctypes.c_char_p',
         'bool':      'ctypes.c_bool',
         'bool*':      'ctypes.POINTER(ctypes.c_bool)',
         'char**':    'ListPOINTER(ctypes.c_char_p)',
@@ -988,6 +1047,7 @@ class PythonGenerator(_Generator):
         'size_t*':   'ctypes.POINTER(ctypes.c_size_t)',
         'ssize_t*':   'ctypes.POINTER(ctypes.c_ssize_t)',
         'unsigned':  'ctypes.c_uint',
+        'unsigned int':  'ctypes.c_uint',
         'unsigned*': 'ctypes.POINTER(ctypes.c_uint)',  # _video_get_size
         'void':      'None',
         'void*':     'ctypes.c_void_p',
@@ -998,6 +1058,7 @@ class PythonGenerator(_Generator):
 
     type2class_out = {
         'char**':    'ctypes.POINTER(ctypes.c_char_p)',
+        'unsigned char*':    'ctypes.POINTER(ctypes.c_char)',
     }
 
     # Python classes, i.e. classes for which we want to
