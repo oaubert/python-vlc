@@ -27,7 +27,7 @@ Date: 23-09-2015
 """
 
 # Tested with Python 3.7.4, tkinter/Tk 8.6.9 on macOS 10.13.6 only.
-__version__ = '19.07.29'  # mrJean1 at Gmail dot com
+__version__ = '20.05.04'  # mrJean1 at Gmail
 
 # import external libraries
 import vlc
@@ -49,7 +49,7 @@ import time
 
 _isMacOS   = sys.platform.startswith('darwin')
 _isWindows = sys.platform.startswith('win')
-_isLinux = sys.platform.startswith('linux')
+_isLinux   = sys.platform.startswith('linux')
 
 if _isMacOS:
     from ctypes import c_void_p, cdll
@@ -59,7 +59,8 @@ if _isMacOS:
     # to match the version number of tkinter, _tkinter, etc.
     try:
         libtk = 'libtk%s.dylib' % (Tk.TkVersion,)
-        libtk = joined(sys.prefix, 'lib', libtk)
+        prefix = getattr(sys, 'base_prefix', sys.prefix)
+        libtk = joined(prefix, 'lib', libtk)
         dylib = cdll.LoadLibrary(libtk)
         # getNSView = dylib.TkMacOSXDrawableView is the
         # proper function to call, but that is non-public
