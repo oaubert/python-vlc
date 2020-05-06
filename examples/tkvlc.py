@@ -19,9 +19,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
 #
 """A simple example for VLC python bindings using tkinter.
-
 Requires Python 3.4 or later.
-
 Author: Patrick Fay
 Date: 23-09-2015
 """
@@ -90,7 +88,6 @@ else:  # *nix, Xwindows and Windows, UNTESTED
 
 class _Tk_Menu(Tk.Menu):
     '''Tk.Menu extended with .add_shortcut method.
-
        Note, this is a kludge just to get Command-key shortcuts to
        work on macOS.  Other modifiers like Ctrl-, Shift- and Option-
        are not handled in this code.
@@ -100,7 +97,6 @@ class _Tk_Menu(Tk.Menu):
 
     def add_shortcut(self, label='', key='', command=None, **kwds):
         '''Like Tk.menu.add_command extended with shortcut key.
-
            If needed use modifiers like Shift- and Alt_ or Option-
            as before the shortcut key character.  Do not include
            the Command- or Control- modifier nor the <...> brackets
@@ -200,13 +196,16 @@ class Player(Tk.Frame):
         self.muteIndex = fileMenu.index("Mute")
 
         # first, top panel shows video
+
         self.videopanel = ttk.Frame(self.parent)
         self.canvas = Tk.Canvas(self.videopanel)
         self.canvas.pack(fill=Tk.BOTH, expand=1)
         self.videopanel.pack(fill=Tk.BOTH, expand=1)
 
         # panel to hold buttons
-        buttons = ttk.Frame(self.parent)
+        self.buttons_panel = Tk.Toplevel(self.parent)
+        self.buttons_panel.title("")
+        buttons = ttk.Frame(self.buttons_panel)
         self.playButton = ttk.Button(buttons, text="Play", command=self.OnPlay)
         stop            = ttk.Button(buttons, text="Stop", command=self.OnStop)
         self.muteButton = ttk.Button(buttons, text="Mute", command=self.OnMute)
@@ -222,8 +221,9 @@ class Player(Tk.Frame):
         self.volSlider.pack(side=Tk.LEFT)
         buttons.pack(side=Tk.BOTTOM)
 
+
         # panel to hold player time slider
-        timers = ttk.Frame(self.parent)
+        timers = ttk.Frame(self.buttons_panel)
         self.timeVar = Tk.DoubleVar()
         self.timeSliderLast = 0
         self.timeSlider = Tk.Scale(timers, variable=self.timeVar, command=self.OnTime,
@@ -232,6 +232,7 @@ class Player(Tk.Frame):
         self.timeSlider.pack(side=Tk.BOTTOM, fill=Tk.X, expand=1)
         self.timeSliderUpdate = time.time()
         timers.pack(side=Tk.BOTTOM, fill=Tk.X)
+
 
         # VLC player
         args = []
@@ -242,6 +243,12 @@ class Player(Tk.Frame):
 
         self.parent.bind("<Configure>", self.OnConfigure)  # catch window resize, etc.
         self.parent.update()
+
+        # After parent.update() otherwise panel is ignored.
+        self.buttons_panel.overrideredirect(True)
+
+        # Estetic, to keep our video panel at least as wide as our buttons panel.
+        self.parent.minsize(width=self.buttons_panel.winfo_width(), height=0)
 
         self.OnTick()  # set the timer up
 
@@ -254,11 +261,18 @@ class Player(Tk.Frame):
         # ... Fatal Python Error: PyEval_RestoreThread: NULL tstate
         sys.exit(0)
 
+    def _AnchorButtonsPanel(self):
+        video_height = self.parent.winfo_height()
+        panel_x = self.parent.winfo_x()
+        panel_y = self.parent.winfo_y() + video_height + 23 # 23 seems to put the panel just below our video.
+        self.buttons_panel.geometry(f'+{panel_x}+{panel_y}')
+
     def OnConfigure(self, *unused):
         """Some widget configuration changed.
         """
         # <https://www.Tcl.Tk/man/tcl8.6/TkCmd/bind.htm#M12>
         self._geometry = ''  # force .OnResize in .OnTick, recursive?
+        self._AnchorButtonsPanel()
 
     def OnFullScreen(self, *unused):
         """Toggle full screen, macOS only.
