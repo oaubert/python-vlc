@@ -218,8 +218,8 @@ class Player(Tk.Frame):
         self.volSlider = Tk.Scale(buttons, variable=self.volVar, command=self.OnVolume,
                                   from_=0, to=100, orient=Tk.HORIZONTAL, length=200,
                                   showvalue=0, label='Volume')
-        self.volSlider.pack(side=Tk.LEFT)
-        buttons.pack(side=Tk.BOTTOM)
+        self.volSlider.pack(side=Tk.RIGHT)
+        buttons.pack(side=Tk.BOTTOM, fill=Tk.X)
 
 
         # panel to hold player time slider
@@ -248,7 +248,7 @@ class Player(Tk.Frame):
         self.buttons_panel.overrideredirect(True)
 
         # Estetic, to keep our video panel at least as wide as our buttons panel.
-        self.parent.minsize(width=self.buttons_panel.winfo_width(), height=0)
+        self.parent.minsize(width=502, height=0)
 
         self.OnTick()  # set the timer up
 
@@ -264,7 +264,9 @@ class Player(Tk.Frame):
         video_height = self.parent.winfo_height()
         panel_x = self.parent.winfo_x()
         panel_y = self.parent.winfo_y() + video_height + 23 # 23 seems to put the panel just below our video.
-        self.buttons_panel.geometry(f'+{panel_x}+{panel_y}')
+        panel_height = self.buttons_panel.winfo_height()
+        panel_width = self.parent.winfo_width()
+        self.buttons_panel.geometry(f'{panel_width}x{panel_height}+{panel_x}+{panel_y}')
 
     def OnConfigure(self, *unused):
         """Some widget configuration changed.
