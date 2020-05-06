@@ -266,7 +266,7 @@ class Player(Tk.Frame):
         panel_y = self.parent.winfo_y() + video_height + 23 # 23 seems to put the panel just below our video.
         panel_height = self.buttons_panel.winfo_height()
         panel_width = self.parent.winfo_width()
-        self.buttons_panel.geometry(f'{panel_width}x{panel_height}+{panel_x}+{panel_y}')
+        self.buttons_panel.geometry("%sx%s+%s+%s" % (panel_width, panel_height, panel_x, panel_y))
 
     def OnConfigure(self, *unused):
         """Some widget configuration changed.
