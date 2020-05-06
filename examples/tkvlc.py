@@ -259,7 +259,6 @@ class Player(Tk.Frame):
         self.parent.quit()  # stops mainloop
         self.parent.destroy()  # this is necessary on Windows to avoid
         # ... Fatal Python Error: PyEval_RestoreThread: NULL tstate
-        sys.exit(0)
 
     def _AnchorButtonsPanel(self):
         video_height = self.parent.winfo_height()
