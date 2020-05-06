@@ -273,7 +273,10 @@ class Player(Tk.Frame):
         """
         # <https://www.Tcl.Tk/man/tcl8.6/TkCmd/bind.htm#M12>
         self._geometry = ''  # force .OnResize in .OnTick, recursive?
-        self._AnchorButtonsPanel()
+
+        # Only tested on MacOS so far. Enable for other OS after verified tests.
+        if _isMacOS:
+            self._AnchorButtonsPanel()
 
     def OnFullScreen(self, *unused):
         """Toggle full screen, macOS only.
