@@ -205,6 +205,8 @@ class Player(Tk.Frame):
         # panel to hold buttons
         self.buttons_panel = Tk.Toplevel(self.parent)
         self.buttons_panel.title("")
+        self.is_buttons_panel_anchor_active = False
+
         buttons = ttk.Frame(self.buttons_panel)
         self.playButton = ttk.Button(buttons, text="Play", command=self.OnPlay)
         stop            = ttk.Button(buttons, text="Stop", command=self.OnStop)
@@ -250,6 +252,20 @@ class Player(Tk.Frame):
         # Estetic, to keep our video panel at least as wide as our buttons panel.
         self.parent.minsize(width=502, height=0)
 
+        if _isMacOS:
+            # Only tested on MacOS so far. Enable for other OS after verified tests.
+            self.is_buttons_panel_anchor_active = True
+
+            # Detect dragging of the buttons panel.
+            self.buttons_panel.bind("<Button-1>", lambda event: setattr(self, "has_clicked_on_buttons_panel", event.y < 0))
+            self.buttons_panel.bind("<B1-Motion>", self._DetectButtonsPanelDragging)
+            self.buttons_panel.bind("<ButtonRelease-1>", lambda _: setattr(self, "has_clicked_on_buttons_panel", False))
+            self.has_clicked_on_buttons_panel = False
+        else:
+            self.is_buttons_panel_anchor_active = False
+
+        self._AnchorButtonsPanel()
+
         self.OnTick()  # set the timer up
 
     def OnClose(self, *unused):
@@ -259,6 +275,16 @@ class Player(Tk.Frame):
         self.parent.quit()  # stops mainloop
         self.parent.destroy()  # this is necessary on Windows to avoid
         # ... Fatal Python Error: PyEval_RestoreThread: NULL tstate
+
+    def _DetectButtonsPanelDragging(self, _):
+        """If our last click was on the boarder
+           we disable the anchor.
+        """
+        if self.has_clicked_on_buttons_panel:
+            self.is_buttons_panel_anchor_active = False
+            self.buttons_panel.unbind("<Button-1>")
+            self.buttons_panel.unbind("<B1-Motion>")
+            self.buttons_panel.unbind("<ButtonRelease-1>")
 
     def _AnchorButtonsPanel(self):
         video_height = self.parent.winfo_height()
@@ -274,8 +300,7 @@ class Player(Tk.Frame):
         # <https://www.Tcl.Tk/man/tcl8.6/TkCmd/bind.htm#M12>
         self._geometry = ''  # force .OnResize in .OnTick, recursive?
 
-        # Only tested on MacOS so far. Enable for other OS after verified tests.
-        if _isMacOS:
+        if self.is_buttons_panel_anchor_active:
             self._AnchorButtonsPanel()
 
     def OnFullScreen(self, *unused):
