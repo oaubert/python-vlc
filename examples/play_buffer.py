@@ -1,7 +1,32 @@
 #!/usr/bin/env python3
 
+# Author:   A.Invernizzi (@albestro on GitHub)
+# Date:     Jun 03, 2020
+
+"""
+Example usage of VLC API function `libvlc_media_new_callbacks`
+This function allows to create a VLC media `libvlc_media_t` specifying custom
+callbacks where the user can define how to manage and read the stream of data.
+
+The general use case for this is when you have data in memory and you want to
+play it (e.g. audio stream from a web radio).
+
+In this example, we are going to read playable data from files in a specified
+folder. In case you would want to read from a file, it is not the best way to do it,
+but for the sake of this example we are going to read data into memory from files.
+
+The example tries to highlight the separation of concerns between the callbacks and
+the application logic, so it would hopefully make clear how to integrate the VLC API
+with existing libraries.
+
+In particular, we have two main parts:
+    - StreamProvider: which is a class that implements the logic; "scrape" a folder
+    for files with a specific extensions, and provide methods that retrieves data.
+    - VLC callabacks that uses a StreamProvider object
+"""
+
 import argparse
-import ctypes as ct
+import ctypes
 import os
 
 import vlc
@@ -50,7 +75,7 @@ class StreamProviderDir(object):
         """
         It reads the current file in the list and returns the binary data
         In this example it reads from file, but it could have downloaded data from an url
-        """
+        i"""
         print(f"reading file [{self._index}] ", end='')
 
         if self._index == len(self._media_files):
@@ -73,7 +98,7 @@ class StreamProviderDir(object):
 def media_open_cb(opaque, data_pointer, size_pointer):
     print("OPEN", opaque, data_pointer, size_pointer)
 
-    stream_provider = ct.cast(opaque, ct.POINTER(ct.py_object)).contents.value
+    stream_provider = ctypes.cast(opaque, ctypes.POINTER(ctypes.py_object)).contents.value
 
     stream_provider.open()
 
@@ -86,15 +111,15 @@ def media_open_cb(opaque, data_pointer, size_pointer):
 def media_read_cb(opaque, buffer, length):
     print("READ", opaque, buffer, length)
 
-    stream_provider = ct.cast(opaque, ct.POINTER(ct.py_object)).contents.value
+    stream_provider = ctypes.cast(opaque, ctypes.POINTER(ctypes.py_object)).contents.value
 
     new_data = stream_provider.get_data()
     bytes_read = len(new_data)
 
     if bytes_read > 0:
-        buffer_array = ct.cast(buffer, ct.POINTER(ct.c_char * bytes_read))
+        buffer_array = ctypes.cast(buffer, ctypes.POINTER(ctypes.c_char * bytes_read))
         for index, b in enumerate(new_data):
-            buffer_array.contents[index] = ct.c_char(b)
+            buffer_array.contents[index] = ctypes.c_char(b)
 
     print(f"just read f{bytes_read}B")
     return bytes_read
@@ -103,7 +128,7 @@ def media_read_cb(opaque, buffer, length):
 def media_seek_cb(opaque, offset):
     print("SEEK", opaque, offset)
 
-    stream_provider = ct.cast(opaque, ct.POINTER(ct.py_object)).contents.value
+    stream_provider = ctypes.cast(opaque, ctypes.POINTER(ctypes.py_object)).contents.value
 
     stream_proivder.seek(offset)
 
@@ -113,7 +138,7 @@ def media_seek_cb(opaque, offset):
 def media_close_cb(opaque):
     print("CLOSE", opaque)
 
-    stream_provider = ct.cast(opaque, ct.POINTER(ct.py_object)).contents.value
+    stream_provider = ctypes.cast(opaque, ctypes.POINTER(ctypes.py_object)).contents.value
 
     stream_provider.release_resources()
 
@@ -139,8 +164,8 @@ if __name__ == '__main__':
 
     # these two lines to highlight how to pass a python object using ctypes
     # it is verbose, but you can see the steps required
-    stream_provider_obj = ct.py_object(stream_provider)
-    stream_provider_ptr = ct.byref(stream_provider_obj)
+    stream_provider_obj = ctypes.py_object(stream_provider)
+    stream_provider_ptr = ctypes.byref(stream_provider_obj)
 
     # create an instance of vlc
     instance = vlc.Instance()
