@@ -185,6 +185,18 @@ class TestVLCAPI(unittest.TestCase):
         self.assertEqual(audiotrack.bitrate, 83051)
         self.assertEqual(m.get_duration(), 5568)
 
+    def test_meta_get(self):
+        self.assertTrue(os.path.exists(SAMPLE))
+        m = vlc.Media(SAMPLE)
+        m.parse()
+        self.assertEqual(m.get_meta(vlc.Meta.Title), 'Title')
+        self.assertEqual(m.get_meta(vlc.Meta.Artist), 'Artist')
+        self.assertEqual(m.get_meta(vlc.Meta.Description), 'Comment')
+        self.assertEqual(m.get_meta(vlc.Meta.Album), 'Album')
+        self.assertEqual(m.get_meta(vlc.Meta.AlbumArtist), 'Album Artist')
+        self.assertEqual(m.get_meta(vlc.Meta.Date), '2013')
+        self.assertEqual(m.get_meta(vlc.Meta.Genre), 'Sample')
+
     def notest_log_get_context(self):
         """Semi-working test for log_get_context.
 
