@@ -141,15 +141,21 @@ def find_lib():
                         pass
             except ImportError:  # no PyWin32
                 pass
+            tested_locations = []
             if plugin_path is None:
                 # try some standard locations.
                 programfiles = os.environ["ProgramFiles"]
+                programfilesx86 = os.environ["ProgramFiles(x86)"]
                 homedir = os.environ["HOMEDRIVE"]
-                for p in ('{programfiles}\\VideoLan{libname}', '{homedir}:\\VideoLan{libname}',
-                          '{programfiles}{libname}',           '{homedir}:{libname}'):
+                for p in ('{programfiles}\\VideoLan{libname}', '{homedir}\\VideoLan{libname}',
+                          '{programfilesx86}\\VideoLan{libname}',
+                          '{programfiles}{libname}',           '{homedir}{libname}',
+                          '{programfilesx86}{libname}'):
                     p = p.format(homedir = homedir,
                                  programfiles = programfiles,
+                                 programfilesx86 = programfilesx86,
                                  libname = '\\VLC\\' + libname)
+                    tested_locations.append(p)
                     if os.path.exists(p):
                         plugin_path = os.path.dirname(p)
                         break
@@ -163,8 +169,15 @@ def find_lib():
                 dll = ctypes.CDLL('.\\' + libname)
                  # restore cwd after dll has been loaded
                 os.chdir(p)
-            else:  # may fail
-                dll = ctypes.CDLL('.\\' + libname)
+            else:  # check working directory
+                tested_locations.append(os.getcwd() + '\\' + libname)
+                if os.path.exists('.\\' + libname):
+                    dll = ctypes.CDLL('.\\' + libname)
+                else:
+                    sys.stderr.write('Could not find ' + libname + ' in any of these locations:\n')
+                    for location in tested_locations:
+                        sys.stderr.write('  - ' + location + '\n')
+                    raise NotImplementedError('Cannot find libvlc lib')
         else:
             plugin_path = os.path.dirname(p)
             dll = ctypes.CDLL(p)
