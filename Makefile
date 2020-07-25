@@ -67,6 +67,9 @@ test3: $(MODULE_NAME)
 	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test.py
 	PYTHONPATH=$(VERSIONED_PATH):${PROJECT_ROOT} python3 tests/test.py
 
+sdist: $(VERSIONED_NAME)
+	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist
+
 publish: $(VERSIONED_NAME)
 	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist && twine upload dist/*
 

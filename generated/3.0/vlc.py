@@ -52,10 +52,10 @@ from inspect import getargspec
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.10114"
-__libvlc_version__ = "3.0.10"
-__generator_version__ = "1.14"
-build_date  = "Mon Jun 15 21:34:52 2020 3.0.10"
+__version__ = "3.0.11115"
+__libvlc_version__ = "3.0.11"
+__generator_version__ = "1.15"
+build_date  = "Sat Jul 25 15:07:40 2020 3.0.11"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1133,29 +1133,6 @@ class PlaylistItem(_Cstruct):
 
     def __str__(self):
         return '%s #%d %s (uri %s)' % (self.__class__.__name__, self.id, self.name, self.uri)
-
-class Position(object):
-    """Enum-like, immutable window position constants.
-
-       See e.g. VideoMarqueeOption.Position.
-    """
-    Center       = 0
-    Left         = 1
-    CenterLeft   = 1
-    Right        = 2
-    CenterRight  = 2
-    Top          = 4
-    TopCenter    = 4
-    TopLeft      = 5
-    TopRight     = 6
-    Bottom       = 8
-    BottomCenter = 8
-    BottomLeft   = 9
-    BottomRight  = 10
-    def __init__(self, *unused):
-        raise TypeError('constants only')
-    def __setattr__(self, *unused):  #PYCHOK expected
-        raise TypeError('immutable constants')
 
 class Rectangle(_Cstruct):
     _fields_ = [
