@@ -49,9 +49,9 @@ You also can use wrapper methods closer to the original libvlc API:
 
    >>> import vlc
    >>> i=vlc.Instance('--no-audio', '--fullscreen')
-   >>> i.audio_get_volume()
-   50
    >>> p=i.media_player_new()
+   >>> p.audio_get_volume()
+   50
    >>> m=i.media_new('file:///tmp/foo.avi')
    >>> m.get_mrl()
    'file:///tmp/foo.avi'
