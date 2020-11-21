@@ -1,21 +1,21 @@
 
 # -*- coding: utf-8 -*-
 
-# Example of using PyCocoa <http://PyPI.org/project/PyCocoa> to create
+# Example of using PyCocoa <https://PyPI.org/project/PyCocoa> to create
 # a window, table and an application menu to run a video using VLC on
-# macOS.  The Python-VLC binding <http://PyPI.Python.org/pypi/python-vlc>
-# and the corresponding VLC App, see <http://www.VideoLan.org/index.html>.
+# macOS.  The Python-VLC binding <https://PyPI.Python.org/pypi/python-vlc>
+# and the corresponding VLC App, see <https://www.VideoLan.org/index.html>.
 
-# This VLC player has only been tested with VLC 2.2.6, 2.2.8, 3.0.1,
-# 3.0.2 and 3.0.4 and the compatible vlc.py Python-VLC binding using
-# 64-bit Python 2.7.14, 2.7.15, 3.6.4, 3.6.5, 3.7.0, 3.7.1 and/or 3.7.2
-# on macOS 10.13.4, 10.13.5 and 10.13.6 High Sierra.  This player does
-# not work with PyPy Python <http://PyPy.org> nor with Intel(R) Python
-# <http://Software.Intel.com/en-us/distribution-for-python>.
+# This VLC player has only been tested with VLC 2.2.6, 2.2.8, 3.0.1, 3.0.2,
+# 3.0.4, 3.0.6, 3.0.7, 3.0.0 and 3.0.11 and the compatible vlc.py Python-VLC
+# binding using 64-bit Python 2.7.14-18, 3.6.4-5, 3.7.0-4, 3.8.6 and 3.9.0
+# on macOS 10.13.4-6 High Sierra, 10.14.6 Mojave, 10.15.6 Catalina and 11
+# (10.16) Big Sur.  This player does not work with PyPy <https://PyPy.org>
+# nor with Intel(R) Python <https://Software.Intel.com/en-us/distribution-for-python>.
 
-# MIT License <http://OpenSource.org/licenses/MIT>
+# MIT License <https://OpenSource.org/licenses/MIT>
 #
-# Copyright (C) 2017-2018 -- mrJean1 at Gmail dot com
+# Copyright (C) 2017-2020 -- mrJean1 at Gmail -- All Rights Reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -37,7 +37,11 @@
 
 
 def _PyPI(package):
-    return 'see <http://PyPI.org/project/%s>' % (package,)
+    return 'see <https://PyPI.org/project/%s>' % (package,)
+
+def _version_req_d(version, text):  # PYCHOK expected
+    raise ImportError('%s%s %s or later required, %s' % (text,
+                      'pycocoa', version, _PyPI('PyCocoa')))  # PYCHOK expected
 
 try:  # PYCHOK expected
     import vlc
@@ -48,17 +52,19 @@ try:
 except ImportError:
     raise ImportError('no %s module, %s' % ('pycocoa', _PyPI('PyCocoa')))
 if __PyCocoa__ < '18.08.09':
-    raise ImportError('%s %s or later required, %s' % ('pycocoa', '18.8.9',
-                     _PyPI('PyCocoa')))
-del _PyPI
+    _version_req_d('18.8.9', '')
+
+import platform
+_macOS = platform.mac_ver()[0:3:2]
+if _macOS[0] > '10.15' and __PyCocoa__ < '20.11.20':
+    _version_req_d('20.11.20', 'on macOS %s (%s), ' % _macOS)
 
 # all imports listed explicitly to help PyChecker
 from pycocoa import App, app_title, aspect_ratio, bytes2str, closeTables, \
                     get_printer, Item, ItemSeparator, MediaWindow, Menu, \
                     OpenPanel, printf, str2bytes, Table, z1000str, zSIstr
 
-import os
-import platform
+from os.path import basename, getsize, splitext
 import sys
 from time import strftime, strptime
 try:
@@ -67,22 +73,44 @@ except ImportError:
     from urllib.parse import unquote as mrl_unquote  # Python 3+
 
 __all__  = ('AppVLC',)
-__version__ = '19.08.26'
+__version__ = '20.11.20'
 
 _Adjust  = vlc.VideoAdjustOption  # Enum
-# <http://Wiki.VideoLan.org/Documentation:Modules/adjust>
+# <https://Wiki.VideoLan.org/Documentation:Modules/adjust>
 _Adjust3 = {_Adjust.Brightness: (0, 1, 2),
             _Adjust.Contrast:   (0, 1, 2),
             _Adjust.Gamma:   (0.01, 1, 10),
             _Adjust.Hue:     (-180, 0, 180),
             _Adjust.Saturation: (0, 1, 3)}
-_Argv0   = os.path.splitext(os.path.basename(__file__))[0]
-_macOS   = platform.mac_ver()[0:3:2]  # PYCHOK false
+_Argv0   = splitext(basename(__file__))[0]
 _Movies  = '.m4v', '.mov', '.mp4'  # lower-case file types for movies, videos
 _Python  = sys.version.split()[0], platform.architecture()[0]  # PYCHOK false
 _Select  = 'Select a video file from the panel'
 _VLC_3_  = vlc.__version__.split('.')[0] > '2' and \
            bytes2str(vlc.libvlc_get_version().split(b'.')[0]) > '2'
+
+del platform, _PyPI, _version_req_d
+
+# <https://Wiki.Videolan.org/Documentation:Modules/marq/#appendix_marq-color>
+class _Color(object):  # PYCHOK expected
+    Aqua    = 0x00FFFF
+    Black   = 0x000000
+    Blue    = 0x0000FF
+    Fuchsia = 0xFF00FF
+    Gray    = 0x808080
+    Green   = 0x008000
+    Lime    = 0x00FF00
+    Maroon  = 0x800000
+    Navy    = 0x000080
+    Olive   = 0x808000
+    Purple  = 0x800080
+    Red     = 0xFF0000
+    Silver  = 0xC0C0C0
+    Teal    = 0x008080
+    White   = 0xFFFFFF
+    Yellow  = 0xFFFF00
+
+_Color = _Color()  # PYCHOK enum-like
 
 
 def _mspf(fps):
@@ -110,6 +138,7 @@ class AppVLC(App):
     resized   = False
     scale     = 1  # media zoom factor
     Snapshot  = Item('Snapshot', key='s', alt=True)
+    snapshot  = '.png'  # default, or .jpg or .tiff
     snapshots = 0
     Toggle    = None
     video     = None
@@ -120,16 +149,26 @@ class AppVLC(App):
                        logostr='',       # vlc.VideoLogoOption
                        marquee=False,    # vlc.VideoMarqueeOption
                        raiser=False,     # re-raise errors
+                       snapshot='png',   # png, jpg or tiff format
                        title='AppVLC'):  # window title
         super(AppVLC, self).__init__(raiser=raiser, title=title)
-        self.adjustr = adjustr
-        self.logostr = logostr
-        self.marquee = marquee
-        self.media   = None
-        self.player  = vlc.MediaPlayer()
-        self.raiser  = raiser
-        self.Toggle  = Item('Play', self.menuToggle_, key='p', ctrl=True)
-        self.video   = video
+        self.adjustr  = adjustr
+        self.logostr  = logostr
+        self.marquee  = marquee
+        self.media    = None
+        self.raiser   = raiser
+        self.snapshot = '.' + snapshot.lstrip('.').lower()
+        self.Toggle   = Item('Play', self.menuToggle_, key='p', ctrl=True)
+        self.video    = video
+
+        if self.snapshot == '.png':
+            self.player = vlc.MediaPlayer()
+#       # XXX does not work, snapshots are always png
+#       elif self.snapshot in ('.jpg', '.tiff'):
+#           i = vlc.Instance('--snapshot-format', self.snapshot[1:])  # --verbose 2
+#           self.player = i.media_player_new()
+        else:
+            raise ValueError('invalid %s format: %r' % ('snapshot', snapshot))
 
     def appLaunched_(self, app):
         super(AppVLC, self).appLaunched_(app)
@@ -188,6 +227,7 @@ class AppVLC(App):
         self.menuPlay_(None)
         self.window.front()
         self._resize(True)
+        self._zoom(None, 1)  # libVLC 3.0.11.1
 
     def menuBrighter_(self, item):
         self._brightness(item, +0.1)
@@ -247,9 +287,9 @@ class AppVLC(App):
             t.separator()
 
             f = mrl_unquote(bytes2str(m.get_mrl()))
-            t.append('media', os.path.basename(f), f)
+            t.append('media', basename(f), f)
             if f.lower().startswith('file://'):
-                z = os.path.getsize(f[7:])
+                z = getsize(f[7:])
                 t.append('size', z1000str(z), zSIstr(z))
             t.append('state', str(p.get_state()))
             f = max(p.get_position(), 0)
@@ -297,7 +337,7 @@ class AppVLC(App):
                 t.append('media read',     *zSIstr(s.read_bytes).split())
                 t.append('input bitrate',  *Kops2bpstr2(s.input_bitrate))
                 if s.input_bitrate > 0:  # XXX approximate caching, based
-                    # on <http://GitHub.com/oaubert/python-vlc/issues/61>
+                    # on <https://GitHub.com/oaubert/python-vlc/issues/61>
                     b = s.read_bytes - s.demux_read_bytes
                     t.append('input caching', _ms2str(b / s.input_bitrate), zSIstr(b))
                 t.append('demux read',     *zSIstr(s.demux_read_bytes).split())
@@ -361,7 +401,7 @@ class AppVLC(App):
                           'snapshot%d' % (self.snapshots,),
                            w.__class__.__name__))
             if isinstance(w, MediaWindow):
-                self.player.video_take_snapshot(0, s + '.png', 0, 0)
+                self.player.video_take_snapshot(0, s + self.snapshot, 0, 0)
             elif get_printer:  # in PyCocoa 18.08.04+
                 get_printer().printView(w.PMview, toPDF=s + '.pdf')
 
@@ -427,7 +467,7 @@ class AppVLC(App):
     def _VLCadjust(self, option, fraction=0, value=None):
         # adjust a video option like brightness, contrast, etc.
         p = self.player
-        # <http://Wiki.VideoLan.org/Documentation:Modules/adjust>
+        # <https://Wiki.VideoLan.org/Documentation:Modules/adjust>
         # note, .Enable must be set to 1, but once is sufficient
         p.video_set_adjust_int(_Adjust.Enable, 1)
         try:
@@ -448,7 +488,7 @@ class AppVLC(App):
         # cone-altglass2.png\;cone-icon-small.png ..."
         p = self.player
         g = vlc.VideoLogoOption  # Enum
-        # <http://Wiki.VideoLan.org/Documentation:Modules/logo>
+        # <https://Wiki.VideoLan.org/Documentation:Modules/logo>
         p.video_set_logo_int(g.enable, 1)
         p.video_set_logo_int(g.position, vlc.Position.Center)
         p.video_set_logo_int(g.opacity, 128)  # 0-255
@@ -460,11 +500,12 @@ class AppVLC(App):
         # put video marquee at the bottom-center
         p = self.player
         m = vlc.VideoMarqueeOption  # Enum
-        # <http://Wiki.VideoLan.org/Documentation:Modules/marq>
+        # <https://Wiki.VideoLan.org/Documentation:Modules/marq>
         p.video_set_marquee_int(m.Enable, 1)
         p.video_set_marquee_int(m.Size, int(size))  # pixels
         p.video_set_marquee_int(m.Position, vlc.Position.Bottom)
         p.video_set_marquee_int(m.Opacity, 255)  # 0-255
+        p.video_set_marquee_int(m.Color, _Color.Yellow)
         p.video_set_marquee_int(m.Timeout, 0)  # millisec, 0==forever
         p.video_set_marquee_int(m.Refresh, 1000)  # millisec (or sec?)
         p.video_set_marquee_string(m.Text, str2bytes('%Y-%m-%d  %T  %z'))
@@ -475,7 +516,7 @@ class AppVLC(App):
         self.player.video_set_scale(self.scale)
 
 
-if __name__ == '__main__':  # MCCABE 20
+if __name__ == '__main__':  # MCCABE 24
 
     def _Adjustr():
         a = []  # get adjust default values
@@ -487,15 +528,16 @@ if __name__ == '__main__':  # MCCABE 20
                 pass
         return ','.join(sorted(a))
 
-    _adjustr = ''
-    _argv0   = os.path.basename(sys.argv[0])  # _Title
-    _Argv0   = os.path.splitext(_argv0)[0]
-    _logostr = ''
-    _marquee = False
-    _raiser  = False
-    _timeout = None
-    _title   = os.path.splitext(_argv0)[0]
-    _video   = None
+    _adjustr  = ''
+    _argv0    = basename(sys.argv[0])  # _Title
+    _Argv0    = splitext(_argv0)[0]
+    _logostr  = ''
+    _marquee  = False
+    _raiser   = False
+    _snapshot = 'png'
+    _timeout  = None
+    _title    = splitext(_argv0)[0]
+    _video    = None
 
     args = sys.argv[1:]
     while args and args[0].startswith('-'):
@@ -504,12 +546,14 @@ if __name__ == '__main__':  # MCCABE 20
         if t in ('-h', '--help'):
             u = ('-h|--help',
                  '-adjust %s' % (_Adjustr(),))
-            if _VLC_3_:  # require VLC 3+ and libvlc 3+
+            if _VLC_3_:  # requires VLC 3+ and libvlc 3+
                 u += ('-logo <image_file_name>[\\;<image_file_name>...]',
                       '-marquee')
             u += ('-raiser',
+                  '-snapshot-format jpg|png|tiff',
                   '-timeout <secs>',
                   '-title <string>',
+                  '-v|--version',
                   '<video_file_name>')
             printf('usage:  [%s]', ']  ['.join(u), argv0=_argv0)
             sys.exit(0)
@@ -521,10 +565,23 @@ if __name__ == '__main__':  # MCCABE 20
             _marquee = True
         elif '-raiser'.startswith(t) and len(t) > 1:
             _raiser = True
+        elif '-snapshot-format'.startswith(t) and len(t) > 1 and args:
+            _snapshot = args.pop(0)
         elif '-timeout'.startswith(t) and len(t) > 3 and args:
             _timeout = args.pop(0)
         elif '-title'.startswith(t) and len(t) > 3 and args:
             _title = args.pop(0).strip()
+        elif t in ('-v', '--version'):
+            import pycocoa  # PYCHOK expected
+            # Print version of this cocoavlc.py, PyCocoa, etc.
+            print('%s: %s (%s %s)' % (basename(__file__), __version__,
+                                      pycocoa.__name__, pycocoa.__version__))
+            try:
+                vlc.print_version()  # PYCHOK expected
+                vlc.print_python()   # PYCHOK expected
+            except AttributeError:
+                pass
+            sys.exit(0)
         else:
             printf('invalid option: %s', o, argv0=_argv0)
             sys.exit(1)
@@ -548,5 +605,6 @@ if __name__ == '__main__':  # MCCABE 20
                                    logostr=_logostr,
                                    marquee=_marquee,
                                     raiser=_raiser,
+                                  snapshot=_snapshot,
                                      title=_title)
         app.run(timeout=_timeout)  # never returns
