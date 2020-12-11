@@ -8,7 +8,7 @@
 
 # This VLC player has been tested with VLC 3.0.11, 3.0.10, 3.0.8, 3.0.7,
 # 3.0.6, 3.0.4, 3.0.2, 3.0.1, 2.2.8 and 2.2.6 and the compatible vlc.py
-# Python-VLC binding using 64-bit Python 3.9.0, 3.8.6, 3.7.0-4, 3.6.4-5
+# Python-VLC binding using 64-bit Python 3.9.0-1, 3.8.6, 3.7.0-4, 3.6.4-5
 # and 2.7.14-18 on macOS 11.0.1 (10.16) Big Sur, 10.15.6 Catalina, 10.14.6
 # Mojave and 10.13.4-6 High Sierra.  This player does not work with PyPy
 # <https://PyPy.org> nor with Intel(R) Python
@@ -16,7 +16,7 @@
 
 # MIT License <https://OpenSource.org/licenses/MIT>
 #
-# Copyright (C) 2017-2020 -- mrJean1 at Gmail -- All Rights Reserved.
+# Copyright (C) 2017-2021 -- mrJean1 at Gmail -- All Rights Reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -40,10 +40,6 @@
 def _PyPI(package):
     return 'see <https://PyPI.org/project/%s>' % (package,)
 
-def _version_toold(version, text):  # PYCHOK expected
-    raise ImportError('%s%s %s or later required, %s' % (text,
-                      _pycocoa_, version, _PyPI('PyCocoa')))
-
 try:  # PYCHOK expected
     import vlc
 except ImportError:
@@ -53,13 +49,9 @@ try:
                         __version__ as _pycocoa_version
 except ImportError:
     raise ImportError('no %s module, %s' % (_pycocoa_, _PyPI('PyCocoa')))
-if _pycocoa_version < '18.08.09':
-    _version_toold('18.8.9', '')
-
-import platform
-_macOS = platform.mac_ver()[0:3:2]
-if _macOS[0] > '10.15' and _pycocoa_version < '20.11.30':
-    _version_toold('20.11.30', 'on macOS %s (%s), ' % _macOS)
+if _pycocoa_version < '20.12.10':
+    raise ImportError('%s %s or later required, %s' % (
+                      _pycocoa_, '20.12.10', _PyPI('PyCocoa')))
 
 # all imports listed explicitly to help PyChecker
 from pycocoa import App, app_title, aspect_ratio, bytes2str, closeTables, \
@@ -67,6 +59,7 @@ from pycocoa import App, app_title, aspect_ratio, bytes2str, closeTables, \
                     OpenPanel, printf, str2bytes, Table, z1000str, zSIstr
 
 from os.path import basename, getsize, isfile, splitext
+import platform
 import sys
 from threading import Thread
 from time import sleep, strftime, strptime
@@ -76,7 +69,7 @@ except ImportError:
     from urllib.parse import unquote as mrl_unquote  # Python 3+
 
 __all__  = ('AppVLC',)
-__version__ = '20.12.02'
+__version__ = '20.12.10'
 
 _Adjust  = vlc.VideoAdjustOption  # Enum
 # <https://Wiki.VideoLan.org/Documentation:Modules/adjust>
@@ -86,13 +79,14 @@ _Adjust3 = {_Adjust.Brightness: (0, 1, 2),
             _Adjust.Hue:     (-180, 0, 180),
             _Adjust.Saturation: (0, 1, 3)}
 _Argv0   = splitext(basename(__file__))[0]
+_macOS   = platform.mac_ver()[0:3:2]
 _Movies  = '.m4v', '.mov', '.mp4'  # lower-case file types for movies, videos
 _Python  = sys.version.split()[0], platform.architecture()[0]  # PYCHOK false
 _Select  = 'Select a video file from the panel'
 _VLC_3_  = vlc.__version__.split('.')[0] > '2' and \
            bytes2str(vlc.libvlc_get_version().split(b'.')[0]) > '2'
 
-del platform, _version_toold  # _PyPI
+del platform, _PyPI
 
 # <https://Wiki.Videolan.org/Documentation:Modules/marq/#appendix_marq-color>
 class _Color(object):  # PYCHOK expected
@@ -124,6 +118,11 @@ def _mspf(fps):
 def _ms2str(ms):
     # convert milliseconds to seconds string
     return '%.3f s' % (max(ms, 0) * 0.001,)
+
+
+def _ratio2str(by, *w_h):
+    # aspect ratio as string
+    return by.join(map(str, (w_h + ('-', '-'))[:2]))
 
 
 class AppVLC(App):
@@ -312,11 +311,9 @@ class AppVLC(App):
             r = p.get_rate()
             t.append('rate', '%s%%' % (int(r * 100),), r)
             w, h = p.video_get_size(0)
-            r = aspect_ratio(w, h) or ''
-            if r:
-                r = '%s:%s' % r
-            t.append('video size', '%sx%s' % (w, h))  # num=0
-            t.append('aspect ratio', str(p.video_get_aspect_ratio()), r)
+            t.append('video size', _ratio2str('x', w, h))  # num=0
+            r = _ratio2str(':', *aspect_ratio(w, h))  # p.video_get_aspect_ratio()
+            t.append('aspect ratio', r, _ratio2str(':', *self.window.ratio))
             t.append('scale', '%.3f' % (p.video_get_scale(),), '%.3f' % (self.scale,))
             t.separator()
 
