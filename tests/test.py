@@ -53,6 +53,8 @@ try:
     from generator import generate
 except ImportError:
     generate = None
+except SyntaxError:
+    generate = None
 
 SAMPLE = os.path.join(os.path.dirname(__file__), 'samples/sample.mp4')
 print ("Checking " + vlc.__file__)
