@@ -60,6 +60,7 @@ __version__ =  '1.15'
 
 _debug = False
 
+from typing import NamedTuple
 import operator
 import os
 from pathlib import Path
@@ -137,6 +138,7 @@ _INDENT_ = '    '
 # special keywords in header.py
 _BUILD_DATE_      = 'build_date  = '
 _GENERATED_ENUMS_ = '# GENERATED_ENUMS'
+_GENERATED_STRUCTS_ = '# GENERATED_STRUCTS'
 _GENERATED_CALLBACKS_ = '# GENERATED_CALLBACKS'
 
 # keywords in header files
@@ -541,6 +543,11 @@ class Val(object):
     def dump(self):  # for debug
         sys.stderr.write('%s%s = %s\n' % (_INDENT_, self.name, self.value))
 
+class Overrides(NamedTuple):
+    codes: dict
+    methods: dict
+    docstrs: dict
+
 class Parser(object):
     """Parser of C header files.
     """
@@ -871,6 +878,8 @@ class _Generator(object):
             elif c[0].islower():
                 c = c.capitalize()
             self.type2class[e.name] = c
+            self.type2class[e.name+'*'] = f"ctypes.POINTER({c})"
+            self.type2class[e.name+'**'] = f"ctypes.POINTER(ctypes.POINTER({c}))"
 
     def dump_dicts(self):  # for debug
         s = _NL_ + _INDENT_
@@ -908,6 +917,8 @@ class _Generator(object):
         for t in f:
             if genums and t.startswith(_GENERATED_ENUMS_):
                 self.generate_enums()
+            elif genums and t.startswith(_GENERATED_STRUCTS_):
+                self.generate_structs()
             elif genums and t.startswith(_GENERATED_CALLBACKS_):
                 self.generate_callbacks()
             elif t.startswith(_BUILD_DATE_):
@@ -1024,6 +1035,15 @@ class PythonGenerator(_Generator):
         'libvlc_video_render_cfg_t*': 'VideoRenderCfg',
         'libvlc_video_direct3d_hdr10_metadata_t*': 'Direct3dHdr10Metadata',
 
+        'libvlc_media_tracklist_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
+        'libvlc_media_programlist_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
+        'libvlc_player_programlist_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
+        'libvlc_picture_list_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
+
+        # FIXME: gross hack to see if it makes things approximately work.#
+        # Unions should be properly converted
+        'union { libvlc_audio_track_t*': 'ctypes.POINTER(AudioTrack)',
+
         'FILE*':                       'FILE_ptr',
 
         '...':       'ctypes.c_void_p',
@@ -1087,6 +1107,10 @@ class PythonGenerator(_Generator):
         @param parser: a L{Parser} instance.
         """
         _Generator.__init__(self, parser)
+
+        # Load override definitions
+        self.overrides = self.parse_override(os.path.join(TEMPLATEDIR, 'override.py'))
+
         # one special enum type class
         self.type2class['libvlc_event_e'] = 'EventType'
         # doc links to functions, methods and types
@@ -1216,6 +1240,26 @@ class _Enum(ctypes.c_uint):
 
             self.output(_NL_.join(sorted(t)), nt=2)
 
+    def generate_structs(self):
+        """Generate classes for all structs types.
+        """
+        for e in self.parser.structs:
+            cls = self.class4(e.name)
+
+            # We can override struct definitions
+            # (for tricky ones) in override.py
+            if cls in self.overrides.codes:
+                continue
+            self.output("""class %s(ctypes.Structure):
+    '''%s
+    '''
+    _fields_ = (""" % (cls, e.epydocs() or _NA_))
+
+            for v in e.fields:
+                self.output("        ('%s', %s)," % (v.name, self.class4(v.type)))
+            self.output('    )')
+            self.output('')
+
     def generate_callbacks(self):
         """Generate decorators for callback functions.
 
@@ -1258,8 +1302,6 @@ class _Enum(ctypes.c_uint):
         def striprefix(name):
             return name.replace(x, '').replace('libvlc_', '')
 
-        codes, methods, docstrs = self.parse_override(os.path.join(TEMPLATEDIR, 'override.py'))
-
         # sort functions on the type/class
         # of their first parameter
         t = []
@@ -1275,9 +1317,9 @@ class _Enum(ctypes.c_uint):
                 cls = c
                 self.output("""class %s(_Ctype):
     '''%s
-    '''""" % (cls, docstrs.get(cls, '') or _NA_)) # """ emacs-mode is confused...
+    '''""" % (cls, self.overrides.docstrs.get(cls, '') or _NA_)) # """ emacs-mode is confused...
 
-                c = codes.get(cls, '')
+                c = self.overrides.codes.get(cls, '')
                 if not 'def __new__' in c:
                     self.output("""
     def __new__(cls, ptr=_internal_guard):
@@ -1294,7 +1336,7 @@ class _Enum(ctypes.c_uint):
 
             # method name is function name less prefix
             meth = striprefix(name)
-            if meth in methods.get(cls, []):
+            if meth in self.overrides.methods.get(cls, []):
                 continue  # overridden
 
             # arg names, excluding output args
@@ -1370,7 +1412,7 @@ class _Enum(ctypes.c_uint):
             # FIXME: not robust wrt. internal methods
             methods[k] = def_re.findall(v)
 
-        return codes, methods, docstrs
+        return Overrides(codes=codes, methods=methods, docstrs=docstrs)
 
     def save(self, path=None):
         """Write Python bindings to a file or C{stdout}.
