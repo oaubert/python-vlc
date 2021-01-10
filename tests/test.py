@@ -153,8 +153,8 @@ class TestVLCAPI(unittest.TestCase):
 
     def test_libvlc_video_new_viewpoint(self):
         vp = vlc.libvlc_video_new_viewpoint()
-        vp.contents.yaw = 2
-        self.assertEqual(vp.contents.yaw, 2)
+        vp.contents.f_yaw = 2
+        self.assertEqual(vp.contents.f_yaw, 2)
 
     def no_test_callback(self):
 
@@ -182,9 +182,7 @@ class TestVLCAPI(unittest.TestCase):
         m.parse()
         # Audiotrack is the second one
         audiotrack = list(m.tracks_get())[1]
-        self.assertEqual(audiotrack.language, b"eng")
-        self.assertEqual(audiotrack.description, b"Stereo")
-        self.assertEqual(audiotrack.bitrate, 83051)
+        self.assertEqual(audiotrack.i_original_fourcc, 0x6134706d)
         self.assertEqual(m.get_duration(), 5568)
 
     def test_meta_get(self):
