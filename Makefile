@@ -59,11 +59,11 @@ $(VERSIONED_NAME): generator/generate.py generator/templates/header.py generator
 doc: $(VERSIONED_NAME)
 	-epydoc -v -o doc $<
 
-test: $(MODULE_NAME)
+test2: $(MODULE_NAME)
 	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python tests/test.py
 	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python tests/test.py
 
-test3: $(MODULE_NAME)
+test: $(MODULE_NAME)
 	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test.py
 	PYTHONPATH=$(VERSIONED_PATH):${PROJECT_ROOT} python3 tests/test.py
 
@@ -73,7 +73,7 @@ sdist: $(VERSIONED_NAME)
 publish: $(VERSIONED_NAME)
 	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist && twine upload dist/*
 
-tests: test test3
+tests: test test2
 
 check: $(MODULE_NAME)
 	-pyflakes $<
