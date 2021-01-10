@@ -1250,10 +1250,13 @@ class _Enum(ctypes.c_uint):
             # (for tricky ones) in override.py
             if cls in self.overrides.codes:
                 continue
+            # We use a forward declaration here to allow for self-referencing structures - cf
+            # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
             self.output("""class %s(ctypes.Structure):
     '''%s
     '''
-    _fields_ = (""" % (cls, e.epydocs() or _NA_))
+    pass
+%s._fields_ = (""" % (cls, e.epydocs() or _NA_, cls))
 
             for v in e.fields:
                 self.output("        ('%s', %s)," % (v.name, self.class4(v.type)))
