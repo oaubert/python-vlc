@@ -156,7 +156,7 @@ enum_re      = re.compile(r'(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:
 enum_pair_re = re.compile(r'\s*=\s*')
 callback_type_re = re.compile(r'^typedef\s+\w+(\s*\*)?\s*\(\s*\*')
 callback_re  = re.compile(r'typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
-struct_type_re = re.compile(r'^typedef\s+struct\s*(\S+)\s*$')
+struct_type_re = re.compile(r'^typedef\s+struct\s*(\S+)?\s*$')
 struct_re    = re.compile(r'typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
 func_pointer_re = re.compile(r'(\(?[^\(]+)\s*\((\*\s*\S*)\)(\(.*\))') # (ret_type, *pointer_name, ([params]))
 typedef_re   = re.compile(r'^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
@@ -1043,6 +1043,7 @@ class PythonGenerator(_Generator):
         # FIXME: gross hack to see if it makes things approximately work.#
         # Unions should be properly converted
         'union { libvlc_audio_track_t*': 'ctypes.POINTER(AudioTrack)',
+        'union { { void*': 'ctypes.c_void_p',
 
         'FILE*':                       'FILE_ptr',
 
@@ -1057,6 +1058,7 @@ class PythonGenerator(_Generator):
         'int':       'ctypes.c_int',
         'int*':      'ctypes.POINTER(ctypes.c_int)',  # _video_get_cursor
         'uintptr_t*':      'ctypes.POINTER(ctypes.c_uint)',
+        'uint16_t':   'ctypes.c_uint16',
         'int64_t':   'ctypes.c_int64',
         'uint64_t':   'ctypes.c_uint64',
         'uint64_t*':   'ctypes.POINTER(ctypes.c_uint64)',
