@@ -367,6 +367,12 @@ class Log(ctypes.Structure):
     pass
 Log_ptr = ctypes.POINTER(Log)
 
+# Wrapper for the opaque struct libvlc_media_thumbnail_request_t
+class MediaThumbnailRequest:
+    def __new__(cls, *args):
+        if len(args) == 1 and isinstance(args[0], _Ints):
+            return _Constructor(cls, args[0])
+
 # FILE* ctypes wrapper, copied from
 # http://svn.python.org/projects/ctypes/trunk/ctypeslib/ctypeslib/contrib/pythonhdr.py
 class FILE(ctypes.Structure):
