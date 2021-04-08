@@ -100,7 +100,14 @@ class Instance:
         """Create a new MediaList instance.
         @param mrls: optional list of MRL strings, bytes, or PathLike objects.
         """
-        l = libvlc_media_list_new(self)
+        # API 3 vs 4: libvlc_media_list_new does not take any
+        # parameter as input anymore.
+        if len(signature(libvlc_media_list_new).parameters) == 1:
+            # API <= 3
+            l = libvlc_media_list_new(self)
+        else:
+            # API >= 4
+            l = libvlc_media_list_new()
         # We should take the lock, but since we did not leak the
         # reference, nobody else can access it.
         if mrls:
