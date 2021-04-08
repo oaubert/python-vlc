@@ -52,10 +52,10 @@ from inspect import getargspec, signature
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-15177-g3de1584a8d116"
+__version__ = "4.0.0-dev-15177-g3de1584a8d117"
 __libvlc_version__ = "4.0.0-dev-15177-g3de1584a8d"
-__generator_version__ = "1.16"
-build_date  = "Thu Apr  8 11:52:07 2021 4.0.0-dev-15177-g3de1584a8d"
+__generator_version__ = "1.17"
+build_date  = "Thu Apr  8 15:05:14 2021 4.0.0-dev-15177-g3de1584a8d"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -408,6 +408,36 @@ else:
     PyFile_AsFile = ctypes.pythonapi.PyFile_AsFile
     PyFile_AsFile.restype = FILE_ptr
     PyFile_AsFile.argtypes = [ctypes.py_object]
+
+def module_description_list(head):
+    """Convert a ModuleDescription linked list to a Python list (and release the former).
+    """
+    r = []
+    if head:
+        item = head
+        while item:
+            item = item.contents
+            r.append((item.name, item.shortname, item.longname, item.help))
+            item = item.next
+        libvlc_module_description_list_release(head)
+    return r
+
+def track_description_list(head):
+    """Convert a TrackDescription linked list to a Python list (and release the former).
+    """
+    r = []
+    if head:
+        item = head
+        while item:
+            item = item.contents
+            r.append((item.id, item.name))
+            item = item.next
+        try:
+            libvlc_track_description_release(head)
+        except NameError:
+            libvlc_track_description_list_release(head)
+
+    return r
 
 # Generated enum types #
 
@@ -1186,6 +1216,17 @@ MediaSlave._fields_ = (
         ('psz_uri', ctypes.c_char_p),
         ('i_type', MediaSlaveType),
         ('i_priority', ctypes.c_uint),
+    )
+
+class MediaDiscovererDescription(ctypes.Structure):
+    '''Media discoverer description
+See libvlc_media_discoverer_list_get().
+    '''
+    pass
+MediaDiscovererDescription._fields_ = (
+        ('psz_name', ctypes.c_char_p),
+        ('psz_longname', ctypes.c_char_p),
+        ('i_cat', MediaDiscovererCategory),
     )
 
 class TitleDescription(ctypes.Structure):
@@ -8213,7 +8254,7 @@ def libvlc_renderer_discoverer_list_get(p_inst, ppp_services):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_list_get', None) or \
         _Cfunction('libvlc_renderer_discoverer_list_get', ((1,), (1,),), None,
-                    ctypes.c_size_t, Instance, ctypes.POINTER(ctypes.POINTER(ctypes.POINTER(RDDescription))))
+                    ctypes.c_size_t, Instance, ctypes.POINTER(ctypes.POINTER(ctypes.POINTER(RdDescription))))
     return f(p_inst, ppp_services)
 
 def libvlc_renderer_discoverer_list_release(pp_services, i_count):
