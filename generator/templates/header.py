@@ -406,6 +406,36 @@ else:
     PyFile_AsFile.restype = FILE_ptr
     PyFile_AsFile.argtypes = [ctypes.py_object]
 
+def module_description_list(head):
+    """Convert a ModuleDescription linked list to a Python list (and release the former).
+    """
+    r = []
+    if head:
+        item = head
+        while item:
+            item = item.contents
+            r.append((item.name, item.shortname, item.longname, item.help))
+            item = item.next
+        libvlc_module_description_list_release(head)
+    return r
+
+def track_description_list(head):
+    """Convert a TrackDescription linked list to a Python list (and release the former).
+    """
+    r = []
+    if head:
+        item = head
+        while item:
+            item = item.contents
+            r.append((item.id, item.name))
+            item = item.next
+        try:
+            libvlc_track_description_release(head)
+        except NameError:
+            libvlc_track_description_list_release(head)
+
+    return r
+
 # Generated enum types #
 # GENERATED_ENUMS go here  # see generate.py
 # End of generated enum types #
