@@ -156,7 +156,7 @@ enum_re      = re.compile(r'(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:
 enum_pair_re = re.compile(r'\s*=\s*')
 callback_type_re = re.compile(r'^typedef\s+\w+(\s*\*)?\s*\(\s*\*')
 callback_re  = re.compile(r'typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
-struct_type_re = re.compile(r'^typedef\s+struct\s*(\S+)?\s*$')
+struct_type_re = re.compile(r'^typedef\s+struct\s*(\S+)?\s*\{?\s*$')
 struct_re    = re.compile(r'typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
 func_pointer_re = re.compile(r'(\(?[^\(]+)\s*\((\*\s*\S*)\)(\(.*\))') # (ret_type, *pointer_name, ([params]))
 typedef_re   = re.compile(r'^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
