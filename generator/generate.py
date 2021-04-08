@@ -56,7 +56,7 @@ __all__     = ('Parser',
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ =  '1.16'
+__version__ =  '1.17'
 
 _debug = False
 
@@ -1011,8 +1011,8 @@ class PythonGenerator(_Generator):
         'libvlc_media_thumbnail_request_t*':  'MediaThumbnailRequest', # Opaque struct, do not mess with it.
         'libvlc_renderer_item_t*':    'Renderer',
         'libvlc_renderer_discoverer_t*':    'RendererDiscoverer',
-        'libvlc_rd_description_t**': 'ctypes.POINTER(ctypes.POINTER(RDDescription))',
-        'libvlc_rd_description_t***': 'ctypes.POINTER(ctypes.POINTER(ctypes.POINTER(RDDescription)))',
+        'libvlc_rd_description_t**': 'ctypes.POINTER(ctypes.POINTER(RdDescription))',
+        'libvlc_rd_description_t***': 'ctypes.POINTER(ctypes.POINTER(ctypes.POINTER(RdDescription)))',
         'libvlc_media_track_info_t**': 'ctypes.POINTER(ctypes.c_void_p)',
         'libvlc_rectangle_t*':         'ctypes.POINTER(Rectangle)',
         'libvlc_time_t':               'ctypes.c_longlong',
