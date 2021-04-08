@@ -4,7 +4,7 @@ use_setuptools()
 from setuptools import setup
 
 setup(name='python-vlc',
-      version = '3.0.11115',
+      version = '3.0.12116',
       author='Olivier Aubert',
       author_email='contact@olivieraubert.net',
       maintainer='Olivier Aubert',
@@ -35,5 +35,5 @@ setup(name='python-vlc',
       player. Note that it relies on an already present install of VLC.
 
       It has been automatically generated from the include files of
-      vlc 3.0.11, using generator 1.15.
+      vlc 3.0.12, using generator 1.16.
       """)

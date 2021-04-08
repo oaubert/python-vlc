@@ -47,15 +47,15 @@ import sys
 import functools
 
 # Used by EventManager in override.py
-from inspect import getargspec
+from inspect import getargspec, signature
 
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-14414-gc9ebc50392115"
-__libvlc_version__ = "4.0.0-dev-14414-gc9ebc50392"
-__generator_version__ = "1.15"
-build_date  = "Sun Jan 10 13:06:33 2021 4.0.0-dev-14414-gc9ebc50392"
+__version__ = "4.0.0-dev-15177-g3de1584a8d116"
+__libvlc_version__ = "4.0.0-dev-15177-g3de1584a8d"
+__generator_version__ = "1.16"
+build_date  = "Thu Apr  8 11:52:07 2021 4.0.0-dev-15177-g3de1584a8d"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -370,6 +370,12 @@ class Log(ctypes.Structure):
     pass
 Log_ptr = ctypes.POINTER(Log)
 
+# Wrapper for the opaque struct libvlc_media_thumbnail_request_t
+class MediaThumbnailRequest:
+    def __new__(cls, *args):
+        if len(args) == 1 and isinstance(args[0], _Ints):
+            return _Constructor(cls, args[0])
+
 # FILE* ctypes wrapper, copied from
 # http://svn.python.org/projects/ctypes/trunk/ctypeslib/ctypeslib/contrib/pythonhdr.py
 class FILE(ctypes.Structure):
@@ -466,7 +472,6 @@ class EventType(_Enum):
         1: 'MediaSubItemAdded',
         2: 'MediaDurationChanged',
         3: 'MediaParsedChanged',
-        4: 'MediaFreed',
         5: 'MediaStateChanged',
         6: 'MediaSubItemTreeAdded',
         7: 'MediaThumbnailGenerated',
@@ -523,7 +528,6 @@ class EventType(_Enum):
     }
 EventType.MediaAttachedThumbnailsFound     = EventType(8)
 EventType.MediaDurationChanged             = EventType(2)
-EventType.MediaFreed                       = EventType(4)
 EventType.MediaListEndReached              = EventType(516)
 EventType.MediaListItemAdded               = EventType(0x200)
 EventType.MediaListItemDeleted             = EventType(514)
@@ -1244,6 +1248,7 @@ class VideoSetupDeviceInfo(ctypes.Structure):
     pass
 VideoSetupDeviceInfo._fields_ = (
         ('device_context', ctypes.c_void_p),
+        ('context_mutex', ctypes.c_void_p),
     )
 
 class VideoRenderCfg(ctypes.Structure):
@@ -1496,7 +1501,7 @@ class VideoOutputSetupCb(ctypes.c_void_p):
     @param opaque: private pointer passed to the @a libvlc_video_set_output_callbacks() on input. The callback can change this value on output to be passed to all the other callbacks set on @a libvlc_video_set_output_callbacks(). [IN/OUT].
     @param cfg: requested configuration of the video device [IN].
     @return: out L{VideoSetupDeviceInfo}* to fill.
-    @version: LibVLC 4.0.0 or later For \ref libvlc_video_engine_d3d9 the output must be a IDirect3D9*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0. For \ref libvlc_video_engine_d3d11 the output must be a ID3D11DeviceContext*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled.
+    @version: LibVLC 4.0.0 or later For \ref libvlc_video_engine_d3d9 the output must be a IDirect3D9*. A reference to this object is held until the \ref L{VideoOutputCleanupCb} is called. the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0. For \ref libvlc_video_engine_d3d11 the output must be a ID3D11DeviceContext*. A reference to this object is held until the \ref L{VideoOutputCleanupCb} is called. The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled. If the ID3D11DeviceContext is used outside of the callbacks called by libvlc, the host MUST use a mutex to protect the access to the ID3D11DeviceContext of libvlc. This mutex value is set on d3d11.context_mutex. If the ID3D11DeviceContext is not used outside of the callbacks, the mutex d3d11.context_mutex may be None.
     """
     pass
 class VideoOutputCleanupCb(ctypes.c_void_p):
@@ -1551,8 +1556,9 @@ class VideoOutputSelectPlaneCb(ctypes.c_void_p):
     """Tell the host the rendering for the given plane is about to start.
     @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
     @param plane: number of the rendering plane to select.
+    @param output: handle of the rendering output for the given plane.
     @return: true on success.
-    @version: LibVLC 4.0.0 or later @note This is only used with \ref libvlc_video_engine_d3d11. The host should call OMSetRenderTargets for Direct3D11. If this callback is not used (set to None in @a libvlc_video_set_output_callbacks()) OMSetRenderTargets has to be set during the @a libvlc_video_makeCurrent_cb() entering call. The number of planes depend on the DXGI_FORMAT returned during the \ref LIBVLC_VIDEO_UPDATE_OUTPUT call. It's usually one plane except for semi-planar formats like DXGI_FORMAT_NV12 or DXGI_FORMAT_P010. This callback is called between libvlc_video_makeCurrent_cb current/not-current calls.
+    @version: LibVLC 4.0.0 or later @note This is only used with \ref libvlc_video_engine_d3d11. The output parameter receives the ID3D11RenderTargetView* to use for rendering the plane. If this callback is not used (set to None in @a libvlc_video_set_output_callbacks()) OMSetRenderTargets has to be set during the @a libvlc_video_makeCurrent_cb() entering call. The number of planes depend on the DXGI_FORMAT returned during the @a L{VideoUpdateOutputCb}() call. It's usually one plane except for semi-planar formats like DXGI_FORMAT_NV12 or DXGI_FORMAT_P010. This callback is called between libvlc_video_makeCurrent_cb current/not-current calls.
     """
     pass
 class AudioPlayCb(ctypes.c_void_p):
@@ -1724,7 +1730,7 @@ class CallbackDecorators(object):
         @param opaque: private pointer passed to the @a libvlc_video_set_output_callbacks() on input. The callback can change this value on output to be passed to all the other callbacks set on @a libvlc_video_set_output_callbacks(). [IN/OUT].
         @param cfg: requested configuration of the video device [IN].
         @return: out L{VideoSetupDeviceInfo}* to fill.
-        @version: LibVLC 4.0.0 or later For \ref libvlc_video_engine_d3d9 the output must be a IDirect3D9*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0. For \ref libvlc_video_engine_d3d11 the output must be a ID3D11DeviceContext*. A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called. The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled.
+        @version: LibVLC 4.0.0 or later For \ref libvlc_video_engine_d3d9 the output must be a IDirect3D9*. A reference to this object is held until the \ref L{VideoOutputCleanupCb} is called. the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0. For \ref libvlc_video_engine_d3d11 the output must be a ID3D11DeviceContext*. A reference to this object is held until the \ref L{VideoOutputCleanupCb} is called. The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled. If the ID3D11DeviceContext is used outside of the callbacks called by libvlc, the host MUST use a mutex to protect the access to the ID3D11DeviceContext of libvlc. This mutex value is set on d3d11.context_mutex. If the ID3D11DeviceContext is not used outside of the callbacks, the mutex d3d11.context_mutex may be None.
     '''
     VideoOutputCleanupCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
     VideoOutputCleanupCb.__doc__ = '''Callback prototype called to release user data.
@@ -1768,12 +1774,13 @@ class CallbackDecorators(object):
         @param metadata: the type of metadata [IN].
         @version: LibVLC 4.0.0 or later.
     '''
-    VideoOutputSelectPlaneCb = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_size_t)
+    VideoOutputSelectPlaneCb = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p)
     VideoOutputSelectPlaneCb.__doc__ = '''Tell the host the rendering for the given plane is about to start.
         @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
         @param plane: number of the rendering plane to select.
+        @param output: handle of the rendering output for the given plane.
         @return: true on success.
-        @version: LibVLC 4.0.0 or later @note This is only used with \ref libvlc_video_engine_d3d11. The host should call OMSetRenderTargets for Direct3D11. If this callback is not used (set to None in @a libvlc_video_set_output_callbacks()) OMSetRenderTargets has to be set during the @a libvlc_video_makeCurrent_cb() entering call. The number of planes depend on the DXGI_FORMAT returned during the \ref LIBVLC_VIDEO_UPDATE_OUTPUT call. It's usually one plane except for semi-planar formats like DXGI_FORMAT_NV12 or DXGI_FORMAT_P010. This callback is called between libvlc_video_makeCurrent_cb current/not-current calls.
+        @version: LibVLC 4.0.0 or later @note This is only used with \ref libvlc_video_engine_d3d11. The output parameter receives the ID3D11RenderTargetView* to use for rendering the plane. If this callback is not used (set to None in @a libvlc_video_set_output_callbacks()) OMSetRenderTargets has to be set during the @a libvlc_video_makeCurrent_cb() entering call. The number of planes depend on the DXGI_FORMAT returned during the @a L{VideoUpdateOutputCb}() call. It's usually one plane except for semi-planar formats like DXGI_FORMAT_NV12 or DXGI_FORMAT_P010. This callback is called between libvlc_video_makeCurrent_cb current/not-current calls.
     '''
     AudioPlayCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.c_int64)
     AudioPlayCb.__doc__ = '''Callback prototype for audio playback.
@@ -2105,7 +2112,14 @@ class Instance(_Ctype):
         """Create a new MediaList instance.
         @param mrls: optional list of MRL strings, bytes, or PathLike objects.
         """
-        l = libvlc_media_list_new(self)
+        # API 3 vs 4: libvlc_media_list_new does not take any
+        # parameter as input anymore.
+        if len(signature(libvlc_media_list_new).parameters) == 1:
+            # API <= 3
+            l = libvlc_media_list_new(self)
+        else:
+            # API >= 4
+            l = libvlc_media_list_new()
         # We should take the lock, but since we did not leak the
         # reference, nobody else can access it.
         if mrls:
@@ -4017,6 +4031,15 @@ class MediaPlayer(_Ctype):
         return libvlc_video_get_spu_delay(self)
 
 
+    def video_get_spu_text_scale(self):
+        '''Get the current subtitle text scale
+        The scale factor is expressed as a percentage of the default size, where
+        1.0 represents 100 percent.
+        @version: LibVLC 4.0.0 or later.
+        '''
+        return libvlc_video_get_spu_text_scale(self)
+
+
     def video_set_spu_text_scale(self, f_scale):
         '''Set the subtitle text scale.
         The scale factor is expressed as a percentage of the default size, where
@@ -5753,7 +5776,7 @@ def libvlc_media_discoverer_list_get(p_inst, i_cat, ppp_services):
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_list_get', None) or \
         _Cfunction('libvlc_media_discoverer_list_get', ((1,), (1,), (1,),), None,
-                    ctypes.c_size_t, Instance, MediaDiscovererCategory, ctypes.POINTER(ctypes.POINTER(MediaDiscovererDescription)))
+                    ctypes.c_size_t, Instance, MediaDiscovererCategory, ctypes.POINTER(ctypes.POINTER(ctypes.POINTER(MediaDiscovererDescription))))
     return f(p_inst, i_cat, ppp_services)
 
 def libvlc_media_discoverer_list_release(pp_services, i_count):
@@ -5764,7 +5787,7 @@ def libvlc_media_discoverer_list_release(pp_services, i_count):
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_list_release', None) or \
         _Cfunction('libvlc_media_discoverer_list_release', ((1,), (1,),), None,
-                    None, ctypes.POINTER(MediaDiscovererDescription), ctypes.c_size_t)
+                    None, ctypes.POINTER(ctypes.POINTER(MediaDiscovererDescription)), ctypes.c_size_t)
     return f(pp_services, i_count)
 
 def libvlc_media_list_new():
@@ -7130,6 +7153,18 @@ def libvlc_video_get_spu_delay(p_mi):
                     ctypes.c_int64, MediaPlayer)
     return f(p_mi)
 
+def libvlc_video_get_spu_text_scale(p_mi):
+    '''Get the current subtitle text scale
+    The scale factor is expressed as a percentage of the default size, where
+    1.0 represents 100 percent.
+    @param p_mi: media player.
+    @version: LibVLC 4.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_video_get_spu_text_scale', None) or \
+        _Cfunction('libvlc_video_get_spu_text_scale', ((1,),), None,
+                    ctypes.c_float, MediaPlayer)
+    return f(p_mi)
+
 def libvlc_video_set_spu_text_scale(p_mi, f_scale):
     '''Set the subtitle text scale.
     The scale factor is expressed as a percentage of the default size, where
@@ -8178,7 +8213,7 @@ def libvlc_renderer_discoverer_list_get(p_inst, ppp_services):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_list_get', None) or \
         _Cfunction('libvlc_renderer_discoverer_list_get', ((1,), (1,),), None,
-                    ctypes.c_size_t, Instance, ctypes.POINTER(ctypes.POINTER(RDDescription)))
+                    ctypes.c_size_t, Instance, ctypes.POINTER(ctypes.POINTER(ctypes.POINTER(RDDescription))))
     return f(p_inst, ppp_services)
 
 def libvlc_renderer_discoverer_list_release(pp_services, i_count):

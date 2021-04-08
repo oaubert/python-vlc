@@ -47,15 +47,15 @@ import sys
 import functools
 
 # Used by EventManager in override.py
-from inspect import getargspec
+from inspect import getargspec, signature
 
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.11115"
-__libvlc_version__ = "3.0.11"
-__generator_version__ = "1.15"
-build_date  = "Sun Jan 10 13:06:33 2021 3.0.11"
+__version__ = "3.0.12116"
+__libvlc_version__ = "3.0.12"
+__generator_version__ = "1.16"
+build_date  = "Thu Apr  8 11:52:07 2021 3.0.12"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -369,6 +369,12 @@ def class_result(classname):
 class Log(ctypes.Structure):
     pass
 Log_ptr = ctypes.POINTER(Log)
+
+# Wrapper for the opaque struct libvlc_media_thumbnail_request_t
+class MediaThumbnailRequest:
+    def __new__(cls, *args):
+        if len(args) == 1 and isinstance(args[0], _Ints):
+            return _Constructor(cls, args[0])
 
 # FILE* ctypes wrapper, copied from
 # http://svn.python.org/projects/ctypes/trunk/ctypeslib/ctypeslib/contrib/pythonhdr.py
@@ -1818,7 +1824,14 @@ class Instance(_Ctype):
         """Create a new MediaList instance.
         @param mrls: optional list of MRL strings, bytes, or PathLike objects.
         """
-        l = libvlc_media_list_new(self)
+        # API 3 vs 4: libvlc_media_list_new does not take any
+        # parameter as input anymore.
+        if len(signature(libvlc_media_list_new).parameters) == 1:
+            # API <= 3
+            l = libvlc_media_list_new(self)
+        else:
+            # API >= 4
+            l = libvlc_media_list_new()
         # We should take the lock, but since we did not leak the
         # reference, nobody else can access it.
         if mrls:
@@ -5752,7 +5765,7 @@ def libvlc_media_discoverer_list_get(p_inst, i_cat, ppp_services):
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_list_get', None) or \
         _Cfunction('libvlc_media_discoverer_list_get', ((1,), (1,), (1,),), None,
-                    ctypes.c_size_t, Instance, MediaDiscovererCategory, ctypes.POINTER(ctypes.POINTER(MediaDiscovererDescription)))
+                    ctypes.c_size_t, Instance, MediaDiscovererCategory, ctypes.POINTER(ctypes.POINTER(ctypes.POINTER(MediaDiscovererDescription))))
     return f(p_inst, i_cat, ppp_services)
 
 def libvlc_media_discoverer_list_release(pp_services, i_count):
@@ -5763,7 +5776,7 @@ def libvlc_media_discoverer_list_release(pp_services, i_count):
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_list_release', None) or \
         _Cfunction('libvlc_media_discoverer_list_release', ((1,), (1,),), None,
-                    None, ctypes.POINTER(MediaDiscovererDescription), ctypes.c_size_t)
+                    None, ctypes.POINTER(ctypes.POINTER(MediaDiscovererDescription)), ctypes.c_size_t)
     return f(pp_services, i_count)
 
 def libvlc_media_library_new(p_instance):
@@ -7970,7 +7983,7 @@ def libvlc_renderer_discoverer_list_get(p_inst, ppp_services):
     '''
     f = _Cfunctions.get('libvlc_renderer_discoverer_list_get', None) or \
         _Cfunction('libvlc_renderer_discoverer_list_get', ((1,), (1,),), None,
-                    ctypes.c_size_t, Instance, ctypes.POINTER(ctypes.POINTER(RDDescription)))
+                    ctypes.c_size_t, Instance, ctypes.POINTER(ctypes.POINTER(ctypes.POINTER(RDDescription))))
     return f(p_inst, ppp_services)
 
 def libvlc_renderer_discoverer_list_release(pp_services, i_count):
