@@ -57,7 +57,7 @@ $(VERSIONED_NAME): generator/generate.py generator/templates/header.py generator
 	$(GENERATE) $(INSTALLED_INCLUDES) -o $@
 
 doc: $(VERSIONED_NAME)
-	-epydoc -v -o doc $<
+	-pydoctor --project-name=python-vlc --project-url=https://github.com/oaubert/python-vlc/ --make-html --verbose --html-output=doc $<
 
 test2: $(MODULE_NAME)
 	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python tests/test.py
