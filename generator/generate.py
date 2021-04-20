@@ -56,7 +56,7 @@ __all__     = ('Parser',
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ =  '1.17'
+__version__ =  '1.18'
 
 _debug = False
 
@@ -1261,7 +1261,14 @@ class _Enum(ctypes.c_uint):
 %s._fields_ = (""" % (cls, e.epydocs() or _NA_, cls))
 
             for v in e.fields:
-                self.output("        ('%s', %s)," % (v.name, self.class4(v.type)))
+                # Strip the polish-notation prefixes from entries, to
+                # preserve compatibility in 3.x series.
+
+                # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
+
+                # See https://github.com/oaubert/python-vlc/issues/174
+                self.output("        ('%s', %s)," % (re.sub('^(i_|f_|p_|psz_)', '', v.name) if self.parser.version < "4" else v.name,
+                                                     self.class4(v.type)))
             self.output('    )')
             self.output('')
 

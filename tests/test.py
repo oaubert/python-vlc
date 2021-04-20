@@ -30,7 +30,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 import ctypes
-import re
 import os
 import unittest
 
@@ -153,8 +152,12 @@ class TestVLCAPI(unittest.TestCase):
 
     def test_libvlc_video_new_viewpoint(self):
         vp = vlc.libvlc_video_new_viewpoint()
-        vp.contents.f_yaw = 2
-        self.assertEqual(vp.contents.f_yaw, 2)
+        if vlc.__version__ < "4":
+            vp.contents.yaw = 2
+            self.assertEqual(vp.contents.yaw, 2)
+        else:
+            vp.contents.f_yaw = 2
+            self.assertEqual(vp.contents.f_yaw, 2)
 
     def no_test_callback(self):
 
@@ -182,7 +185,10 @@ class TestVLCAPI(unittest.TestCase):
         m.parse()
         # Audiotrack is the second one
         audiotrack = list(m.tracks_get())[1]
-        self.assertEqual(audiotrack.i_original_fourcc, 0x6134706d)
+        if vlc.__version__ < "4":
+            self.assertEqual(audiotrack.original_fourcc, 0x6134706d)
+        else:
+            self.assertEqual(audiotrack.i_original_fourcc, 0x6134706d)
         self.assertEqual(m.get_duration(), 5568)
 
     def test_meta_get(self):

@@ -52,10 +52,10 @@ from inspect import getargspec, signature
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.12117"
+__version__ = "3.0.12118"
 __libvlc_version__ = "3.0.12"
-__generator_version__ = "1.17"
-build_date  = "Thu Apr  8 15:05:14 2021 3.0.12"
+__generator_version__ = "1.18"
+build_date  = "Tue Apr 20 20:46:07 2021 3.0.12"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1056,11 +1056,11 @@ class LogMessage(ctypes.Structure):
     '''
     pass
 LogMessage._fields_ = (
-        ('i_severity', ctypes.c_int),
-        ('psz_type', ctypes.c_char_p),
-        ('psz_name', ctypes.c_char_p),
-        ('psz_header', ctypes.c_char_p),
-        ('psz_message', ctypes.c_char_p),
+        ('severity', ctypes.c_int),
+        ('type', ctypes.c_char_p),
+        ('name', ctypes.c_char_p),
+        ('header', ctypes.c_char_p),
+        ('message', ctypes.c_char_p),
     )
 
 class ModuleDescription(ctypes.Structure):
@@ -1068,11 +1068,11 @@ class ModuleDescription(ctypes.Structure):
     '''
     pass
 ModuleDescription._fields_ = (
-        ('psz_name', ctypes.c_char_p),
-        ('psz_shortname', ctypes.c_char_p),
-        ('psz_longname', ctypes.c_char_p),
-        ('psz_help', ctypes.c_char_p),
-        ('p_next', ctypes.POINTER(ModuleDescription)),
+        ('name', ctypes.c_char_p),
+        ('shortname', ctypes.c_char_p),
+        ('longname', ctypes.c_char_p),
+        ('help', ctypes.c_char_p),
+        ('next', ctypes.POINTER(ModuleDescription)),
     )
 
 class DialogCbs(ctypes.Structure):
@@ -1088,7 +1088,7 @@ class Event(ctypes.Structure):
     pass
 Event._fields_ = (
         ('type', ctypes.c_int),
-        ('p_obj', ctypes.c_void_p),
+        ('obj', ctypes.c_void_p),
         ('meta_type', Meta),
     )
 
@@ -1102,21 +1102,21 @@ stopping=5, ended=6, error=7.
     '''
     pass
 MediaStats._fields_ = (
-        ('i_read_bytes', ctypes.c_int),
-        ('f_input_bitrate', ctypes.c_float),
-        ('i_demux_read_bytes', ctypes.c_int),
-        ('f_demux_bitrate', ctypes.c_float),
-        ('i_demux_corrupted', ctypes.c_int),
-        ('i_demux_discontinuity', ctypes.c_int),
-        ('i_decoded_video', ctypes.c_int),
-        ('i_decoded_audio', ctypes.c_int),
-        ('i_displayed_pictures', ctypes.c_int),
-        ('i_lost_pictures', ctypes.c_int),
-        ('i_played_abuffers', ctypes.c_int),
-        ('i_lost_abuffers', ctypes.c_int),
-        ('i_sent_packets', ctypes.c_int),
-        ('i_sent_bytes', ctypes.c_int),
-        ('f_send_bitrate', ctypes.c_float),
+        ('read_bytes', ctypes.c_int),
+        ('input_bitrate', ctypes.c_float),
+        ('demux_read_bytes', ctypes.c_int),
+        ('demux_bitrate', ctypes.c_float),
+        ('demux_corrupted', ctypes.c_int),
+        ('demux_discontinuity', ctypes.c_int),
+        ('decoded_video', ctypes.c_int),
+        ('decoded_audio', ctypes.c_int),
+        ('displayed_pictures', ctypes.c_int),
+        ('lost_pictures', ctypes.c_int),
+        ('played_abuffers', ctypes.c_int),
+        ('lost_abuffers', ctypes.c_int),
+        ('sent_packets', ctypes.c_int),
+        ('sent_bytes', ctypes.c_int),
+        ('send_bitrate', ctypes.c_float),
     )
 
 class MediaTrackInfo(ctypes.Structure):
@@ -1124,13 +1124,13 @@ class MediaTrackInfo(ctypes.Structure):
     '''
     pass
 MediaTrackInfo._fields_ = (
-        ('i_codec', ctypes.c_uint32),
-        ('i_id', ctypes.c_int),
-        ('i_type', TrackType),
-        ('i_profile', ctypes.c_int),
-        ('i_level', ctypes.c_int),
-        ('i_channels', ctypes.c_uint),
-        ('i_rate', ctypes.c_uint),
+        ('codec', ctypes.c_uint32),
+        ('id', ctypes.c_int),
+        ('type', TrackType),
+        ('profile', ctypes.c_int),
+        ('level', ctypes.c_int),
+        ('channels', ctypes.c_uint),
+        ('rate', ctypes.c_uint),
     )
 
 class AudioTrack(ctypes.Structure):
@@ -1138,8 +1138,8 @@ class AudioTrack(ctypes.Structure):
     '''
     pass
 AudioTrack._fields_ = (
-        ('i_channels', ctypes.c_uint),
-        ('i_rate', ctypes.c_uint),
+        ('channels', ctypes.c_uint),
+        ('rate', ctypes.c_uint),
     )
 
 class VideoViewpoint(ctypes.Structure):
@@ -1148,10 +1148,10 @@ class VideoViewpoint(ctypes.Structure):
     '''
     pass
 VideoViewpoint._fields_ = (
-        ('f_yaw', ctypes.c_float),
-        ('f_pitch', ctypes.c_float),
-        ('f_roll', ctypes.c_float),
-        ('f_field_of_view', ctypes.c_float),
+        ('yaw', ctypes.c_float),
+        ('pitch', ctypes.c_float),
+        ('roll', ctypes.c_float),
+        ('field_of_view', ctypes.c_float),
     )
 
 class VideoTrack(ctypes.Structure):
@@ -1159,14 +1159,14 @@ class VideoTrack(ctypes.Structure):
     '''
     pass
 VideoTrack._fields_ = (
-        ('i_height', ctypes.c_uint),
-        ('i_width', ctypes.c_uint),
-        ('i_sar_num', ctypes.c_uint),
-        ('i_sar_den', ctypes.c_uint),
-        ('i_frame_rate_num', ctypes.c_uint),
-        ('i_frame_rate_den', ctypes.c_uint),
-        ('i_orientation', VideoOrient),
-        ('i_projection', VideoProjection),
+        ('height', ctypes.c_uint),
+        ('width', ctypes.c_uint),
+        ('sar_num', ctypes.c_uint),
+        ('sar_den', ctypes.c_uint),
+        ('frame_rate_num', ctypes.c_uint),
+        ('frame_rate_den', ctypes.c_uint),
+        ('orientation', VideoOrient),
+        ('projection', VideoProjection),
         ('pose', VideoViewpoint),
     )
 
@@ -1175,7 +1175,7 @@ class SubtitleTrack(ctypes.Structure):
     '''
     pass
 SubtitleTrack._fields_ = (
-        ('psz_encoding', ctypes.c_char_p),
+        ('encoding', ctypes.c_char_p),
     )
 
 class MediaTrack(ctypes.Structure):
@@ -1183,12 +1183,12 @@ class MediaTrack(ctypes.Structure):
     '''
     pass
 MediaTrack._fields_ = (
-        ('i_codec', ctypes.c_uint32),
-        ('i_original_fourcc', ctypes.c_uint32),
-        ('i_id', ctypes.c_int),
-        ('i_type', TrackType),
-        ('i_profile', ctypes.c_int),
-        ('i_level', ctypes.c_int),
+        ('codec', ctypes.c_uint32),
+        ('original_fourcc', ctypes.c_uint32),
+        ('id', ctypes.c_int),
+        ('type', TrackType),
+        ('profile', ctypes.c_int),
+        ('level', ctypes.c_int),
         ('audio', ctypes.POINTER(AudioTrack)),
         ('video', ctypes.POINTER(VideoTrack)),
         ('subtitle', ctypes.POINTER(SubtitleTrack)),
@@ -1200,9 +1200,9 @@ See libvlc_media_slaves_get.
     '''
     pass
 MediaSlave._fields_ = (
-        ('psz_uri', ctypes.c_char_p),
-        ('i_type', MediaSlaveType),
-        ('i_priority', ctypes.c_uint),
+        ('uri', ctypes.c_char_p),
+        ('type', MediaSlaveType),
+        ('priority', ctypes.c_uint),
     )
 
 class MediaDiscovererDescription(ctypes.Structure):
@@ -1211,9 +1211,9 @@ See libvlc_media_discoverer_list_get().
     '''
     pass
 MediaDiscovererDescription._fields_ = (
-        ('psz_name', ctypes.c_char_p),
-        ('psz_longname', ctypes.c_char_p),
-        ('i_cat', MediaDiscovererCategory),
+        ('name', ctypes.c_char_p),
+        ('longname', ctypes.c_char_p),
+        ('cat', MediaDiscovererCategory),
     )
 
 class TrackDescription(ctypes.Structure):
@@ -1222,9 +1222,9 @@ id, name (description string) and pointer to next record.
     '''
     pass
 TrackDescription._fields_ = (
-        ('i_id', ctypes.c_int),
-        ('psz_name', ctypes.c_char_p),
-        ('p_next', ctypes.POINTER(TrackDescription)),
+        ('id', ctypes.c_int),
+        ('name', ctypes.c_char_p),
+        ('next', ctypes.POINTER(TrackDescription)),
     )
 
 class TitleDescription(ctypes.Structure):
@@ -1232,9 +1232,9 @@ class TitleDescription(ctypes.Structure):
     '''
     pass
 TitleDescription._fields_ = (
-        ('i_duration', ctypes.c_int64),
-        ('psz_name', ctypes.c_char_p),
-        ('i_flags', ctypes.c_uint),
+        ('duration', ctypes.c_int64),
+        ('name', ctypes.c_char_p),
+        ('flags', ctypes.c_uint),
     )
 
 class ChapterDescription(ctypes.Structure):
@@ -1242,9 +1242,9 @@ class ChapterDescription(ctypes.Structure):
     '''
     pass
 ChapterDescription._fields_ = (
-        ('i_time_offset', ctypes.c_int64),
-        ('i_duration', ctypes.c_int64),
-        ('psz_name', ctypes.c_char_p),
+        ('time_offset', ctypes.c_int64),
+        ('duration', ctypes.c_int64),
+        ('name', ctypes.c_char_p),
     )
 
 class AudioOutput(ctypes.Structure):
@@ -1253,9 +1253,9 @@ name, description and pointer to next record.
     '''
     pass
 AudioOutput._fields_ = (
-        ('psz_name', ctypes.c_char_p),
-        ('psz_description', ctypes.c_char_p),
-        ('p_next', ctypes.POINTER(AudioOutput)),
+        ('name', ctypes.c_char_p),
+        ('description', ctypes.c_char_p),
+        ('next', ctypes.POINTER(AudioOutput)),
     )
 
 class AudioOutputDevice(ctypes.Structure):
@@ -1263,9 +1263,9 @@ class AudioOutputDevice(ctypes.Structure):
     '''
     pass
 AudioOutputDevice._fields_ = (
-        ('p_next', ctypes.POINTER(AudioOutputDevice)),
-        ('psz_device', ctypes.c_char_p),
-        ('psz_description', ctypes.c_char_p),
+        ('next', ctypes.POINTER(AudioOutputDevice)),
+        ('device', ctypes.c_char_p),
+        ('description', ctypes.c_char_p),
     )
 
 class RdDescription(ctypes.Structure):
@@ -1274,8 +1274,8 @@ See libvlc_renderer_discoverer_list_get().
     '''
     pass
 RdDescription._fields_ = (
-        ('psz_name', ctypes.c_char_p),
-        ('psz_longname', ctypes.c_char_p),
+        ('name', ctypes.c_char_p),
+        ('longname', ctypes.c_char_p),
     )
 
 # End of generated structs #

@@ -52,10 +52,10 @@ from inspect import getargspec, signature
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-15177-g3de1584a8d117"
+__version__ = "4.0.0-dev-15177-g3de1584a8d118"
 __libvlc_version__ = "4.0.0-dev-15177-g3de1584a8d"
-__generator_version__ = "1.17"
-build_date  = "Thu Apr  8 15:05:14 2021 4.0.0-dev-15177-g3de1584a8d"
+__generator_version__ = "1.18"
+build_date  = "Tue Apr 20 20:46:07 2021 4.0.0-dev-15177-g3de1584a8d"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
