@@ -52,10 +52,10 @@ from inspect import getargspec, signature
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.12118"
+__version__ = "3.0.12119"
 __libvlc_version__ = "3.0.12"
-__generator_version__ = "1.18"
-build_date  = "Tue Apr 20 20:46:07 2021 3.0.12"
+__generator_version__ = "1.19"
+build_date  = "Mon May 31 18:25:17 2021 3.0.12"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1619,6 +1619,7 @@ class AudioEqualizer(_Ctype):
         if len(args) == 1 and isinstance(args[0], _Ints):
             return _Constructor(cls, args[0])
         return libvlc_audio_equalizer_new()
+
 
 
     def release(self):
@@ -8562,7 +8563,8 @@ if __name__ == '__main__':
         # Instance() call above, see <http://www.videolan.org/doc/play-howto/en/ch04.html>
         player.video_set_marquee_int(VideoMarqueeOption.Enable, 1)
         player.video_set_marquee_int(VideoMarqueeOption.Size, 24)  # pixels
-        player.video_set_marquee_int(VideoMarqueeOption.Position, Position.Bottom)
+        # FIXME: This crashes the module - it should be investigated
+        # player.video_set_marquee_int(VideoMarqueeOption.Position, Position.bottom)
         if False:  # only one marquee can be specified
             player.video_set_marquee_int(VideoMarqueeOption.Timeout, 5000)  # millisec, 0==forever
             t = media.get_mrl()  # movie

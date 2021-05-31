@@ -52,10 +52,10 @@ from inspect import getargspec, signature
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-15177-g3de1584a8d118"
-__libvlc_version__ = "4.0.0-dev-15177-g3de1584a8d"
-__generator_version__ = "1.18"
-build_date  = "Tue Apr 20 20:46:07 2021 4.0.0-dev-15177-g3de1584a8d"
+__version__ = "4.0.0-dev-15674-g8dd0de9748119"
+__libvlc_version__ = "4.0.0-dev-15674-g8dd0de9748"
+__generator_version__ = "1.19"
+build_date  = "Mon May 31 18:25:17 2021 4.0.0-dev-15674-g8dd0de9748"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -757,9 +757,11 @@ class MediaSlaveType(_Enum):
     '''
     _enum_names_ = {
         0: 'subtitle',
+        1: 'generic',
         1: 'audio',
     }
 MediaSlaveType.audio    = MediaSlaveType(1)
+MediaSlaveType.generic  = MediaSlaveType(1)
 MediaSlaveType.subtitle = MediaSlaveType(0)
 
 class ThumbnailerSeekSpeed(_Enum):
@@ -1909,6 +1911,7 @@ class AudioEqualizer(_Ctype):
         return libvlc_audio_equalizer_new()
 
 
+
     def release(self):
         '''Release a previously created equalizer instance.
         The equalizer was previously created by using L{new}() or
@@ -2551,8 +2554,7 @@ class Media(_Ctype):
     def release(self):
         '''Decrement the reference count of a media descriptor object. If the
         reference count is 0, then L{release}() will release the
-        media descriptor object. It will send out an libvlc_MediaFreed event
-        to all listeners. If the media descriptor object has been released it
+        media descriptor object. If the media descriptor object has been released it
         should not be used again.
         '''
         return libvlc_media_release(self)
@@ -3927,14 +3929,14 @@ class MediaPlayer(_Ctype):
         return libvlc_media_player_add_slave(self, i_type, str_to_bytes(psz_uri), b_select)
 
 
-    def select_program_id(self, program_id):
+    def select_program_id(self, i_group_id):
         '''Select program with a given program id.
         @note: program ids are sent via the libvlc_MediaPlayerProgramAdded event or
         can be fetch via L{get_programlist}().
-        @param program_i:d.
+        @param i_group_id: program id.
         @version: LibVLC 4.0.0 or later.
         '''
-        return libvlc_media_player_select_program_id(self, program_id)
+        return libvlc_media_player_select_program_id(self, i_group_id)
 
 
     def get_selected_program(self):
@@ -3948,7 +3950,7 @@ class MediaPlayer(_Ctype):
     def get_program_from_id(self, i_group_id):
         '''Get a program struct from a program id.
         @param i_group_id: program id.
-        @return: a valid program struct or None if the group_id is not found. The program need to be freed with L{player_program_delete}().
+        @return: a valid program struct or None if the i_group_id is not found. The program need to be freed with L{player_program_delete}().
         @version: LibVLC 4.0.0 or later.
         '''
         return libvlc_media_player_get_program_from_id(self, i_group_id)
@@ -5368,8 +5370,7 @@ def libvlc_media_retain(p_md):
 def libvlc_media_release(p_md):
     '''Decrement the reference count of a media descriptor object. If the
     reference count is 0, then L{libvlc_media_release}() will release the
-    media descriptor object. It will send out an libvlc_MediaFreed event
-    to all listeners. If the media descriptor object has been released it
+    media descriptor object. If the media descriptor object has been released it
     should not be used again.
     @param p_md: the media descriptor.
     '''
@@ -6953,27 +6954,28 @@ def libvlc_player_programlist_at(list, index):
     return f(list, index)
 
 def libvlc_player_programlist_delete(list):
-    '''Release a programlist.
+    '''Release a programlist
+    @note: program structs from the list are also deleted.
     @param list: valid programlist.
-    @version: LibVLC 4.0.0 and later. See libvlc_media_get_programlist See L{libvlc_media_player_get_programlist}.
+    @version: LibVLC 4.0.0 and later. See L{libvlc_media_player_get_programlist}.
     '''
     f = _Cfunctions.get('libvlc_player_programlist_delete', None) or \
         _Cfunction('libvlc_player_programlist_delete', ((1,),), None,
                     None, ctypes.c_void_p)
     return f(list)
 
-def libvlc_media_player_select_program_id(p_mi, program_id):
+def libvlc_media_player_select_program_id(p_mi, i_group_id):
     '''Select program with a given program id.
     @note: program ids are sent via the libvlc_MediaPlayerProgramAdded event or
     can be fetch via L{libvlc_media_player_get_programlist}().
     @param p_mi: opaque media player handle.
-    @param program_i:d.
+    @param i_group_id: program id.
     @version: LibVLC 4.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_media_player_select_program_id', None) or \
         _Cfunction('libvlc_media_player_select_program_id', ((1,), (1,),), None,
                     None, MediaPlayer, ctypes.c_int)
-    return f(p_mi, program_id)
+    return f(p_mi, i_group_id)
 
 def libvlc_media_player_get_selected_program(p_mi):
     '''Get the selected program.
@@ -6990,7 +6992,7 @@ def libvlc_media_player_get_program_from_id(p_mi, i_group_id):
     '''Get a program struct from a program id.
     @param p_mi: opaque media player handle.
     @param i_group_id: program id.
-    @return: a valid program struct or None if the group_id is not found. The program need to be freed with L{libvlc_player_program_delete}().
+    @return: a valid program struct or None if the i_group_id is not found. The program need to be freed with L{libvlc_player_program_delete}().
     @version: LibVLC 4.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_media_player_get_program_from_id', None) or \
@@ -8496,7 +8498,8 @@ if __name__ == '__main__':
         # Instance() call above, see <http://www.videolan.org/doc/play-howto/en/ch04.html>
         player.video_set_marquee_int(VideoMarqueeOption.Enable, 1)
         player.video_set_marquee_int(VideoMarqueeOption.Size, 24)  # pixels
-        player.video_set_marquee_int(VideoMarqueeOption.Position, Position.Bottom)
+        # FIXME: This crashes the module - it should be investigated
+        # player.video_set_marquee_int(VideoMarqueeOption.Position, Position.bottom)
         if False:  # only one marquee can be specified
             player.video_set_marquee_int(VideoMarqueeOption.Timeout, 5000)  # millisec, 0==forever
             t = media.get_mrl()  # movie
