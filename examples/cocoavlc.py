@@ -6,17 +6,22 @@
 # The Python-VLC binding <https://PyPI.Python.org/pypi/python-vlc> and the
 # corresponding VLC App, see <https://www.VideoLan.org/index.html>.
 
-# This VLC player has been tested with VLC 3.0.11, 3.0.10, 3.0.8, 3.0.7,
-# 3.0.6, 3.0.4, 3.0.2, 3.0.1, 2.2.8 and 2.2.6 and the compatible vlc.py
-# Python-VLC binding using 64-bit Python 3.9.0, 3.8.6, 3.7.0-4, 3.6.4-5
-# and 2.7.14-18 on macOS 11.0.1 (10.16) Big Sur, 10.15.6 Catalina, 10.14.6
-# Mojave and 10.13.4-6 High Sierra.  This player does not work with PyPy
-# <https://PyPy.org> nor with Intel(R) Python
-# <https://Software.Intel.com/en-us/distribution-for-python>.
+# PyCocoa version 21.8.18 or later must be installed.
+
+# This VLC player has been tested with VLC 3.0.10-12, 3.0.6-8, 3.0.4,
+# 3.0.1-2, 2.2.8 and 2.2.6 and the compatible vlc.py Python-VLC binding
+# using 64-bit Python 3.10.0.rc1, 3.9.6, 3.9.0-1, 3.8.10, 3.8.6, 3.7.0-4,
+# 3.6.4-5 and 2.7.14-18 on macOS 11.5.2 Big Sur (aka 10.16), 10.15.6
+# Catalina, 10.14.6 Mojave and 10.13.4-6 High Sierra.  This player
+# does not work with PyPy <https://PyPy.org> nor with Intel(R) Python
+# <https://Software.Intel.com/en-us/distribution-for-python>.  Python
+# 3.10.0rc1, 3.9.6 and macOS' Python 2.7.16 run on Apple Silicon (C{arm64}),
+# all other Python versions run on Intel (C{x86_64}) or I{emulated} Intel
+# (C{"arm64_x86_64"}, see function C{pycocoa.machine}).
 
 # MIT License <https://OpenSource.org/licenses/MIT>
 #
-# Copyright (C) 2017-2020 -- mrJean1 at Gmail -- All Rights Reserved.
+# Copyright (C) 2017-2021 -- mrJean1 at Gmail -- All Rights Reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -36,37 +41,33 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-
 def _PyPI(package):
     return 'see <https://PyPI.org/project/%s>' % (package,)
 
-def _version_toold(version, text):  # PYCHOK expected
-    raise ImportError('%s%s %s or later required, %s' % (text,
-                      _pycocoa_, version, _PyPI('PyCocoa')))
+__all__  = ('AppVLC',)  # PYCHOK expected
+__version__ = '21.08.18'
 
-try:  # PYCHOK expected
+try:
     import vlc
 except ImportError:
-    raise ImportError('no %s module, %s' % ('vlc.py', _PyPI('Python-VLC')))
+    raise ImportError('no %s, %s' % ('vlc.py', _PyPI('Python-VLC')))
 try:
     from pycocoa import __name__    as _pycocoa_, \
                         __version__ as _pycocoa_version
 except ImportError:
-    raise ImportError('no %s module, %s' % (_pycocoa_, _PyPI('PyCocoa')))
-if _pycocoa_version < '18.08.09':
-    _version_toold('18.8.9', '')
-
-import platform
-_macOS = platform.mac_ver()[0:3:2]
-if _macOS[0] > '10.15' and _pycocoa_version < '20.11.30':
-    _version_toold('20.11.30', 'on macOS %s (%s), ' % _macOS)
+    raise ImportError('no %s, %s' % (_pycocoa_, _PyPI('PyCocoa')))
+if _pycocoa_version < __version__:
+    raise ImportError('%s %s or later required, %s' % (
+                      _pycocoa_, __version__, _PyPI('PyCocoa')))
+del _PyPI
 
 # all imports listed explicitly to help PyChecker
 from pycocoa import App, app_title, aspect_ratio, bytes2str, closeTables, \
-                    get_printer, Item, ItemSeparator, MediaWindow, Menu, \
+                    get_printer, Item, ItemSeparator, machine, MediaWindow, Menu, \
                     OpenPanel, printf, str2bytes, Table, z1000str, zSIstr
 
 from os.path import basename, getsize, isfile, splitext
+import platform as _platform
 import sys
 from threading import Thread
 from time import sleep, strftime, strptime
@@ -74,9 +75,6 @@ try:
     from urllib import unquote as mrl_unquote  # Python 2
 except ImportError:
     from urllib.parse import unquote as mrl_unquote  # Python 3+
-
-__all__  = ('AppVLC',)
-__version__ = '20.12.02'
 
 _Adjust  = vlc.VideoAdjustOption  # Enum
 # <https://Wiki.VideoLan.org/Documentation:Modules/adjust>
@@ -87,12 +85,11 @@ _Adjust3 = {_Adjust.Brightness: (0, 1, 2),
             _Adjust.Saturation: (0, 1, 3)}
 _Argv0   = splitext(basename(__file__))[0]
 _Movies  = '.m4v', '.mov', '.mp4'  # lower-case file types for movies, videos
-_Python  = sys.version.split()[0], platform.architecture()[0]  # PYCHOK false
+_Python  = sys.version.split()[0], _platform.architecture()[0]  # PYCHOK false
 _Select  = 'Select a video file from the panel'
 _VLC_3_  = vlc.__version__.split('.')[0] > '2' and \
            bytes2str(vlc.libvlc_get_version().split(b'.')[0]) > '2'
 
-del platform, _version_toold  # _PyPI
 
 # <https://Wiki.Videolan.org/Documentation:Modules/marq/#appendix_marq-color>
 class _Color(object):  # PYCHOK expected
@@ -116,6 +113,12 @@ class _Color(object):  # PYCHOK expected
 _Color = _Color()  # PYCHOK enum-like
 
 
+def _macOS(sep=None):
+    # get macOS version and extended platform.machine
+    t = 'macOS', _platform.mac_ver()[0], machine()
+    return sep.join(t) if sep else t
+
+
 def _mspf(fps):
     # convert frames per second to frame length in millisecs per frame
     return 1000.0 / (fps or 25)
@@ -124,6 +127,11 @@ def _mspf(fps):
 def _ms2str(ms):
     # convert milliseconds to seconds string
     return '%.3f s' % (max(ms, 0) * 0.001,)
+
+
+def _ratio2str(by, *w_h):
+    # aspect ratio as string
+    return by.join(map(str, (w_h + ('-', '-'))[:2]))
 
 
 class AppVLC(App):
@@ -281,7 +289,7 @@ class AppVLC(App):
             t.append(_Argv0, __version__, '20' + __version__)
             t.append('PyCocoa', _pycocoa_version, '20' + _pycocoa_version)
             t.append('Python', *_Python)
-            t.append('macOS', *_macOS)
+            t.append(*_macOS())
             x = 'built-in' if self.window.screen.isBuiltIn else 'external'
             t.append('screen', x, str(self.window.screen.displayID))
             t.separator()
@@ -312,11 +320,9 @@ class AppVLC(App):
             r = p.get_rate()
             t.append('rate', '%s%%' % (int(r * 100),), r)
             w, h = p.video_get_size(0)
-            r = aspect_ratio(w, h) or ''
-            if r:
-                r = '%s:%s' % r
-            t.append('video size', '%sx%s' % (w, h))  # num=0
-            t.append('aspect ratio', str(p.video_get_aspect_ratio()), r)
+            t.append('video size', _ratio2str('x', w, h))  # num=0
+            r = _ratio2str(':', *aspect_ratio(w, h))  # p.video_get_aspect_ratio()
+            t.append('aspect ratio', r, _ratio2str(':', *self.window.ratio))
             t.append('scale', '%.3f' % (p.video_get_scale(),), '%.3f' % (self.scale,))
             t.separator()
 
@@ -597,8 +603,9 @@ if __name__ == '__main__':  # MCCABE 24
             _title = args.pop(0).strip()
         elif t in ('-v', '--version'):
             # Print version of this cocoavlc.py, PyCocoa, etc.
-            print('%s: %s (%s %s)' % (basename(__file__), __version__,
-                                     _pycocoa_, _pycocoa_version))
+            print('%s: %s (%s %s %s)' % (basename(__file__), __version__,
+                                        _pycocoa_, _pycocoa_version,
+                                        _macOS(sep=' ')))
             try:
                 vlc.print_version()  # PYCHOK expected
                 vlc.print_python()   # PYCHOK expected
