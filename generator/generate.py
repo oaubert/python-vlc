@@ -623,6 +623,8 @@ class Parser(object):
             vals, locs, e = [], {}, -1  # enum value(s)
             for t in paramlist_re.split(enum):
                 n = t.split('/*')[0].strip()
+                # Remove DEPRECATED flag for values
+                n = n.replace(' LIBVLC_DEPRECATED', '')
                 if '=' in n:  # has value
                     n, v = enum_pair_re.split(n)
                     # Bit-shifted characters cannot be directly evaluated in python
