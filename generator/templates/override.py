@@ -311,7 +311,7 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         @version: LibVLC 3.0.0 and later.
         '''
         chapterDescription_pp = ctypes.POINTER(ChapterDescription)()
-        n = libvlc_media_player_get_full_chapter_descriptions(self, ctypes.byref(chapterDescription_pp))
+        n = libvlc_media_player_get_full_chapter_descriptions(self, i_chapters_of_title, ctypes.byref(chapterDescription_pp))
         info = ctypes.cast(chapterDescription_pp, ctypes.POINTER(ctypes.POINTER(ChapterDescription) * n))
         try:
             contents = info.contents
