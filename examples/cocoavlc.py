@@ -1,4 +1,4 @@
-
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Example of using PyCocoa <https://PyPI.org/project/PyCocoa> to create a

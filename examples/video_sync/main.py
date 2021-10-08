@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 #
 # PyQt5-based video-sync example for VLC Python bindings
 # Copyright (C) 2009-2010 the VideoLAN team
