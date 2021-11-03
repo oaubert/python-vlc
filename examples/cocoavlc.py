@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Example of using PyCocoa <https://PyPI.org/project/PyCocoa> to create a
@@ -6,18 +6,19 @@
 # The Python-VLC binding <https://PyPI.Python.org/pypi/python-vlc> and the
 # corresponding VLC App, see <https://www.VideoLan.org/index.html>.
 
-# PyCocoa version 21.8.18 or later must be installed.
+# PyCocoa version 21.11.02 or later must be installed (on macOS Monterey)
 
-# This VLC player has been tested with VLC 3.0.10-12, 3.0.6-8, 3.0.4,
+# This VLC player has been tested with VLC 3.0.10-16, 3.0.6-8, 3.0.4,
 # 3.0.1-2, 2.2.8 and 2.2.6 and the compatible vlc.py Python-VLC binding
-# using 64-bit Python 3.10.0.rc1, 3.9.6, 3.9.0-1, 3.8.10, 3.8.6, 3.7.0-4,
-# 3.6.4-5 and 2.7.14-18 on macOS 11.5.2 Big Sur (aka 10.16), 10.15.6
-# Catalina, 10.14.6 Mojave and 10.13.4-6 High Sierra.  This player
-# does not work with PyPy <https://PyPy.org> nor with Intel(R) Python
-# <https://Software.Intel.com/en-us/distribution-for-python>.  Python
-# 3.10.0rc1, 3.9.6 and macOS' Python 2.7.16 run on Apple Silicon (C{arm64}),
-# all other Python versions run on Intel (C{x86_64}) or I{emulated} Intel
-# (C{"arm64_x86_64"}, see function C{pycocoa.machine}).
+# using 64-bit Python 3.10.0, 3.9.6, 3.9.0-1, 3.8.10, 3.8.6, 3.7.0-4,
+# 3.6.4-5 and 2.7.14-18 on macOS 12.0.1 Monterey, 11.5.2-6.1 Big Sur
+# (aka 10.16), 10.15.6 Catalina, 10.14.6 Mojave and 10.13.4-6 High Sierra.
+# This player does not work with PyPy <https://PyPy.org> nor with Intel(R)
+# Python <https://Software.Intel.com/en-us/distribution-for-python>.
+
+# Python 3.10.0, 3.9.6 and macOS' Python 2.7.16 run on Apple Silicon
+# (C{arm64} I{natively}), all other Python versions run on Intel (C{x86_64})
+# or I{emulated} Intel (C{"arm64_x86_64"}, see function C{pycocoa.machine}).
 
 # MIT License <https://OpenSource.org/licenses/MIT>
 #
@@ -45,7 +46,7 @@ def _PyPI(package):
     return 'see <https://PyPI.org/project/%s>' % (package,)
 
 __all__  = ('AppVLC',)  # PYCHOK expected
-__version__ = '21.08.18'
+__version__ = '21.11.02'
 
 try:
     import vlc
@@ -479,11 +480,16 @@ class AppVLC(App):
         else:
             Thread(target=self._sizer).start()
 
-    def _sizer(self, secs=0.1):
+    def _sizer(self, secs=0.25):
         while True:
-            w, h = self.player.video_get_size(0)
+            p = self.player
+            # wiggle the video to fill the display
+            s = p.video_get_scale()
+            p.video_set_scale(0.0 if s else 1.0)
+            p.video_set_scale(s)
             # the first call(s) returns (0, 0),
             # subsequent calls return (w, h)
+            w, h = p.video_get_size(0)
             if h > 0 and w > 0:
                 # window's contents' aspect ratio
                 self.window.ratio = self.sized = w, h
