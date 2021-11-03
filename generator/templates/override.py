@@ -477,7 +477,7 @@ class EventManager:
         if not hasattr(callback, '__call__'):  # callable()
             raise VLCException("%s required: %r" % ('callable', callback))
          # check that the callback expects arguments
-        if not any(getargspec(callback)[:2]):  # list(...)
+        if len_args(callback) < 1:  # list(...)
             raise VLCException("%s required: %r" % ('argument', callback))
 
         if self._callback_handler is None:
