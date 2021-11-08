@@ -102,11 +102,9 @@ class Instance:
         """
         # API 3 vs 4: libvlc_media_list_new does not take any
         # parameter as input anymore.
-        if len(signature(libvlc_media_list_new).parameters) == 1:
-            # API <= 3
+        if len_args(libvlc_media_list_new) == 1:  # API <= 3
             l = libvlc_media_list_new(self)
-        else:
-            # API >= 4
+        else:  # API >= 4
             l = libvlc_media_list_new()
         # We should take the lock, but since we did not leak the
         # reference, nobody else can access it.
@@ -477,7 +475,7 @@ class EventManager:
         if not hasattr(callback, '__call__'):  # callable()
             raise VLCException("%s required: %r" % ('callable', callback))
          # check that the callback expects arguments
-        if not any(getargspec(callback)[:2]):  # list(...)
+        if len_args(callback) < 1:  # list(...)
             raise VLCException("%s required: %r" % ('argument', callback))
 
         if self._callback_handler is None:

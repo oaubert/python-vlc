@@ -47,8 +47,7 @@ import sys
 import functools
 
 # Used by EventManager in override.py
-from inspect import getargspec, signature
-
+import inspect as _inspect
 import logging
 logger = logging.getLogger(__name__)
 
@@ -80,6 +79,12 @@ if sys.version_info[0] > 2:
             return b.decode(DEFAULT_ENCODING)
         else:
             return b
+
+    def len_args(func):
+        """Return number of positional arguments.
+        """
+        return len(_inspect.signature(func).parameters)
+
 else:
     str = str
     unicode = unicode
@@ -101,6 +106,11 @@ else:
             return unicode(b, DEFAULT_ENCODING)
         else:
             return b
+
+    def len_args(func):
+        """Return number of positional arguments.
+        """
+        return len(_inspect.getargspec(func).args)
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.
