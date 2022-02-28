@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python3
 
 #
 # gtk3 example/widget for VLC Python bindings

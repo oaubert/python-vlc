@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # <https://github.com/oaubert/python-vlc/blob/master/examples/wxvlc.py>

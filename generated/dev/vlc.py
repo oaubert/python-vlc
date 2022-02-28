@@ -47,15 +47,14 @@ import sys
 import functools
 
 # Used by EventManager in override.py
-from inspect import getargspec, signature
-
+import inspect as _inspect
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-15674-g8dd0de9748119"
-__libvlc_version__ = "4.0.0-dev-15674-g8dd0de9748"
-__generator_version__ = "1.19"
-build_date  = "Mon May 31 18:25:17 2021 4.0.0-dev-15674-g8dd0de9748"
+__version__ = "4.0.0-dev-16341-g50728ae645120"
+__libvlc_version__ = "4.0.0-dev-16341-g50728ae645"
+__generator_version__ = "1.20"
+build_date  = "Mon Feb 28 20:29:27 2022 4.0.0-dev-16341-g50728ae645"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -83,6 +82,12 @@ if sys.version_info[0] > 2:
             return b.decode(DEFAULT_ENCODING)
         else:
             return b
+
+    def len_args(func):
+        """Return number of positional arguments.
+        """
+        return len(_inspect.signature(func).parameters)
+
 else:
     str = str
     unicode = unicode
@@ -104,6 +109,11 @@ else:
             return unicode(b, DEFAULT_ENCODING)
         else:
             return b
+
+    def len_args(func):
+        """Return number of positional arguments.
+        """
+        return len(_inspect.getargspec(func).args)
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.
@@ -2010,7 +2020,7 @@ class EventManager(_Ctype):
         if not hasattr(callback, '__call__'):  # callable()
             raise VLCException("%s required: %r" % ('callable', callback))
          # check that the callback expects arguments
-        if not any(getargspec(callback)[:2]):  # list(...)
+        if len_args(callback) < 1:  # list(...)
             raise VLCException("%s required: %r" % ('argument', callback))
 
         if self._callback_handler is None:
@@ -2158,11 +2168,9 @@ class Instance(_Ctype):
         """
         # API 3 vs 4: libvlc_media_list_new does not take any
         # parameter as input anymore.
-        if len(signature(libvlc_media_list_new).parameters) == 1:
-            # API <= 3
+        if len_args(libvlc_media_list_new) == 1:  # API <= 3
             l = libvlc_media_list_new(self)
-        else:
-            # API >= 4
+        else:  # API >= 4
             l = libvlc_media_list_new()
         # We should take the lock, but since we did not leak the
         # reference, nobody else can access it.
@@ -2616,7 +2624,7 @@ class Media(_Ctype):
 
     def get_stats(self, p_stats):
         '''Get the current statistics about the media.
-        @param p_stats:: structure that contain the statistics about the media (this structure must be allocated by the caller) \retval true statistics are available \retval false otherwise.
+        @param p_stats: structure that contain the statistics about the media (this structure must be allocated by the caller) \retval true statistics are available \retval false otherwise.
         '''
         return libvlc_media_get_stats(self, p_stats)
 
@@ -2729,7 +2737,7 @@ class Media(_Ctype):
 
 
     def thumbnail_request_by_time(self, time, speed, width, height, crop, picture_type, timeout):
-        '''\brief libvlc_media_get_thumbnail_by_time Start an asynchronous thumbnail generation
+        '''\brief libvlc_media_request_thumbnail_by_time Start an asynchronous thumbnail generation
         If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
         is guaranteed to be emited.
         The resulting thumbnail size can either be:
@@ -2751,7 +2759,7 @@ class Media(_Ctype):
 
 
     def thumbnail_request_by_pos(self, pos, speed, width, height, crop, picture_type, timeout):
-        '''\brief libvlc_media_get_thumbnail_by_pos Start an asynchronous thumbnail generation
+        '''\brief libvlc_media_request_thumbnail_by_pos Start an asynchronous thumbnail generation
         If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
         is guaranteed to be emited.
         The resulting thumbnail size can either be:
@@ -3247,7 +3255,7 @@ class MediaPlayer(_Ctype):
         @version: LibVLC 3.0.0 and later.
         '''
         chapterDescription_pp = ctypes.POINTER(ChapterDescription)()
-        n = libvlc_media_player_get_full_chapter_descriptions(self, ctypes.byref(chapterDescription_pp))
+        n = libvlc_media_player_get_full_chapter_descriptions(self, i_chapters_of_title, ctypes.byref(chapterDescription_pp))
         info = ctypes.cast(chapterDescription_pp, ctypes.POINTER(ctypes.POINTER(ChapterDescription) * n))
         try:
             contents = info.contents
@@ -3493,8 +3501,8 @@ class MediaPlayer(_Ctype):
         For optimal perfomances, VLC media player renders into a custom window, and
         does not use this function and associated callbacks. It is B{highly
         recommended} that other LibVLC-based application do likewise.
-        To embed video in a window, use libvlc_media_player_set_xid() or equivalent
-        depending on the operating system.
+        To embed video in a window, use L{set_xwindow}() or
+        equivalent depending on the operating system.
         If window embedding does not fit the application use case, then a custom
         LibVLC video output display plugin is required to maintain optimal video
         rendering performances.
@@ -3958,7 +3966,6 @@ class MediaPlayer(_Ctype):
 
     def get_programlist(self):
         '''Get the program list.
-        @param type: type of the program list to request.
         @return: a valid libvlc_media_programlist_t or None in case of error or empty list, delete with libvlc_media_programlist_delete().
         @version: LibVLC 4.0.0 and later. @note This program list is a snapshot of the current programs when this function is called. If a program is updated after this call, the user will need to call this function again to get the updated program. The program list can be used to get program informations and to select specific programs.
         '''
@@ -4338,8 +4345,8 @@ class MediaPlayer(_Ctype):
         Some audio output modules require further parameters (e.g. a channels map
         in the case of ALSA).
         @param module: If None, current audio output module. if non-None, name of audio output module.
-        @param device_id: device identifier string.
-        @return: Nothing. Errors are ignored (this is a design bug).
+        @param device_id: device identifier string (see \ref L{AudioOutputDevice}::psz_device).
+        @bug: This function returns nothing. Errors are ignored (this is a design bug).
         '''
         return libvlc_audio_output_device_set(self, str_to_bytes(module), str_to_bytes(device_id))
 
@@ -5071,7 +5078,7 @@ def libvlc_log_get_context(ctx):
                     None, Log_ptr, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_uint))
     return f(ctx)
 
-def libvlc_log_get_object(ctx, id):
+def libvlc_log_get_object(ctx):
     '''Gets log message info.
     This function retrieves meta-information about a log message:
     - the type name of the VLC object emitting the message,
@@ -5084,13 +5091,13 @@ def libvlc_log_get_object(ctx, id):
     The returned object ID will be zero if the message is not associated with
     any VLC object.
     @param ctx: message context (as passed to the @ref L{LogCb} callback).
-    @return: name object name storage (or None), header object header (or None), line source code file line number storage (or None).
+    @return: name object name storage (or None), header object header (or None), id temporarily-unique object identifier (or 0).
     @version: LibVLC 2.1.0 or later.
     '''
     f = _Cfunctions.get('libvlc_log_get_object', None) or \
-        _Cfunction('libvlc_log_get_object', ((1,), (2,), (2,), (1,),), None,
+        _Cfunction('libvlc_log_get_object', ((1,), (2,), (2,), (2,),), None,
                     None, Log_ptr, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_uint))
-    return f(ctx, id)
+    return f(ctx)
 
 def libvlc_log_unset(p_instance):
     '''Unsets the logging callback.
@@ -5453,8 +5460,8 @@ def libvlc_media_get_state(p_md):
 
 def libvlc_media_get_stats(p_md, p_stats):
     '''Get the current statistics about the media.
-    @param p_md:: media descriptor object.
-    @param p_stats:: structure that contain the statistics about the media (this structure must be allocated by the caller) \retval true statistics are available \retval false otherwise.
+    @param p_md: media descriptor object.
+    @param p_stats: structure that contain the statistics about the media (this structure must be allocated by the caller) \retval true statistics are available \retval false otherwise.
     '''
     f = _Cfunctions.get('libvlc_media_get_stats', None) or \
         _Cfunction('libvlc_media_get_stats', ((1,), (1,),), None,
@@ -5613,7 +5620,7 @@ def libvlc_media_get_type(p_md):
     return f(p_md)
 
 def libvlc_media_thumbnail_request_by_time(md, time, speed, width, height, crop, picture_type, timeout):
-    '''\brief libvlc_media_get_thumbnail_by_time Start an asynchronous thumbnail generation
+    '''\brief libvlc_media_request_thumbnail_by_time Start an asynchronous thumbnail generation
     If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
     is guaranteed to be emited.
     The resulting thumbnail size can either be:
@@ -5638,7 +5645,7 @@ def libvlc_media_thumbnail_request_by_time(md, time, speed, width, height, crop,
     return f(md, time, speed, width, height, crop, picture_type, timeout)
 
 def libvlc_media_thumbnail_request_by_pos(md, pos, speed, width, height, crop, picture_type, timeout):
-    '''\brief libvlc_media_get_thumbnail_by_pos Start an asynchronous thumbnail generation
+    '''\brief libvlc_media_request_thumbnail_by_pos Start an asynchronous thumbnail generation
     If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
     is guaranteed to be emited.
     The resulting thumbnail size can either be:
@@ -6336,8 +6343,8 @@ def libvlc_video_set_callbacks(mp, lock, unlock, display, opaque):
     For optimal perfomances, VLC media player renders into a custom window, and
     does not use this function and associated callbacks. It is B{highly
     recommended} that other LibVLC-based application do likewise.
-    To embed video in a window, use libvlc_media_player_set_xid() or equivalent
-    depending on the operating system.
+    To embed video in a window, use L{libvlc_media_player_set_xwindow}() or
+    equivalent depending on the operating system.
     If window embedding does not fit the application use case, then a custom
     LibVLC video output display plugin is required to maintain optimal video
     rendering performances.
@@ -7003,7 +7010,6 @@ def libvlc_media_player_get_program_from_id(p_mi, i_group_id):
 def libvlc_media_player_get_programlist(p_mi):
     '''Get the program list.
     @param p_mi: the media player.
-    @param type: type of the program list to request.
     @return: a valid libvlc_media_programlist_t or None in case of error or empty list, delete with libvlc_media_programlist_delete().
     @version: LibVLC 4.0.0 and later. @note This program list is a snapshot of the current programs when this function is called. If a program is updated after this call, the user will need to call this function again to get the updated program. The program list can be used to get program informations and to select specific programs.
     '''
@@ -7623,8 +7629,8 @@ def libvlc_audio_output_device_set(mp, module, device_id):
     in the case of ALSA).
     @param mp: media player.
     @param module: If None, current audio output module. if non-None, name of audio output module.
-    @param device_id: device identifier string.
-    @return: Nothing. Errors are ignored (this is a design bug).
+    @param device_id: device identifier string (see \ref L{AudioOutputDevice}::psz_device).
+    @bug: This function returns nothing. Errors are ignored (this is a design bug).
     '''
     f = _Cfunctions.get('libvlc_audio_output_device_set', None) or \
         _Cfunction('libvlc_audio_output_device_set', ((1,), (1,), (1,),), None,
