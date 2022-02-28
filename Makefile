@@ -60,12 +60,12 @@ doc: $(VERSIONED_NAME)
 	-pydoctor --project-name=python-vlc --project-url=https://github.com/oaubert/python-vlc/ --make-html --verbose --html-output=doc $<
 
 test2: $(MODULE_NAME)
-	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python tests/test.py
 	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python tests/test.py
+	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python tests/test.py
 
 test: $(MODULE_NAME)
-	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test.py
 	PYTHONPATH=$(VERSIONED_PATH):${PROJECT_ROOT} python3 tests/test.py
+	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test.py
 
 sdist: $(VERSIONED_NAME)
 	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist
