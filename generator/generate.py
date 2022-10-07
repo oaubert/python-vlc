@@ -166,7 +166,7 @@ decllist_re  = re.compile(r'\s*;\s*')
 paramlist_re = re.compile(r'\s*,\s*')
 version_re   = re.compile(r'vlc[\-]\d+[.]\d+[.]\d+.*')
 LIBVLC_V_re  = re.compile(r'\s*#\s*define\s+LIBVLC_VERSION_([A-Z]+)\s+\(*(\d+)\)*')
-define_re    = re.compile(r'^\s*#\s*define\s+\w+\s+.+?$')
+define_re    = re.compile(r'^\s*#\s*define\s+\w+\s+.*?$')
 
 def endot(text):
     """Terminate string with a period.
