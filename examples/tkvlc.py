@@ -28,7 +28,7 @@ Date: 23-09-2015
 # the compatible vlc.py Python-VLC binding, Python 3.11.0, 3.10.0, 3.9.0
 # and 3.7.4 with tkinter/Tk 8.6.9 on macOS 13.0 (amd64 M1), 11.6.1 (10.16
 # amd64 M1), 11.0.1 (10.16 x86-64) and 10.13.6 only.
-__version__ = '22.11.07'  # mrJean1 at Gmail
+__version__ = '22.11.11'  # mrJean1 at Gmail
 
 import sys
 try:  # Python 3.4+ only
@@ -43,6 +43,8 @@ except ImportError:
 import os
 import time
 import vlc
+
+_dragging  = False  # use -dragging option
 
 _isMacOS   = sys.platform.startswith('darwin')
 _isWindows = sys.platform.startswith('win')
@@ -66,11 +68,13 @@ if _isMacOS:  # MCCABE 14
 
     def _find_lib(name, *paths):
         # 1. built into Python
-        p = getattr(sys, 'base_prefix', sys.prefix)
-        yield p + '/lib/' + name
-        # 2. from ctypes, env variable
+        for p in (getattr(sys, 'base_prefix', ''), sys.prefix):
+            if p:
+                yield p + '/lib/' + name
+        # 2. from ctypes.find_library, env variable
         for p in paths:
             if p:  # is not None
+                p = os.path.expanduser(p)
                 yield p
                 if not p.endswith(name):
                     yield p + '/' + name
@@ -89,10 +93,10 @@ if _isMacOS:  # MCCABE 14
             if libtk and lib in libtk and os.access(libtk, os.F_OK):
                 break
         else:  # not found anywhere
-            if env:  # bad env setting
-                env = 'no %s in %%s=%r' % (lib, env)
+            if env:  # bad env?
+                t = 'no %s in %%s=%r' % (lib, env)
             else:  # env not set, suggest
-                t = 'no %s found, use %%s' % (lib,)
+                t = 'no %s found, use %%s to set a path' % (lib,)
             raise NameError(t % (_TKVLC_LIBTK_PATH,))
 
         lib = cdll.LoadLibrary(libtk)
@@ -197,21 +201,23 @@ class _Tk_Menu(Tk.Menu):
 class Player(Tk.Frame):
     '''The main window has to deal with events.
     '''
-    _geometry = ''
-    _stopped  = None
+    _debugs    = 0
+    _geometry  = ''
+    _MIN_WIDTH = 600
+    _stopped   = None
 
-    def __init__(self, parent, title=None, video=''):  # PYCHOK called!
+    def __init__(self, parent, title=None, video='', debug=False):  # PYCHOK called!
         Tk.Frame.__init__(self, parent)
 
+        self.debug  = bool(debug)
         self.parent = parent  # == root
         self.parent.title(title or 'tkVLCplayer')
         self.video = os.path.expanduser(video)
 
         # Menu Bar
-        #   File Menu
         menubar = Tk.Menu(self.parent)
         self.parent.config(menu=menubar)
-
+        # File Menu
         fileMenu = _Tk_Menu(menubar)
         fileMenu.bind_shortcuts_to(parent)  # XXX must be root?
 
@@ -223,44 +229,58 @@ class Player(Tk.Frame):
         fileMenu.add_shortcut('Mute', 'm', self.OnMute)
         fileMenu.add_separator()
         fileMenu.add_shortcut('Close', 'w' if _isMacOS else 's', self.OnClose)
-        if _isMacOS:  # intended for and tested on macOS
-            fileMenu.add_separator()
-            fileMenu.add_shortcut('Full Screen', 'f', self.OnFullScreen)
+        fileMenu.add_separator()
+        fileMenu.add_shortcut('Buttons Up', 'a', self.OnAnchor)
+        self.anchorIndex = fileMenu.index('Buttons Up')
+        fileMenu.add_separator()
+        fileMenu.add_shortcut('Full Screen', 'f', self.OnScreen)
+        self.fullIndex = fileMenu.index('Full Screen')
         menubar.add_cascade(label='File', menu=fileMenu)
         self.fileMenu = fileMenu
         self.playIndex = fileMenu.index('Play')
         self.muteIndex = fileMenu.index('Mute')
 
-        # first, top panel shows video
-
-        self.videopanel = ttk.Frame(self.parent)
-        self.canvas = Tk.Canvas(self.videopanel)
+        # first, panel shows video
+        self.videoPanel = ttk.Frame(self.parent)
+        self.canvas = Tk.Canvas(self.videoPanel)
         self.canvas.pack(fill=Tk.BOTH, expand=1)
-        self.videopanel.pack(fill=Tk.BOTH, expand=1)
+        self.videoPanel.pack(fill=Tk.BOTH, expand=1)
 
         # panel to hold buttons
-        self.buttons_panel = Tk.Toplevel(self.parent)
-        self.buttons_panel.title('')
-        self.is_buttons_panel_anchor_active = False
+        self.buttonsPanel = Tk.Toplevel(self.parent)
+        self.buttonsPanel.title('')
+        self.buttonsPanel_anchored = False
+        self.buttonsPanel_clicked  = False
+        self.buttonsPanel_dragged  = False
 
-        buttons = ttk.Frame(self.buttons_panel)
-        self.playButton = ttk.Button(buttons, text='Play', command=self.OnPlay)
-        stop            = ttk.Button(buttons, text='Stop', command=self.OnStop)
-        self.muteButton = ttk.Button(buttons, text='Mute', command=self.OnMute)
-        self.playButton.pack(side=Tk.LEFT)
+        buttons = ttk.Frame(self.buttonsPanel)
+        self.playButton   = ttk.Button(buttons, text='Play', command=self.OnPlay, underline=0)
+        stop              = ttk.Button(buttons, text='Stop', command=self.OnStop)
+        self.muteButton   = ttk.Button(buttons, text='Mute', command=self.OnMute, underline=0)
+        self.playButton.pack(side=Tk.LEFT, padx=8)
         stop.pack(side=Tk.LEFT)
-        self.muteButton.pack(side=Tk.LEFT)
-
+        self.muteButton.pack(side=Tk.LEFT, padx=8)
         self.volMuted = False
         self.volVar = Tk.IntVar()
         self.volSlider = Tk.Scale(buttons, variable=self.volVar, command=self.OnVolume,
-                                  from_=0, to=100, orient=Tk.HORIZONTAL, length=200,
+                                  from_=0, to=100, orient=Tk.HORIZONTAL, length=170,
                                   showvalue=0, label='Volume')
-        self.volSlider.pack(side=Tk.RIGHT)
+        self.volSlider.pack(side=Tk.LEFT)
+
+        self.anchorButton = ttk.Button(buttons, text='Up', command=self.OnAnchor,
+                                       width=2)  # in characters
+        self.anchorButton.pack(side=Tk.RIGHT, padx=8)
         buttons.pack(side=Tk.BOTTOM, fill=Tk.X)
 
+        # <https://www.PythonTutorial.net/tkinter/tkinter-window>
+        # <https://TkDocs.com/tutorial/windows.html>
+        # self.buttonsPanel.attributes('-topmost', 1)
+
+        self.buttonsPanel.update()
+        self.videoPanel.update()
+
         # panel to hold player time slider
-        timers = ttk.Frame(self.buttons_panel)
+        timers = ttk.Frame(self.buttonsPanel)
         self.timeVar = Tk.DoubleVar()
         self.timeSliderLast = 0
         self.timeSlider = Tk.Scale(timers, variable=self.timeVar, command=self.OnTime,
@@ -281,79 +301,118 @@ class Player(Tk.Frame):
         self.parent.update()
 
         # After parent.update() otherwise panel is ignored.
-        self.buttons_panel.overrideredirect(True)
+        self.buttonsPanel.overrideredirect(True)
+        self.buttonsPanel_anchored = True  # down, under the video panel
 
-        # Estetic, to keep our video panel at least as wide as our buttons panel.
-        self.parent.minsize(width=502, height=0)
+        if _dragging:  # Detect dragging of the buttons panel.
+            self.buttonsPanel.bind('<Button-1>',        self._Button1Down)
+            self.buttonsPanel.bind('<B1-Motion>',       self._Button1Motion)
+            self.buttonsPanel.bind('<ButtonRelease-1>', self._Button1Up)
 
-        if _isMacOS:
-            # Only tested on MacOS so far. Enable for other OS after verified tests.
-            self.is_buttons_panel_anchor_active = True
+        # Keep the video panel at least as wide as thebuttons panel.
+        self.parent.minsize(width=self._MIN_WIDTH, height=0)
 
-            # Detect dragging of the buttons panel.
-            self.buttons_panel.bind('<Button-1>', lambda event: setattr(self, 'has_clicked_on_buttons_panel', event.y < 0))
-            self.buttons_panel.bind('<B1-Motion>', self._DetectButtonsPanelDragging)
-            self.buttons_panel.bind('<ButtonRelease-1>', lambda _: setattr(self, 'has_clicked_on_buttons_panel', False))
-            self.has_clicked_on_buttons_panel = False
-        else:
-            self.is_buttons_panel_anchor_active = False
+        self._AnchorPanels(force=True)
 
-        self._AnchorButtonsPanel()
+        self.OnTick()  # set up the timer
 
-        self.OnTick()  # set the timer up
+        if self.video:  # play for a second
+            self.OnPlay()
+            self.parent.after(1000, self.OnPause)
+
+    def _Button1Down(self, *unused):  # only if -dragging
+        self._debug(self._Button1Down)
+        # Left-mouse-button pressed inside the buttons
+        # panel, but not in and over a slider-/button.
+        self.buttonsPanel_clicked = True
+        self.buttonsPanel_dragged = False
+
+    def _Button1Motion(self, *unused):  # only if -dragging
+        self._debug(self._Button1Motion)
+        # Mouse dragged, moved with left-mouse-button down?
+        self.buttonsPanel_dragged = self.buttonsPanel_clicked
+
+    def _Button1Up(self, *unused):  # only if -dragging
+        self._debug(self._Button1Up)
+        # Left-mouse-button release
+        if self.buttonsPanel_clicked:
+            if self.buttonsPanel_dragged:
+                # If the mouse was dragged in the buttons
+                # panel on the background, un-/anchor it.
+                self.OnAnchor()
+#               if _dragged:
+#                   self.buttonsPanel.unbind('<Button-1>')
+#                   self.buttonsPanel.unbind('<B1-Motion>')
+#                   self.buttonsPanel.unbind('<ButtonRelease-1>')
+        self.buttonsPanel_clicked = False
+        self.buttonsPanel_dragged = False
+
+    def _debug(self, where, **kwds):
+        # Print where an event is are handled.
+        if self.debug:
+            self._debugs += 1
+            d = dict(anchored=self.buttonsPanel_anchored,
+                      clicked=self.buttonsPanel_clicked,
+                      dragged=self.buttonsPanel_dragged,
+                      playing=self.player.is_playing(),
+                      stopped=self._stopped)
+            d.update(kwds)
+            d = ', '.join('%s=%s' % t for t in sorted(d.items()))
+            print('%4s: %s %s' % (self._debugs, where.__name__, d))
+
+    def _AnchorPanels(self, force=False):
+        # Un-/anchor the buttons under the video panel, at the same width.
+        self._debug(self._AnchorPanels)
+        if (force or self.buttonsPanel_anchored):
+            video = self.parent
+            h = video.winfo_height()
+            w = video.winfo_width()
+            x = video.winfo_x()  # i.e. same as the video
+            y = video.winfo_y() + h + 32  # i.e. below the video
+            h = self.buttonsPanel.winfo_height()  # unchanged
+            w = max(w, self._MIN_WIDTH)  # i.e. same a video width
+            self.buttonsPanel.geometry('%sx%s+%s+%s' % (w, h, x, y))
+
+    def OnAnchor(self, *unused):
+        '''Toggle buttons panel anchoring.
+        '''
+        c = self.OnAnchor
+        self._debug(c)
+        self.buttonsPanel_anchored = not self.buttonsPanel_anchored
+        if self.buttonsPanel_anchored:
+            a = 'Up'
+            self._AnchorPanels(force=True)
+        else:  # move the panel to the top left corner
+            a = 'Down'
+            h = self.buttonsPanel.winfo_height()  # unchanged
+            self.buttonsPanel.geometry('%sx%s+8+32' % (self._MIN_WIDTH, h))
+        self.anchorButton.config(text=a, width=len(a))
+        a = 'Buttons ' + a
+        self.fileMenu.entryconfig(self.anchorIndex, label=a, command=c)
+        # self.fileMenu.bind_shortcut('a', c)  # XXX handled
 
     def OnClose(self, *unused):
         '''Closes the window and quit.
         '''
+        self._debug(self.OnClose)
         # print('_quit: bye')
         self.parent.quit()  # stops mainloop
         self.parent.destroy()  # this is necessary on Windows to avoid
         # ... Fatal Python Error: PyEval_RestoreThread: NULL tstate
 
-    def _DetectButtonsPanelDragging(self, _):
-        '''If our last click was on the boarder
-           we disable the anchor.
-        '''
-        if self.has_clicked_on_buttons_panel:
-            self.is_buttons_panel_anchor_active = False
-            self.buttons_panel.unbind('<Button-1>')
-            self.buttons_panel.unbind('<B1-Motion>')
-            self.buttons_panel.unbind('<ButtonRelease-1>')
-
-    def _AnchorButtonsPanel(self):
-        video_height = self.parent.winfo_height()
-        panel_x = self.parent.winfo_x()
-        panel_y = self.parent.winfo_y() + video_height + 23  # 23 seems to put the panel just below our video.
-        panel_height = self.buttons_panel.winfo_height()
-        panel_width = self.parent.winfo_width()
-        self.buttons_panel.geometry('%sx%s+%s+%s' % (panel_width, panel_height, panel_x, panel_y))
-
     def OnConfigure(self, *unused):
         '''Some widget configuration changed.
         '''
+        self._debug(self.OnConfigure)
         # <https://www.Tcl.Tk/man/tcl8.6/TkCmd/bind.htm#M12>
         self._geometry = ''  # force .OnResize in .OnTick, recursive?
-
-        if self.is_buttons_panel_anchor_active:
-            self._AnchorButtonsPanel()
-
-    def OnFullScreen(self, *unused):
-        '''Toggle full screen, macOS only.
-        '''
-        # <https://www.Tcl.Tk/man/tcl8.6/TkCmd/wm.htm#M10>
-        f = not self.parent.attributes('-fullscreen')  # or .wm_attributes
-        if f:
-            self._previouscreen = self.parent.geometry()
-            self.parent.attributes('-fullscreen', f)  # or .wm_attributes
-            self.parent.bind('<Escape>', self.OnFullScreen)
-        else:
-            self.parent.attributes('-fullscreen', f)  # or .wm_attributes
-            self.parent.geometry(self._previouscreen)
-            self.parent.unbind('<Escape>')
+        self._AnchorPanels()
 
     def OnMute(self, *unused):
         '''Mute/Unmute audio.
         '''
+        self._debug(self.OnMute)
+        self.buttonsPanel_clicked = False
         # audio un/mute may be unreliable, see vlc.py docs.
         self.volMuted = m = not self.volMuted  # self.player.audio_get_mute()
         self.player.audio_set_mute(m)
@@ -398,7 +457,7 @@ class Player(Tk.Frame):
             if _isWindows:
                 self.player.set_hwnd(h)
             elif _isMacOS:
-                # XXX 1) using the videopanel.winfo_id() handle
+                # XXX 1) using the videoPanel.winfo_id() handle
                 # causes the video to play in the entire panel on
                 # macOS, covering the buttons, sliders, etc.
                 # XXX 2) .winfo_id() to return NSView on macOS?
@@ -410,18 +469,22 @@ class Player(Tk.Frame):
             else:
                 self.player.set_xwindow(h)  # fails on Windows
             # FIXME: this should be made cross-platform
-            self.OnPlay()
+            self.OnPlay(None)
 
     def OnPause(self, *unused):
         '''Toggle between Pause and Play.
         '''
+        self._debug(self.OnPause)
+        self.buttonsPanel_clicked = False
         if self.player.get_media():
             self._Pause_Play(not self.player.is_playing())
             self.player.pause()  # toggles
 
     def OnPlay(self, *unused):
-        '''Play video, if none is loaded, open the dialog window.
+        '''Play video, if not loaded, open the dialog window.
         '''
+        self._debug(self.OnPlay)
+        self.buttonsPanel_clicked = False
         # if there's no video to play or playing,
         # open a Tk.FileDialog to select a file
         if not self.player.get_media():
@@ -440,10 +503,12 @@ class Player(Tk.Frame):
             if vol > 0:
                 self.volVar.set(vol)
                 self.volSlider.set(vol)
+            self.OnResize()
 
     def OnResize(self, *unused):
-        '''Adjust the window/frame to the video aspect ratio.
+        '''Adjust the video panel to the video aspect ratio.
         '''
+        self._debug(self.OnResize)
         g = self.parent.geometry()
         if g != self._geometry and self.player:
             u, v = self.player.video_get_size()  # often (0, 0)
@@ -465,10 +530,34 @@ class Player(Tk.Frame):
                     w = round(float(h) * u / v)
                 self.parent.geometry('%sx%s+%s+%s' % (w, h, x, y))
                 self._geometry = self.parent.geometry()  # actual
+                self._AnchorPanels()
+
+    def OnScreen(self, *unused):
+        '''Toggle full/off screen.
+        '''
+        c = self.OnScreen
+        self._debug(c)
+        # <https://www.Tcl.Tk/man/tcl8.6/TkCmd/wm.htm#M10>
+        f = not self.parent.attributes('-fullscreen')  # or .wm_attributes
+        if f:
+            self._previouscreen = self.parent.geometry()
+            self.parent.attributes('-fullscreen', f)  # or .wm_attributes
+            self.parent.bind('<Escape>', c)
+            f = 'Off'
+        else:
+            self.parent.attributes('-fullscreen', f)  # or .wm_attributes
+            self.parent.geometry(self._previouscreen)
+            self.parent.unbind('<Escape>')
+            f = 'Full'
+        f += ' Screen'
+        self.fileMenu.entryconfig(self.fullIndex, label=f, command=c)
+        # self.fileMenu.bind_shortcut('f', c)  # XXX handled
 
     def OnStop(self, *unused):
         '''Stop the player, resets media.
         '''
+        self._debug(self.OnStop)
+        self.buttonsPanel_clicked = False
         if self.player:
             self.player.stop()
             self._Pause_Play(None)
@@ -501,19 +590,18 @@ class Player(Tk.Frame):
         # adjust window to video aspect ratio, done periodically
         # on purpose since the player.video_get_size() only
         # returns non-zero sizes after playing for a while
-        if not self._geometry:
-            self.OnResize()
+        self.OnResize()
 
     def OnTime(self, *unused):
         if self.player:
             t = self.timeVar.get()
             if self.timeSliderLast != int(t):
-                # this is a hack. The timer updates the time slider.
-                # This change causes this rtn (the 'slider has changed')
-                # to be invoked.  I can't tell the difference between when
-                # the user has manually moved the slider and when the timer
-                # changed the slider.  But when the user moves the slider
-                # tkinter only notifies this rtn about once per second and
+                # This is a hack. The timer updates the time slider and
+                # that change causes this rtn (the 'slider has changed')
+                # to be invoked.  I can't tell the difference between the
+                # user moving the slider manually and the timer changing
+                # the slider.  When the user moves the slider, tkinter
+                # only notifies this method about once per second and
                 # when the slider has quit moving.
                 # Also, the tkinter notification value has no fractional
                 # seconds.  The timer update rtn saves off the last update
@@ -532,6 +620,9 @@ class Player(Tk.Frame):
     def OnVolume(self, *unused):
         '''Volume slider changed, adjust the audio volume.
         '''
+        self._debug(self.OnVolume)
+        self.buttonsPanel_clicked = False
+        self.buttonsPanel_dragged = False
         vol = min(self.volVar.get(), 100)
         v_M = '%d%s' % (vol, ' (Muted)' if self.volMuted else '')
         self.volSlider.config(label='Volume ' + v_M)
@@ -548,8 +639,10 @@ class Player(Tk.Frame):
         showerror(self.parent.title(), message)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # MCCABE 13
 
+    _argv0 = sys.argv[0]
+    _debug = False
     _video = ''
 
     while len(sys.argv) > 1:
@@ -557,14 +650,14 @@ if __name__ == '__main__':
         if arg.lower() in ('-v', '--version'):
             # show all versions, this vlc.py, libvlc, etc. (sample output on macOS):
             # % python3 ./tkvlc.py -v
-            # tkvlc.py: 22.11.06
+            # tkvlc.py: 22.11.10
             # tkinter: 8.6
             # libTk: /Library/Frameworks/Python.framework/Versions/3.11/lib/libtk8.6.dylib
             # vlc.py: 3.0.12119 (Mon May 31 18:25:17 2021 3.0.12)
             # libVLC: 3.0.16 Vetinari (0x3001000)
             # plugins: /Applications/VLC.app/Contents/MacOS/plugins
-            # Python: 3.11.0 (64bit) macOS 13.0 arm64
-            for t in ((sys.argv[0], __version__), (Tk.__name__, Tk.TkVersion), ('libTk', libtk)):
+            # Python: 3.11.0 (64bit) macOS 13.0.1 arm64
+            for t in ((_argv0, __version__), (Tk.__name__, Tk.TkVersion), ('libTk', libtk)):
                 print('%s: %s' % t)
             try:
                 vlc.print_version()
@@ -572,19 +665,25 @@ if __name__ == '__main__':
             except AttributeError:
                 pass
             sys.exit(0)
-
+        elif '-debug'.startswith(arg) and len(arg) > 2:
+            _debug = True
+        elif '-dragging'.startswith(arg) and len(arg) > 2:
+            _dragging = True  # detect dragging in buttons panel for Buttons Up/Down
         elif arg.startswith('-'):
-            print('usage: %s  [-v | --version]  [<video_file_name>]' % (sys.argv[0],))
+            print('usage: %s  [-v | --version]  [-debug]  [-dragging]  [<video_file_name>]' % (_argv0,))
             sys.exit(1)
-
         elif arg:  # video file
             _video = os.path.expanduser(arg)
             if not os.path.isfile(_video):
-                print('%s error: no such file: %r' % (sys.argv[0], arg))
+                print('%s error: no such file: %r' % (_argv0, arg))
                 sys.exit(1)
 
     # Create a Tk.App() to handle the windowing event loop
     root = Tk.Tk()
-    player = Player(root, video=_video)
+    player = Player(root, video=_video, debug=_debug)
     root.protocol('WM_DELETE_WINDOW', player.OnClose)  # XXX unnecessary (on macOS)
+    if _isWindows:  # see <https://GitHub.com/python/cpython/blob/3.11/Lib/tkinter/__init__.py>
+        root.iconify()
+        root.update()
+        root.deiconify()
     root.mainloop()
