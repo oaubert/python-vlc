@@ -69,6 +69,12 @@ and metadata files), use
 
     make dist
 
+LibVLC Discord
+-----------------
+[![Join the chat at https://discord.gg/3h3K3JF](https://img.shields.io/discord/716939396464508958?label=discord)](https://discord.gg/3h3K3JF)
+
+python-vlc is part of the LibVLC Discord Community server. Feel free to come say hi!
+
 How to contribute
 -----------------
 
