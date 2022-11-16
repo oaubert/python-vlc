@@ -1042,6 +1042,10 @@ class PythonGenerator(_Generator):
         'libvlc_player_programlist_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
         'libvlc_picture_list_t*':    'ctypes.c_void_p', # Opaque struct, do not mess with it.
 
+        # FIXME Temporary fix to generate valid code for the mapping of
+        # libvlc_media_read_cb
+        'ptrdiff_t':  'ctypes.c_void_p',
+
         # FIXME: gross hack to see if it makes things approximately work.#
         # Unions should be properly converted
         'union { libvlc_audio_track_t*': 'ctypes.POINTER(AudioTrack)',
@@ -1056,12 +1060,15 @@ class PythonGenerator(_Generator):
         'bool':      'ctypes.c_bool',
         'bool*':      'ctypes.POINTER(ctypes.c_bool)',
         'char**':    'ListPOINTER(ctypes.c_char_p)',
+        'double':    'ctypes.c_double',
+        'double*':   'ctypes.POINTER(ctypes.c_double)',
         'float':     'ctypes.c_float',
         'int':       'ctypes.c_int',
         'int*':      'ctypes.POINTER(ctypes.c_int)',  # _video_get_cursor
         'uintptr_t*':      'ctypes.POINTER(ctypes.c_uint)',
         'uint16_t':   'ctypes.c_uint16',
         'int64_t':   'ctypes.c_int64',
+        'int64_t*':   'ctypes.POINTER(ctypes.c_int64)',
         'uint64_t':   'ctypes.c_uint64',
         'uint64_t*':   'ctypes.POINTER(ctypes.c_uint64)',
         'short':     'ctypes.c_short',
