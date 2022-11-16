@@ -51,10 +51,10 @@ import inspect as _inspect
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-16341-g50728ae645120"
-__libvlc_version__ = "4.0.0-dev-16341-g50728ae645"
-__generator_version__ = "1.20"
-build_date  = "Mon Feb 28 20:29:27 2022 4.0.0-dev-16341-g50728ae645"
+__version__ = "4.0.0-dev-20729-g085d1ae71b121"
+__libvlc_version__ = "4.0.0-dev-20729-g085d1ae71b"
+__generator_version__ = "1.21"
+build_date  = "Wed Nov 16 12:04:29 2022 4.0.0-dev-20729-g085d1ae71b"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -512,7 +512,6 @@ class EventType(_Enum):
         1: 'MediaSubItemAdded',
         2: 'MediaDurationChanged',
         3: 'MediaParsedChanged',
-        5: 'MediaStateChanged',
         6: 'MediaSubItemTreeAdded',
         7: 'MediaThumbnailGenerated',
         8: 'MediaAttachedThumbnailsFound',
@@ -525,7 +524,7 @@ class EventType(_Enum):
         262: 'MediaPlayerStopped',
         263: 'MediaPlayerForward',
         264: 'MediaPlayerBackward',
-        265: 'MediaPlayerEndReached',
+        265: 'MediaPlayerStopping',
         266: 'MediaPlayerEncounteredError',
         267: 'MediaPlayerTimeChanged',
         268: 'MediaPlayerPositionChanged',
@@ -551,6 +550,7 @@ class EventType(_Enum):
         290: 'MediaPlayerTitleListChanged',
         291: 'MediaPlayerTitleSelectionChanged',
         292: 'MediaPlayerChapterChanged',
+        293: 'MediaPlayerRecordChanged',
         0x200: 'MediaListItemAdded',
         513: 'MediaListWillAddItem',
         514: 'MediaListItemDeleted',
@@ -593,7 +593,6 @@ EventType.MediaPlayerESDeleted             = EventType(277)
 EventType.MediaPlayerESSelected            = EventType(278)
 EventType.MediaPlayerESUpdated             = EventType(285)
 EventType.MediaPlayerEncounteredError      = EventType(266)
-EventType.MediaPlayerEndReached            = EventType(265)
 EventType.MediaPlayerForward               = EventType(263)
 EventType.MediaPlayerLengthChanged         = EventType(273)
 EventType.MediaPlayerMediaChanged          = EventType(0x100)
@@ -608,16 +607,17 @@ EventType.MediaPlayerProgramAdded          = EventType(286)
 EventType.MediaPlayerProgramDeleted        = EventType(287)
 EventType.MediaPlayerProgramSelected       = EventType(288)
 EventType.MediaPlayerProgramUpdated        = EventType(289)
+EventType.MediaPlayerRecordChanged         = EventType(293)
 EventType.MediaPlayerSeekableChanged       = EventType(269)
 EventType.MediaPlayerSnapshotTaken         = EventType(272)
 EventType.MediaPlayerStopped               = EventType(262)
+EventType.MediaPlayerStopping              = EventType(265)
 EventType.MediaPlayerTimeChanged           = EventType(267)
 EventType.MediaPlayerTitleListChanged      = EventType(290)
 EventType.MediaPlayerTitleSelectionChanged = EventType(291)
 EventType.MediaPlayerUncorked              = EventType(280)
 EventType.MediaPlayerUnmuted               = EventType(282)
 EventType.MediaPlayerVout                  = EventType(274)
-EventType.MediaStateChanged                = EventType(5)
 EventType.MediaSubItemAdded                = EventType(1)
 EventType.MediaSubItemTreeAdded            = EventType(6)
 EventType.MediaThumbnailGenerated          = EventType(7)
@@ -683,12 +683,7 @@ Meta.TrackTotal  = Meta(17)
 Meta.URL         = Meta(10)
 
 class State(_Enum):
-    '''Note the order of libvlc_state_t enum must match exactly the order of
-See mediacontrol_playerstatus, See input_state_e enums,
-and videolan.libvlc.state (at bindings/cil/src/media.cs).
-expected states by web plugins are:
-idle/close=0, opening=1, playing=3, paused=4,
-stopping=5, ended=6, error=7.
+    '''Libvlc media or media_player state.
     '''
     _enum_names_ = {
         0: 'NothingSpecial',
@@ -697,17 +692,17 @@ stopping=5, ended=6, error=7.
         3: 'Playing',
         4: 'Paused',
         5: 'Stopped',
-        6: 'Ended',
+        6: 'Stopping',
         7: 'Error',
     }
 State.Buffering      = State(2)
-State.Ended          = State(6)
 State.Error          = State(7)
 State.NothingSpecial = State(0)
 State.Opening        = State(1)
 State.Paused         = State(4)
 State.Playing        = State(3)
 State.Stopped        = State(5)
+State.Stopping       = State(6)
 
 class MediaType(_Enum):
     '''Media type
@@ -729,8 +724,7 @@ MediaType.stream    = MediaType(4)
 MediaType.unknown   = MediaType(0)
 
 class MediaParseFlag(_Enum):
-    '''Parse flags used by libvlc_media_parse_with_options()
-See libvlc_media_parse_with_options.
+    '''Parse flags used by libvlc_media_parse_request().
     '''
     _enum_names_ = {
         0x0: 'local',
@@ -746,21 +740,23 @@ MediaParseFlag.local         = MediaParseFlag(0x0)
 MediaParseFlag.network       = MediaParseFlag(0x1)
 
 class MediaParsedStatus(_Enum):
-    '''Parse status used sent by libvlc_media_parse_with_options() or returned by
-libvlc_media_get_parsed_status()
-See libvlc_media_parse_with_options
-See libvlc_media_get_parsed_status.
+    '''Parse status used sent by libvlc_media_parse_request() or returned by
+libvlc_media_get_parsed_status().
     '''
     _enum_names_ = {
-        1: 'skipped',
-        2: 'failed',
-        3: 'timeout',
-        4: 'done',
+        0: 'none',
+        1: 'pending',
+        2: 'skipped',
+        3: 'failed',
+        4: 'timeout',
+        5: 'done',
     }
-MediaParsedStatus.done    = MediaParsedStatus(4)
-MediaParsedStatus.failed  = MediaParsedStatus(2)
-MediaParsedStatus.skipped = MediaParsedStatus(1)
-MediaParsedStatus.timeout = MediaParsedStatus(3)
+MediaParsedStatus.done    = MediaParsedStatus(5)
+MediaParsedStatus.failed  = MediaParsedStatus(3)
+MediaParsedStatus.none    = MediaParsedStatus(0)
+MediaParsedStatus.pending = MediaParsedStatus(1)
+MediaParsedStatus.skipped = MediaParsedStatus(2)
+MediaParsedStatus.timeout = MediaParsedStatus(4)
 
 class MediaSlaveType(_Enum):
     '''Type of a media slave: subtitle or audio.
@@ -952,7 +948,7 @@ VideoTransferFunc.SRGB      = VideoTransferFunc(2)
 
 class VideoMetadataType(_Enum):
     '''Callback prototype to load opengl functions
-\param opaque private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [in]
+\param[in] opaque private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb()
 \param fct_name name of the opengl function to load
 \return a pointer to the named opengl function the null otherwise
 \version libvlc 4.0.0 or later.
@@ -1178,7 +1174,11 @@ ModuleDescription._fields_ = (
     )
 
 class DialogCbs(ctypes.Structure):
-    '''Dialog callbacks to be implemented.
+    '''Dialog callbacks to be implemented
+@attention starting with vlc 4.0.0 the error callback (pf_display_error) is
+           no longer part of this struct and need to be registered separately
+           using @a libvlc_dialog_set_error_callback
+See libvlc_dialog_set_error_callback.
     '''
     pass
 DialogCbs._fields_ = (
@@ -1195,12 +1195,7 @@ Event._fields_ = (
     )
 
 class MediaStats(ctypes.Structure):
-    '''Note the order of libvlc_state_t enum must match exactly the order of
-See mediacontrol_playerstatus, See input_state_e enums,
-and videolan.libvlc.state (at bindings/cil/src/media.cs).
-expected states by web plugins are:
-idle/close=0, opening=1, playing=3, paused=4,
-stopping=5, ended=6, error=7.
+    '''Libvlc media or media_player state.
     '''
     pass
 MediaStats._fields_ = (
@@ -1306,7 +1301,7 @@ VideoSetupDeviceInfo._fields_ = (
 
 class VideoRenderCfg(ctypes.Structure):
     '''Callback prototype called to release user data
-\param opaque private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [in]
+\param[in] opaque private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb()
 \version libvlc 4.0.0 or later.
     '''
     pass
@@ -1334,7 +1329,7 @@ VideoOutputCfg._fields_ = (
 
 class VideoFrameHdr10Metadata(ctypes.Structure):
     '''Callback prototype to load opengl functions
-\param opaque private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb() [in]
+\param[in] opaque private pointer set on the opaque parameter of @a libvlc_video_output_setup_cb()
 \param fct_name name of the opengl function to load
 \return a pointer to the named opengl function the null otherwise
 \version libvlc 4.0.0 or later.
@@ -1369,6 +1364,22 @@ PlayerProgram._fields_ = (
         ('psz_name', ctypes.c_char_p),
         ('b_selected', ctypes.c_bool),
         ('b_scrambled', ctypes.c_bool),
+    )
+
+class MediaPlayerTimePoint(ctypes.Structure):
+    '''Media player timer point
+\note ts and system_date values should not be used directly by the user.
+libvlc_media_player_time_point_interpolate() will read these values and
+return an interpolated ts.
+See libvlc_media_player_watch_time_on_update.
+    '''
+    pass
+MediaPlayerTimePoint._fields_ = (
+        ('position', ctypes.c_double),
+        ('rate', ctypes.c_double),
+        ('ts_us', ctypes.c_int64),
+        ('length_us', ctypes.c_int64),
+        ('system_date_us', ctypes.c_int64),
     )
 
 class AudioTrack(ctypes.Structure):
@@ -1465,6 +1476,13 @@ class LogCb(ctypes.c_void_p):
     @param args: variable argument list for the format @note Log message handlers B{must} be thread-safe. @warning The message context pointer, the format string parameters and the variable arguments are only valid until the callback returns.
     """
     pass
+class DialogErrorCbs(ctypes.c_void_p):
+    """Called when an error message needs to be displayed.
+    @param p_data: opaque pointer for the callback.
+    @param psz_title: title of the dialog.
+    @param psz_text: text of the dialog.
+    """
+    pass
 class MediaOpenCb(ctypes.c_void_p):
     """Callback prototype to open a custom bitstream input media.
     The same media item can be opened multiple times. Each time, this callback
@@ -1501,8 +1519,8 @@ class VideoLockCb(ctypes.c_void_p):
     invoked. Depending on the video chroma, one or three pixel planes of
     adequate dimensions must be returned via the second parameter. Those
     planes must be aligned on 32-bytes boundaries.
-    @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
-    @param planes: start address of the pixel planes (LibVLC allocates the array of void pointers, this callback must initialize the array) [OUT].
+    @param[in] opaque private pointer as passed to L{libvlc_video_set_callbacks}().
+    @param[out] planes start address of the pixel planes (LibVLC allocates the array of void pointers, this callback must initialize the array).
     @return: a private pointer for the display and unlock callbacks to identify the picture buffers.
     """
     pass
@@ -1513,17 +1531,17 @@ class VideoUnlockCb(ctypes.c_void_p):
     application can now read the pixel values if it needs to.
     @note: A picture buffer is unlocked after the picture is decoded,
     but before the picture is displayed.
-    @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
-    @param picture: private pointer returned from the @ref L{VideoLockCb} callback [IN].
-    @param planes: pixel planes as defined by the @ref L{VideoLockCb} callback (this parameter is only for convenience) [IN].
+    @param[in] opaque private pointer as passed to L{libvlc_video_set_callbacks}().
+    @param[in] picture private pointer returned from the @ref L{VideoLockCb} callback.
+    @param[in] planes pixel planes as defined by the @ref L{VideoLockCb} callback (this parameter is only for convenience).
     """
     pass
 class VideoDisplayCb(ctypes.c_void_p):
     """Callback prototype to display a picture.
     When the video frame needs to be shown, as determined by the media playback
     clock, the display callback is invoked.
-    @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
-    @param picture: private pointer returned from the @ref L{VideoLockCb} callback [IN].
+    @param[in] opaque private pointer as passed to L{libvlc_video_set_callbacks}().
+    @param[in] picture private pointer returned from the @ref L{VideoLockCb} callback.
     """
     pass
 class VideoFormatCb(ctypes.c_void_p):
@@ -1532,43 +1550,45 @@ class VideoFormatCb(ctypes.c_void_p):
     and the chain of video filters (if any). It can opt to change any parameter
     as it needs. In that case, LibVLC will attempt to convert the video format
     (rescaling and chroma conversion) but these operations can be CPU intensive.
-    @param opaque: pointer to the private pointer passed to L{libvlc_video_set_callbacks}() [IN/OUT].
-    @param chroma: pointer to the 4 bytes video format identifier [IN/OUT].
-    @param width: pointer to the buffer width in pixels[IN/OUT].
-    @param height: pointer to the buffer height in pixels[IN/OUT].
-    @param pitches: table of scanline pitches in bytes for each pixel plane (the table is allocated by LibVLC) [OUT].
-    @param (width+1): - pointer to display width in pixels[IN].
-    @param (height+1): - pointer to display height in pixels[IN] @note For each pixels plane, the scanline pitch must be bigger than or equal to the number of bytes per pixel multiplied by the pixel width. Similarly, the number of scanlines must be bigger than of equal to the pixel height. Furthermore, we recommend that pitches and lines be multiple of 32 to not break assumptions that might be held by optimized code in the video decoders, video filters and/or video converters.
-    @return: lines table of scanlines count for each plane.
+    @param[in,out] opaque pointer to the private pointer passed to L{libvlc_video_set_callbacks}().
+    @param[in,out] chroma pointer to the 4 bytes video format identifier.
+    @param[in,out] width pointer to the buffer width in pixels.
+    @param[in,out] height pointer to the buffer height in pixels.
+    @param[out] pitches table of scanline pitches in bytes for each pixel plane (the table is allocated by LibVLC).
+    @param[out] lines table of scanlines count for each plane.
+    @param[in] (width+1) - pointer to display width in pixels.
+    @param[in] (height+1) - pointer to display height in pixels @note For each pixels plane, the scanline pitch must be bigger than or equal to the number of bytes per pixel multiplied by the pixel width. Similarly, the number of scanlines must be bigger than of equal to the pixel height. Furthermore, we recommend that pitches and lines be multiple of 32 to not break assumptions that might be held by optimized code in the video decoders, video filters and/or video converters.
+    @return: the number of picture buffers allocated, 0 indicates failure.
     @version: LibVLC 4.0.0 and later.
     """
     pass
 class VideoCleanupCb(ctypes.c_void_p):
     """Callback prototype to configure picture buffers format.
-    @param opaque: private pointer as passed to L{libvlc_video_set_format_callbacks}() (and possibly modified by @ref L{VideoFormatCb}) [IN].
+    @param[in] opaque private pointer as passed to L{libvlc_video_set_format_callbacks}() (and possibly modified by @ref L{VideoFormatCb}).
     """
     pass
 class VideoOutputSetupCb(ctypes.c_void_p):
     """Callback prototype called to initialize user data.
     Setup the rendering environment.
-    @param opaque: private pointer passed to the @a libvlc_video_set_output_callbacks() on input. The callback can change this value on output to be passed to all the other callbacks set on @a libvlc_video_set_output_callbacks(). [IN/OUT].
-    @param cfg: requested configuration of the video device [IN].
-    @return: out L{VideoSetupDeviceInfo}* to fill.
+    @param[in,out] opaque private pointer passed to the @a libvlc_video_set_output_callbacks() on input. The callback can change this value on output to be passed to all the other callbacks set on @a libvlc_video_set_output_callbacks().
+    @param[in] cfg requested configuration of the video device.
+    @param[out] out L{VideoSetupDeviceInfo}* to fill.
+    @return: true on success.
     @version: LibVLC 4.0.0 or later For \ref libvlc_video_engine_d3d9 the output must be a IDirect3D9*. A reference to this object is held until the \ref L{VideoOutputCleanupCb} is called. the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0. For \ref libvlc_video_engine_d3d11 the output must be a ID3D11DeviceContext*. A reference to this object is held until the \ref L{VideoOutputCleanupCb} is called. The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled. If the ID3D11DeviceContext is used outside of the callbacks called by libvlc, the host MUST use a mutex to protect the access to the ID3D11DeviceContext of libvlc. This mutex value is set on d3d11.context_mutex. If the ID3D11DeviceContext is not used outside of the callbacks, the mutex d3d11.context_mutex may be None.
     """
     pass
 class VideoOutputCleanupCb(ctypes.c_void_p):
     """Callback prototype called to release user data.
-    @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
+    @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
     @version: LibVLC 4.0.0 or later.
     """
     pass
 class VideoUpdateOutputCb(ctypes.c_void_p):
     """Callback prototype called on video size changes.
     Update the rendering output setup.
-    @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
-    @param cfg: configuration of the video that will be rendered [IN].
-    @return: output configuration describing with how the rendering is setup.
+    @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
+    @param[in] cfg configuration of the video that will be rendered.
+    @param[out] output configuration describing with how the rendering is setup.
     @version: LibVLC 4.0.0 or later @note the configuration device for Direct3D9 is the IDirect3DDevice9 that VLC uses to render. The host must set a Render target and call Present() when it needs the drawing from VLC to be done. This object is not valid anymore after Cleanup is called. Tone mapping, range and color conversion will be done depending on the values set in the output structure.
     """
     pass
@@ -1576,22 +1596,22 @@ class VideoSwapCb(ctypes.c_void_p):
     """Callback prototype called after performing drawing calls.
     This callback is called outside of libvlc_video_makeCurrent_cb current/not-current
     calls.
-    @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
+    @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
     @version: LibVLC 4.0.0 or later.
     """
     pass
 class VideoMakecurrentCb(ctypes.c_void_p):
     """Callback prototype to set up the OpenGL context for rendering.
     Tell the host the rendering is about to start/has finished.
-    @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
-    @param enter: true to set the context as current, false to unset it [IN].
+    @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
+    @param[in] enter true to set the context as current, false to unset it.
     @return: true on success.
-    @version: LibVLC 4.0.0 or later On Direct3D11 the following may change on the provided ID3D11DeviceContext* between \ref enter being true and \ref enter being false: - IASetPrimitiveTopology() - IASetInputLayout() - IASetVertexBuffers() - IASetIndexBuffer() - VSSetConstantBuffers() - VSSetShader() - PSSetSamplers() - PSSetConstantBuffers() - PSSetShaderResources() - PSSetShader() - RSSetViewports() - DrawIndexed().
+    @version: LibVLC 4.0.0 or later On Direct3D11 the following may change on the provided ID3D11DeviceContext* between \p enter being true and \p enter being false: - IASetPrimitiveTopology() - IASetInputLayout() - IASetVertexBuffers() - IASetIndexBuffer() - VSSetConstantBuffers() - VSSetShader() - PSSetSamplers() - PSSetConstantBuffers() - PSSetShaderResources() - PSSetShader() - RSSetViewports() - DrawIndexed().
     """
     pass
 class VideoGetprocaddressCb(ctypes.c_void_p):
     """Callback prototype to load opengl functions.
-    @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
+    @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
     @param fct_name: name of the opengl function to load.
     @return: a pointer to the named OpenGL function the None otherwise.
     @version: LibVLC 4.0.0 or later.
@@ -1599,15 +1619,25 @@ class VideoGetprocaddressCb(ctypes.c_void_p):
     pass
 class VideoFramemetadataCb(ctypes.c_void_p):
     """Callback prototype to receive metadata before rendering.
-    @param opaque: private pointer passed to the @a libvlc_video_set_output_callbacks() [IN].
-    @param type: type of data passed in metadata [IN].
-    @param metadata: the type of metadata [IN].
+    @param[in] opaque private pointer passed to the @a libvlc_video_set_output_callbacks().
+    @param[in] type type of data passed in metadata.
+    @param[in] metadata the type of metadata.
     @version: LibVLC 4.0.0 or later.
+    """
+    pass
+class VideoOutputResizeCb(ctypes.c_void_p):
+    """Callback type that can be called to request a render size changes.
+    
+    libvlc will provide a callback of this type when calling \ref libvlc_video_output_set_resize_cb.
+    
+    @param report_opaque: parameter passed to \ref libvlc_video_output_set_resize_cb. [IN].
+    @param width: new rendering width requested. [IN].
+    @param height: new rendering height requested. [IN].
     """
     pass
 class VideoOutputSelectPlaneCb(ctypes.c_void_p):
     """Tell the host the rendering for the given plane is about to start.
-    @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
+    @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
     @param plane: number of the rendering plane to select.
     @param output: handle of the rendering output for the given plane.
     @return: true on success.
@@ -1627,8 +1657,8 @@ class AudioPlayCb(ctypes.c_void_p):
     Note that the number of samples is per channel. For instance, if the audio
     track sampling rate is 48000 Hz, then 1200 samples represent 25 milliseconds
     of audio signal - regardless of the number of audio channels.
-    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
-    @param samples: pointer to a table of audio samples to play back [IN].
+    @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
+    @param[in] samples pointer to a table of audio samples to play back.
     @param count: number of audio samples to play back.
     @param pts: expected play time stamp (see libvlc_delay()).
     """
@@ -1637,7 +1667,7 @@ class AudioPauseCb(ctypes.c_void_p):
     """Callback prototype for audio pause.
     LibVLC invokes this callback to pause audio playback.
     @note: The pause callback is never called if the audio is already paused.
-    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+    @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
     @param pts: time stamp of the pause request (should be elapsed already).
     """
     pass
@@ -1646,7 +1676,7 @@ class AudioResumeCb(ctypes.c_void_p):
     LibVLC invokes this callback to resume audio playback after it was
     previously paused.
     @note: The resume callback is never called if the audio is not paused.
-    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+    @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
     @param pts: time stamp of the resumption request (should be elapsed already).
     """
     pass
@@ -1655,7 +1685,7 @@ class AudioFlushCb(ctypes.c_void_p):
     LibVLC invokes this callback if it needs to discard all pending buffers and
     stop playback as soon as possible. This typically occurs when the media is
     stopped.
-    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+    @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
     """
     pass
 class AudioDrainCb(ctypes.c_void_p):
@@ -1663,12 +1693,12 @@ class AudioDrainCb(ctypes.c_void_p):
     LibVLC may invoke this callback when the decoded audio track is ending.
     There will be no further decoded samples for the track, but playback should
     nevertheless continue until all already pending buffers are rendered.
-    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+    @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
     """
     pass
 class AudioSetVolumeCb(ctypes.c_void_p):
     """Callback prototype for audio volume change.
-    @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+    @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
     @param volume: software volume (1. = nominal, 0. = mute).
     @param mute: muted flag.
     """
@@ -1676,17 +1706,42 @@ class AudioSetVolumeCb(ctypes.c_void_p):
 class AudioSetupCb(ctypes.c_void_p):
     """Callback prototype to setup the audio playback.
     This is called when the media player needs to create a new audio output.
-    @param opaque: pointer to the data pointer passed to L{libvlc_audio_set_callbacks}() [IN/OUT].
-    @param format: 4 bytes sample format [IN/OUT].
-    @param rate: sample rate [IN/OUT].
-    @param channels: channels count [IN/OUT].
+    @param[in,out] opaque pointer to the data pointer passed to L{libvlc_audio_set_callbacks}().
+    @param[in,out] format 4 bytes sample format.
+    @param[in,out] rate sample rate.
+    @param[in,out] channels channels count.
     @return: 0 on success, anything else to skip audio playback.
     """
     pass
 class AudioCleanupCb(ctypes.c_void_p):
     """Callback prototype for audio playback cleanup.
     This is called when the media player no longer needs an audio output.
-    @param opaque: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+    @param[in] opaque data pointer as passed to L{libvlc_audio_set_callbacks}().
+    """
+    pass
+class MediaPlayerWatchTimeOnUpdate(ctypes.c_void_p):
+    """Callback prototype that notify when the player state or time changed.
+    Get notified when the time is updated by the input or output source. The
+    input source is the 'demux' or the 'access_demux'. The output source are
+    audio and video outputs: an update is received each time a video frame is
+    displayed or an audio sample is written. The delay between each updates may
+    depend on the input and source type (it can be every 5ms, 30ms, 1s or
+    10s...). Users of this timer may need to update the position at a higher
+    frequency from their own mainloop via
+    L{libvlc_media_player_time_point_interpolate}().
+    @warning: It is forbidden to call any Media Player functions from here.
+    @param value: always valid, the time corresponding to the state.
+    @param data: opaque pointer set by L{libvlc_media_player_watch_time}().
+    """
+    pass
+class MediaPlayerWatchTimeOnDiscontinuity(ctypes.c_void_p):
+    """Callback prototype that notify when the player is paused or a discontinuity
+    occurred.
+    Likely caused by seek from the user or because the playback is stopped. The
+    player user should stop its "interpolate" timer.
+    @warning: It is forbidden to call any Media Player functions from here.
+    @param system_date_us: system date, in us, of this event, only valid (> 0) when paused. It can be used to interpolate the last updated point to this date in order to get the last paused ts/position.
+    @param data: opaque pointer set by L{libvlc_media_player_watch_time}().
     """
     pass
 class CallbackDecorators(object):
@@ -1703,6 +1758,12 @@ class CallbackDecorators(object):
         @param fmt: printf() format string (as defined by ISO C11).
         @param args: variable argument list for the format @note Log message handlers B{must} be thread-safe. @warning The message context pointer, the format string parameters and the variable arguments are only valid until the callback returns.
     '''
+    DialogErrorCbs = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p)
+    DialogErrorCbs.__doc__ = '''Called when an error message needs to be displayed.
+        @param p_data: opaque pointer for the callback.
+        @param psz_title: title of the dialog.
+        @param psz_text: text of the dialog.
+    '''
     MediaOpenCb = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64))
     MediaOpenCb.__doc__ = '''Callback prototype to open a custom bitstream input media.
         The same media item can be opened multiple times. Each time, this callback
@@ -1712,7 +1773,7 @@ class CallbackDecorators(object):
         @param opaque: private pointer as passed to L{libvlc_media_new_callbacks}().
         @return: datap storage space for a private data pointer, sizep byte length of the bitstream or UINT64_MAX if unknown.
     '''
-    MediaReadCb = ctypes.CFUNCTYPE(ctypes.c_ssize_t, ctypes.c_void_p, ctypes.POINTER(ctypes.c_char), ctypes.c_size_t)
+    MediaReadCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_char), ctypes.c_size_t)
     MediaReadCb.__doc__ = '''Callback prototype to read data from a custom bitstream input media.
         @param opaque: private pointer as set by the @ref L{MediaOpenCb} callback.
         @param buf: start address of the buffer to read data into.
@@ -1735,8 +1796,8 @@ class CallbackDecorators(object):
         invoked. Depending on the video chroma, one or three pixel planes of
         adequate dimensions must be returned via the second parameter. Those
         planes must be aligned on 32-bytes boundaries.
-        @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
-        @param planes: start address of the pixel planes (LibVLC allocates the array of void pointers, this callback must initialize the array) [OUT].
+        @param[in] opaque private pointer as passed to L{libvlc_video_set_callbacks}().
+        @param[out] planes start address of the pixel planes (LibVLC allocates the array of void pointers, this callback must initialize the array).
         @return: a private pointer for the display and unlock callbacks to identify the picture buffers.
     '''
     VideoUnlockCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p))
@@ -1746,16 +1807,16 @@ class CallbackDecorators(object):
         application can now read the pixel values if it needs to.
         @note: A picture buffer is unlocked after the picture is decoded,
         but before the picture is displayed.
-        @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
-        @param picture: private pointer returned from the @ref L{VideoLockCb} callback [IN].
-        @param planes: pixel planes as defined by the @ref L{VideoLockCb} callback (this parameter is only for convenience) [IN].
+        @param[in] opaque private pointer as passed to L{libvlc_video_set_callbacks}().
+        @param[in] picture private pointer returned from the @ref L{VideoLockCb} callback.
+        @param[in] planes pixel planes as defined by the @ref L{VideoLockCb} callback (this parameter is only for convenience).
     '''
     VideoDisplayCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p)
     VideoDisplayCb.__doc__ = '''Callback prototype to display a picture.
         When the video frame needs to be shown, as determined by the media playback
         clock, the display callback is invoked.
-        @param opaque: private pointer as passed to L{libvlc_video_set_callbacks}() [IN].
-        @param picture: private pointer returned from the @ref L{VideoLockCb} callback [IN].
+        @param[in] opaque private pointer as passed to L{libvlc_video_set_callbacks}().
+        @param[in] picture private pointer returned from the @ref L{VideoLockCb} callback.
     '''
     VideoFormatCb = ctypes.CFUNCTYPE(ctypes.c_uint, ctypes.POINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
     VideoFormatCb.__doc__ = '''Callback prototype to configure picture buffers format.
@@ -1763,73 +1824,84 @@ class CallbackDecorators(object):
         and the chain of video filters (if any). It can opt to change any parameter
         as it needs. In that case, LibVLC will attempt to convert the video format
         (rescaling and chroma conversion) but these operations can be CPU intensive.
-        @param opaque: pointer to the private pointer passed to L{libvlc_video_set_callbacks}() [IN/OUT].
-        @param chroma: pointer to the 4 bytes video format identifier [IN/OUT].
-        @param width: pointer to the buffer width in pixels[IN/OUT].
-        @param height: pointer to the buffer height in pixels[IN/OUT].
-        @param pitches: table of scanline pitches in bytes for each pixel plane (the table is allocated by LibVLC) [OUT].
-        @param (width+1): - pointer to display width in pixels[IN].
-        @param (height+1): - pointer to display height in pixels[IN] @note For each pixels plane, the scanline pitch must be bigger than or equal to the number of bytes per pixel multiplied by the pixel width. Similarly, the number of scanlines must be bigger than of equal to the pixel height. Furthermore, we recommend that pitches and lines be multiple of 32 to not break assumptions that might be held by optimized code in the video decoders, video filters and/or video converters.
-        @return: lines table of scanlines count for each plane.
+        @param[in,out] opaque pointer to the private pointer passed to L{libvlc_video_set_callbacks}().
+        @param[in,out] chroma pointer to the 4 bytes video format identifier.
+        @param[in,out] width pointer to the buffer width in pixels.
+        @param[in,out] height pointer to the buffer height in pixels.
+        @param[out] pitches table of scanline pitches in bytes for each pixel plane (the table is allocated by LibVLC).
+        @param[out] lines table of scanlines count for each plane.
+        @param[in] (width+1) - pointer to display width in pixels.
+        @param[in] (height+1) - pointer to display height in pixels @note For each pixels plane, the scanline pitch must be bigger than or equal to the number of bytes per pixel multiplied by the pixel width. Similarly, the number of scanlines must be bigger than of equal to the pixel height. Furthermore, we recommend that pitches and lines be multiple of 32 to not break assumptions that might be held by optimized code in the video decoders, video filters and/or video converters.
+        @return: the number of picture buffers allocated, 0 indicates failure.
         @version: LibVLC 4.0.0 and later.
     '''
     VideoCleanupCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
     VideoCleanupCb.__doc__ = '''Callback prototype to configure picture buffers format.
-        @param opaque: private pointer as passed to L{libvlc_video_set_format_callbacks}() (and possibly modified by @ref L{VideoFormatCb}) [IN].
+        @param[in] opaque private pointer as passed to L{libvlc_video_set_format_callbacks}() (and possibly modified by @ref L{VideoFormatCb}).
     '''
     VideoOutputSetupCb = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(VideoSetupDeviceCfg), ctypes.POINTER(VideoSetupDeviceInfo))
     VideoOutputSetupCb.__doc__ = '''Callback prototype called to initialize user data.
         Setup the rendering environment.
-        @param opaque: private pointer passed to the @a libvlc_video_set_output_callbacks() on input. The callback can change this value on output to be passed to all the other callbacks set on @a libvlc_video_set_output_callbacks(). [IN/OUT].
-        @param cfg: requested configuration of the video device [IN].
-        @return: out L{VideoSetupDeviceInfo}* to fill.
+        @param[in,out] opaque private pointer passed to the @a libvlc_video_set_output_callbacks() on input. The callback can change this value on output to be passed to all the other callbacks set on @a libvlc_video_set_output_callbacks().
+        @param[in] cfg requested configuration of the video device.
+        @param[out] out L{VideoSetupDeviceInfo}* to fill.
+        @return: true on success.
         @version: LibVLC 4.0.0 or later For \ref libvlc_video_engine_d3d9 the output must be a IDirect3D9*. A reference to this object is held until the \ref L{VideoOutputCleanupCb} is called. the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0. For \ref libvlc_video_engine_d3d11 the output must be a ID3D11DeviceContext*. A reference to this object is held until the \ref L{VideoOutputCleanupCb} is called. The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled. If the ID3D11DeviceContext is used outside of the callbacks called by libvlc, the host MUST use a mutex to protect the access to the ID3D11DeviceContext of libvlc. This mutex value is set on d3d11.context_mutex. If the ID3D11DeviceContext is not used outside of the callbacks, the mutex d3d11.context_mutex may be None.
     '''
     VideoOutputCleanupCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
     VideoOutputCleanupCb.__doc__ = '''Callback prototype called to release user data.
-        @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
+        @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
         @version: LibVLC 4.0.0 or later.
     '''
     VideoUpdateOutputCb = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.POINTER(VideoRenderCfg), ctypes.POINTER(VideoOutputCfg))
     VideoUpdateOutputCb.__doc__ = '''Callback prototype called on video size changes.
         Update the rendering output setup.
-        @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
-        @param cfg: configuration of the video that will be rendered [IN].
-        @return: output configuration describing with how the rendering is setup.
+        @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
+        @param[in] cfg configuration of the video that will be rendered.
+        @param[out] output configuration describing with how the rendering is setup.
         @version: LibVLC 4.0.0 or later @note the configuration device for Direct3D9 is the IDirect3DDevice9 that VLC uses to render. The host must set a Render target and call Present() when it needs the drawing from VLC to be done. This object is not valid anymore after Cleanup is called. Tone mapping, range and color conversion will be done depending on the values set in the output structure.
     '''
     VideoSwapCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
     VideoSwapCb.__doc__ = '''Callback prototype called after performing drawing calls.
         This callback is called outside of libvlc_video_makeCurrent_cb current/not-current
         calls.
-        @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
+        @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
         @version: LibVLC 4.0.0 or later.
     '''
     VideoMakecurrentCb = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_bool)
     VideoMakecurrentCb.__doc__ = '''Callback prototype to set up the OpenGL context for rendering.
         Tell the host the rendering is about to start/has finished.
-        @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
-        @param enter: true to set the context as current, false to unset it [IN].
+        @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
+        @param[in] enter true to set the context as current, false to unset it.
         @return: true on success.
-        @version: LibVLC 4.0.0 or later On Direct3D11 the following may change on the provided ID3D11DeviceContext* between \ref enter being true and \ref enter being false: - IASetPrimitiveTopology() - IASetInputLayout() - IASetVertexBuffers() - IASetIndexBuffer() - VSSetConstantBuffers() - VSSetShader() - PSSetSamplers() - PSSetConstantBuffers() - PSSetShaderResources() - PSSetShader() - RSSetViewports() - DrawIndexed().
+        @version: LibVLC 4.0.0 or later On Direct3D11 the following may change on the provided ID3D11DeviceContext* between \p enter being true and \p enter being false: - IASetPrimitiveTopology() - IASetInputLayout() - IASetVertexBuffers() - IASetIndexBuffer() - VSSetConstantBuffers() - VSSetShader() - PSSetSamplers() - PSSetConstantBuffers() - PSSetShaderResources() - PSSetShader() - RSSetViewports() - DrawIndexed().
     '''
     VideoGetprocaddressCb = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p)
     VideoGetprocaddressCb.__doc__ = '''Callback prototype to load opengl functions.
-        @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
+        @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
         @param fct_name: name of the opengl function to load.
         @return: a pointer to the named OpenGL function the None otherwise.
         @version: LibVLC 4.0.0 or later.
     '''
     VideoFramemetadataCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p, VideoMetadataType, ctypes.c_void_p)
     VideoFramemetadataCb.__doc__ = '''Callback prototype to receive metadata before rendering.
-        @param opaque: private pointer passed to the @a libvlc_video_set_output_callbacks() [IN].
-        @param type: type of data passed in metadata [IN].
-        @param metadata: the type of metadata [IN].
+        @param[in] opaque private pointer passed to the @a libvlc_video_set_output_callbacks().
+        @param[in] type type of data passed in metadata.
+        @param[in] metadata the type of metadata.
         @version: LibVLC 4.0.0 or later.
+    '''
+    VideoOutputResizeCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint)
+    VideoOutputResizeCb.__doc__ = '''Callback type that can be called to request a render size changes.
+        
+        libvlc will provide a callback of this type when calling \ref libvlc_video_output_set_resize_cb.
+        
+        @param report_opaque: parameter passed to \ref libvlc_video_output_set_resize_cb. [IN].
+        @param width: new rendering width requested. [IN].
+        @param height: new rendering height requested. [IN].
     '''
     VideoOutputSelectPlaneCb = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p)
     VideoOutputSelectPlaneCb.__doc__ = '''Tell the host the rendering for the given plane is about to start.
-        @param opaque: private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}() [IN].
+        @param[in] opaque private pointer set on the opaque parameter of @a L{VideoOutputSetupCb}().
         @param plane: number of the rendering plane to select.
         @param output: handle of the rendering output for the given plane.
         @return: true on success.
@@ -1848,8 +1920,8 @@ class CallbackDecorators(object):
         Note that the number of samples is per channel. For instance, if the audio
         track sampling rate is 48000 Hz, then 1200 samples represent 25 milliseconds
         of audio signal - regardless of the number of audio channels.
-        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
-        @param samples: pointer to a table of audio samples to play back [IN].
+        @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
+        @param[in] samples pointer to a table of audio samples to play back.
         @param count: number of audio samples to play back.
         @param pts: expected play time stamp (see libvlc_delay()).
     '''
@@ -1857,7 +1929,7 @@ class CallbackDecorators(object):
     AudioPauseCb.__doc__ = '''Callback prototype for audio pause.
         LibVLC invokes this callback to pause audio playback.
         @note: The pause callback is never called if the audio is already paused.
-        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+        @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
         @param pts: time stamp of the pause request (should be elapsed already).
     '''
     AudioResumeCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int64)
@@ -1865,7 +1937,7 @@ class CallbackDecorators(object):
         LibVLC invokes this callback to resume audio playback after it was
         previously paused.
         @note: The resume callback is never called if the audio is not paused.
-        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+        @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
         @param pts: time stamp of the resumption request (should be elapsed already).
     '''
     AudioFlushCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int64)
@@ -1873,34 +1945,57 @@ class CallbackDecorators(object):
         LibVLC invokes this callback if it needs to discard all pending buffers and
         stop playback as soon as possible. This typically occurs when the media is
         stopped.
-        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+        @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
     '''
     AudioDrainCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
     AudioDrainCb.__doc__ = '''Callback prototype for audio buffer drain.
         LibVLC may invoke this callback when the decoded audio track is ending.
         There will be no further decoded samples for the track, but playback should
         nevertheless continue until all already pending buffers are rendered.
-        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+        @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
     '''
     AudioSetVolumeCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_float, ctypes.c_bool)
     AudioSetVolumeCb.__doc__ = '''Callback prototype for audio volume change.
-        @param data: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+        @param[in] data data pointer as passed to L{libvlc_audio_set_callbacks}().
         @param volume: software volume (1. = nominal, 0. = mute).
         @param mute: muted flag.
     '''
     AudioSetupCb = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.POINTER(ctypes.c_void_p), ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint))
     AudioSetupCb.__doc__ = '''Callback prototype to setup the audio playback.
         This is called when the media player needs to create a new audio output.
-        @param opaque: pointer to the data pointer passed to L{libvlc_audio_set_callbacks}() [IN/OUT].
-        @param format: 4 bytes sample format [IN/OUT].
-        @param rate: sample rate [IN/OUT].
-        @param channels: channels count [IN/OUT].
+        @param[in,out] opaque pointer to the data pointer passed to L{libvlc_audio_set_callbacks}().
+        @param[in,out] format 4 bytes sample format.
+        @param[in,out] rate sample rate.
+        @param[in,out] channels channels count.
         @return: 0 on success, anything else to skip audio playback.
     '''
     AudioCleanupCb = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
     AudioCleanupCb.__doc__ = '''Callback prototype for audio playback cleanup.
         This is called when the media player no longer needs an audio output.
-        @param opaque: data pointer as passed to L{libvlc_audio_set_callbacks}() [IN].
+        @param[in] opaque data pointer as passed to L{libvlc_audio_set_callbacks}().
+    '''
+    MediaPlayerWatchTimeOnUpdate = ctypes.CFUNCTYPE(None, ctypes.POINTER(MediaPlayerTimePoint), ctypes.c_void_p)
+    MediaPlayerWatchTimeOnUpdate.__doc__ = '''Callback prototype that notify when the player state or time changed.
+        Get notified when the time is updated by the input or output source. The
+        input source is the 'demux' or the 'access_demux'. The output source are
+        audio and video outputs: an update is received each time a video frame is
+        displayed or an audio sample is written. The delay between each updates may
+        depend on the input and source type (it can be every 5ms, 30ms, 1s or
+        10s...). Users of this timer may need to update the position at a higher
+        frequency from their own mainloop via
+        L{libvlc_media_player_time_point_interpolate}().
+        @warning: It is forbidden to call any Media Player functions from here.
+        @param value: always valid, the time corresponding to the state.
+        @param data: opaque pointer set by L{libvlc_media_player_watch_time}().
+    '''
+    MediaPlayerWatchTimeOnDiscontinuity = ctypes.CFUNCTYPE(None, ctypes.c_int64, ctypes.c_void_p)
+    MediaPlayerWatchTimeOnDiscontinuity.__doc__ = '''Callback prototype that notify when the player is paused or a discontinuity
+        occurred.
+        Likely caused by seek from the user or because the playback is stopped. The
+        player user should stop its "interpolate" timer.
+        @warning: It is forbidden to call any Media Player functions from here.
+        @param system_date_us: system date, in us, of this event, only valid (> 0) when paused. It can be used to interpolate the last updated point to this date in order to get the last paused ts/position.
+        @param data: opaque pointer set by L{libvlc_media_player_watch_time}().
     '''
 cb = CallbackDecorators
 # End of generated enum types #
@@ -2212,7 +2307,7 @@ class Instance(_Ctype):
 
     def playlist_play(self):
         '''Start playing (if there is any item in the playlist).
-        Additionnal playlist item options can be specified for addition to the
+        Additional playlist item options can be specified for addition to the
         item before it is played.
         '''
         return libvlc_playlist_play(self)
@@ -2292,61 +2387,99 @@ class Instance(_Ctype):
         return libvlc_log_set_file(self, stream)
 
 
-    def media_new_location(self, psz_mrl):
-        '''Create a media with a certain given media resource location,
-        for instance a valid URL.
-        @note: To refer to a local file with this function,
-        the file://... URI syntax B{must} be used (see IETF RFC3986).
-        We recommend using L{media_new_path}() instead when dealing with
-        local files.
-        See L{media_release}.
-        @param psz_mrl: the media location.
-        @return: the newly created media or None on error.
+    def dialog_set_error_callback(self, p_cbs, p_data):
         '''
-        return libvlc_media_new_location(self, str_to_bytes(psz_mrl))
-
-
-    def media_new_fd(self, fd):
-        '''Create a media for an already open file descriptor.
-        The file descriptor shall be open for reading (or reading and writing).
-        Regular file descriptors, pipe read descriptors and character device
-        descriptors (including TTYs) are supported on all platforms.
-        Block device descriptors are supported where available.
-        Directory descriptors are supported on systems that provide fdopendir().
-        Sockets are supported on all platforms where they are file descriptors,
-        i.e. all except Windows.
-        @note: This library will B{not} automatically close the file descriptor
-        under any circumstance. Nevertheless, a file descriptor can usually only be
-        rendered once in a media player. To render it a second time, the file
-        descriptor should probably be rewound to the beginning with lseek().
-        See L{media_release}.
-        @param fd: open file descriptor.
-        @return: the newly created media or None on error.
-        @version: LibVLC 1.1.5 and later.
         '''
-        return libvlc_media_new_fd(self, fd)
+        return libvlc_dialog_set_error_callback(self, p_cbs, p_data)
 
 
-    def media_new_callbacks(self, open_cb, read_cb, seek_cb, close_cb, opaque):
-        '''Create a media with custom callbacks to read the data from.
-        @param open_cb: callback to open the custom bitstream input media.
-        @param read_cb: callback to read data (must not be None).
-        @param seek_cb: callback to seek, or None if seeking is not supported.
-        @param close_cb: callback to close the media, or None if unnecessary.
-        @param opaque: data pointer for the open callback.
-        @return: the newly created media or None on error @note If open_cb is None, the opaque pointer will be passed to read_cb, seek_cb and close_cb, and the stream size will be treated as unknown. @note The callbacks may be called asynchronously (from another thread). A single stream instance need not be reentrant. However the open_cb needs to be reentrant if the media is used by multiple player instances. @warning The callbacks may be used until all or any player instances that were supplied the media item are stopped. See L{media_release}.
-        @version: LibVLC 3.0.0 and later.
+    def media_save_meta(self, p_md):
+        '''Save the meta previously set.
+        @param p_md: the media descriptor.
+        @return: true if the write operation was successful.
         '''
-        return libvlc_media_new_callbacks(self, open_cb, read_cb, seek_cb, close_cb, opaque)
+        return libvlc_media_save_meta(self, p_md)
 
 
-    def media_new_as_node(self, psz_name):
-        '''Create a media as an empty node with a given name.
-        See L{media_release}.
-        @param psz_name: the name of the node.
-        @return: the new empty media or None on error.
+    def media_parse_request(self, p_md, parse_flag, timeout):
+        '''Parse the media asynchronously with options.
+        This fetches (local or network) art, meta data and/or tracks information.
+        To track when this is over you can listen to libvlc_MediaParsedChanged
+        event. However if this functions returns an error, you will not receive any
+        events.
+        It uses a flag to specify parse options (see L{MediaParseFlag}). All
+        these flags can be combined. By default, media is parsed if it's a local
+        file.
+        @note: Parsing can be aborted with L{media_parse_stop}().
+        See libvlc_MediaParsedChanged
+        See L{media_get_meta}
+        See L{media_get_tracklist}
+        See L{media_get_parsed_status}
+        See L{MediaParseFlag}.
+        @param p_md: media descriptor object.
+        @param parse_flag: parse options:
+        @param timeout: maximum time allowed to preparse the media. If -1, the default "preparse-timeout" option will be used as a timeout. If 0, it will wait indefinitely. If > 0, the timeout will be used (in milliseconds).
+        @return: -1 in case of error, 0 otherwise.
+        @version: LibVLC 4.0.0 or later.
         '''
-        return libvlc_media_new_as_node(self, str_to_bytes(psz_name))
+        return libvlc_media_parse_request(self, p_md, parse_flag, timeout)
+
+
+    def media_parse_stop(self, p_md):
+        '''Stop the parsing of the media
+        When the media parsing is stopped, the libvlc_MediaParsedChanged event will
+        be sent with the libvlc_media_parsed_status_timeout status.
+        See L{media_parse_request}().
+        @param p_md: media descriptor object.
+        @version: LibVLC 3.0.0 or later.
+        '''
+        return libvlc_media_parse_stop(self, p_md)
+
+
+    def media_thumbnail_request_by_time(self, md, time, speed, width, height, crop, picture_type, timeout):
+        '''\brief libvlc_media_request_thumbnail_by_time Start an asynchronous thumbnail generation
+        If the request is successfully queued, the libvlc_MediaThumbnailGenerated
+        is guaranteed to be emitted.
+        The resulting thumbnail size can either be:
+        - Hardcoded by providing both width & height. In which case, the image will
+          be stretched to match the provided aspect ratio, or cropped if crop is true.
+        - Derived from the media aspect ratio if only width or height is provided and
+          the other one is set to 0.
+        @param md: media descriptor object.
+        @param time: The time at which the thumbnail should be generated.
+        @param speed: The seeking speed \saL{ThumbnailerSeekSpeed}.
+        @param width: The thumbnail width.
+        @param height: the thumbnail height.
+        @param crop: Should the picture be cropped to preserve source aspect ratio.
+        @param picture_type: The thumbnail picture type \saL{PictureType}.
+        @param timeout: A timeout value in ms, or 0 to disable timeout.
+        @return: A valid opaque request object, or None in case of failure. It may be cancelled by L{media_thumbnail_request_cancel}(). It must be released by L{media_thumbnail_request_destroy}().
+        @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
+        '''
+        return libvlc_media_thumbnail_request_by_time(self, md, time, speed, width, height, crop, picture_type, timeout)
+
+
+    def media_thumbnail_request_by_pos(self, md, pos, speed, width, height, crop, picture_type, timeout):
+        '''\brief libvlc_media_request_thumbnail_by_pos Start an asynchronous thumbnail generation
+        If the request is successfully queued, the libvlc_MediaThumbnailGenerated
+        is guaranteed to be emitted.
+        The resulting thumbnail size can either be:
+        - Hardcoded by providing both width & height. In which case, the image will
+          be stretched to match the provided aspect ratio, or cropped if crop is true.
+        - Derived from the media aspect ratio if only width or height is provided and
+          the other one is set to 0.
+        @param md: media descriptor object.
+        @param pos: The position at which the thumbnail should be generated.
+        @param speed: The seeking speed \saL{ThumbnailerSeekSpeed}.
+        @param width: The thumbnail width.
+        @param height: the thumbnail height.
+        @param crop: Should the picture be cropped to preserve source aspect ratio.
+        @param picture_type: The thumbnail picture type \saL{PictureType}.
+        @param timeout: A timeout value in ms, or 0 to disable timeout.
+        @return: A valid opaque request object, or None in case of failure. It may be cancelled by L{media_thumbnail_request_cancel}(). It must be released by L{media_thumbnail_request_destroy}().
+        @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
+        '''
+        return libvlc_media_thumbnail_request_by_pos(self, md, pos, speed, width, height, crop, picture_type, timeout)
 
 
     def media_discoverer_new(self, psz_name):
@@ -2374,28 +2507,19 @@ class Instance(_Ctype):
         return libvlc_media_discoverer_list_get(self, i_cat, ppp_services)
 
 
+    def media_player_new_from_media(self, p_md):
+        '''Create a Media Player object from a Media.
+        @param p_md: the media. Afterwards the p_md can be safely destroyed.
+        @return: a new media player object, or None on error. It must be released by L{media_player_release}().
+        '''
+        return libvlc_media_player_new_from_media(self, p_md)
+
+
     def audio_output_list_get(self):
         '''Gets the list of available audio output modules.
         @return: list of available audio outputs. It must be freed with In case of error, None is returned.
         '''
         return libvlc_audio_output_list_get(self)
-
-
-    def audio_output_device_list_get(self, aout):
-        '''Gets a list of audio output devices for a given audio output module,
-        See L{audio_output_device_set}().
-        @note: Not all audio outputs support this. In particular, an empty (None)
-        list of devices does B{not} imply that the specified audio output does
-        not work.
-        @note: The list might not be exhaustive.
-        @warning: Some audio output devices in the list might not actually work in
-        some circumstances. By default, it is recommended to not specify any
-        explicit audio device.
-        @param aout: audio output name (as returned by L{audio_output_list_get}()).
-        @return: A None-terminated linked list of potential audio output devices. It must be freed with L{audio_output_device_list_release}().
-        @version: LibVLC 2.1.0 or later.
-        '''
-        return libvlc_audio_output_device_list_get(self, str_to_bytes(aout))
 
 
     def renderer_discoverer_new(self, psz_name):
@@ -2480,44 +2604,6 @@ class Media(_Ctype):
 
 
 
-    def parse(self):
-        '''Parse a media.
-        This fetches (local) art, meta data and tracks information.
-        The method is synchronous.
-        \deprecated This function could block indefinitely.
-                    Use L{parse_with_options}() instead
-        See L{parse_with_options}
-        See L{get_meta}.
-        '''
-        return libvlc_media_parse(self)
-
-
-    def parse_async(self):
-        '''Parse a media.
-        This fetches (local) art, meta data and tracks information.
-        The method is the asynchronous of L{parse}().
-        To track when this is over you can listen to libvlc_MediaParsedChanged
-        event. However if the media was already parsed you will not receive this
-        event.
-        \deprecated You can't be sure to receive the libvlc_MediaParsedChanged
-                    event (you can wait indefinitely for this event).
-                    Use L{parse_with_options}() instead
-        See L{parse}
-        See libvlc_MediaParsedChanged
-        See L{get_meta}.
-        '''
-        return libvlc_media_parse_async(self)
-
-
-    def is_parsed(self):
-        '''Return true is the media descriptor object is parsed
-        \deprecated This can return true in case of failure.
-                    Use L{get_parsed_status}() instead
-        See libvlc_MediaParsedChanged.
-        '''
-        return libvlc_media_is_parsed(self)
-
-
     def add_option(self, psz_options):
         '''Add an option to the media.
         This option will be used to determine how the media_player will
@@ -2585,10 +2671,9 @@ class Media(_Ctype):
 
     def get_meta(self, e_meta):
         '''Read the meta of the media.
-        Note, you need to call L{parse_with_options}() or play the media
+        Note, you need to call L{parse_request}() or play the media
         at least once before calling this function.
         If the media has not yet been parsed this will return None.
-        See L{parse_with_options}
         See libvlc_MediaMetaChanged.
         @param e_meta: the meta to read.
         @return: the media's meta.
@@ -2603,23 +2688,6 @@ class Media(_Ctype):
         @param psz_value: the media's meta.
         '''
         return libvlc_media_set_meta(self, e_meta, str_to_bytes(psz_value))
-
-
-    def save_meta(self):
-        '''Save the meta previously set.
-        @return: true if the write operation was successful.
-        '''
-        return libvlc_media_save_meta(self)
-
-
-    def get_state(self):
-        '''Get current state of media descriptor object. Possible media states are
-        libvlc_NothingSpecial=0, libvlc_Opening, libvlc_Playing, libvlc_Paused,
-        libvlc_Stopped, libvlc_Ended, libvlc_Error.
-        See L{State}.
-        @return: state of media descriptor object.
-        '''
-        return libvlc_media_get_state(self)
 
 
     def get_stats(self, p_stats):
@@ -2648,53 +2716,32 @@ class Media(_Ctype):
 
     def get_duration(self):
         '''Get duration (in ms) of media descriptor object item.
-        Note, you need to call L{parse_with_options}() or play the media
+        Note, you need to call L{parse_request}() or play the media
         at least once before calling this function.
         Not doing this will result in an undefined result.
-        See L{parse_with_options}.
         @return: duration of media item or -1 on error.
         '''
         return libvlc_media_get_duration(self)
 
 
-    def parse_with_options(self, parse_flag, timeout):
-        '''Parse the media asynchronously with options.
-        This fetches (local or network) art, meta data and/or tracks information.
-        To track when this is over you can listen to libvlc_MediaParsedChanged
-        event. However if this functions returns an error, you will not receive any
-        events.
-        It uses a flag to specify parse options (see L{MediaParseFlag}). All
-        these flags can be combined. By default, media is parsed if it's a local
-        file.
-        @note: Parsing can be aborted with L{parse_stop}().
-        See libvlc_MediaParsedChanged
-        See L{get_meta}
-        See L{get_tracklist}
-        See L{get_parsed_status}
-        See L{MediaParseFlag}.
-        @param parse_flag: parse options:
-        @param timeout: maximum time allowed to preparse the media. If -1, the default "preparse-timeout" option will be used as a timeout. If 0, it will wait indefinitely. If > 0, the timeout will be used (in milliseconds).
-        @return: -1 in case of error, 0 otherwise.
-        @version: LibVLC 3.0.0 or later.
+    def get_filestat(self, type, out):
+        '''Get a 'stat' value of media descriptor object item.
+        @note: 'stat' values are currently only parsed by directory accesses. This
+        mean that only sub medias of a directory media, parsed with
+        L{parse_request}() can have valid 'stat' properties.
+        @param type: a valid libvlc_media_stat_ define.
+        @param out: field in which the value will be stored.
+        @return: 1 on success, 0 if not found, -1 on error.
+        @version: LibVLC 4.0.0 and later.
         '''
-        return libvlc_media_parse_with_options(self, parse_flag, timeout)
-
-
-    def parse_stop(self):
-        '''Stop the parsing of the media
-        When the media parsing is stopped, the libvlc_MediaParsedChanged event will
-        be sent with the libvlc_media_parsed_status_timeout status.
-        See L{parse_with_options}.
-        @version: LibVLC 3.0.0 or later.
-        '''
-        return libvlc_media_parse_stop(self)
+        return libvlc_media_get_filestat(self, type, out)
 
 
     def get_parsed_status(self):
         '''Get Parsed status for media descriptor object.
         See libvlc_MediaParsedChanged
         See L{MediaParsedStatus}
-        See L{parse_with_options}.
+        See L{parse_request}().
         @return: a value of the L{MediaParsedStatus} enum.
         @version: LibVLC 3.0.0 or later.
         '''
@@ -2723,7 +2770,7 @@ class Media(_Ctype):
         '''Get the track list for one type.
         @param type: type of the track list to request.
         @return: a valid libvlc_media_tracklist_t or None in case of error, if there is no track for a category, the returned list will have a size of 0, delete with L{tracklist_delete}().
-        @version: LibVLC 4.0.0 and later. @note You need to call L{parse_with_options}() or play the media at least once before calling this function.  Not doing this will result in an empty list. See L{parse_with_options} See L{tracklist_count} See L{tracklist_at}.
+        @version: LibVLC 4.0.0 and later. @note You need to call L{parse_request}() or play the media at least once before calling this function.  Not doing this will result in an empty list. See L{tracklist_count} See L{tracklist_at}.
         '''
         return libvlc_media_get_tracklist(self, type)
 
@@ -2736,56 +2783,12 @@ class Media(_Ctype):
         return libvlc_media_get_type(self)
 
 
-    def thumbnail_request_by_time(self, time, speed, width, height, crop, picture_type, timeout):
-        '''\brief libvlc_media_request_thumbnail_by_time Start an asynchronous thumbnail generation
-        If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
-        is guaranteed to be emited.
-        The resulting thumbnail size can either be:
-        - Hardcoded by providing both width & height. In which case, the image will
-          be stretched to match the provided aspect ratio, or cropped if crop is true.
-        - Derived from the media aspect ratio if only width or height is provided and
-          the other one is set to 0.
-        @param time: The time at which the thumbnail should be generated.
-        @param speed: The seeking speed \saL{ThumbnailerSeekSpeed}.
-        @param width: The thumbnail width.
-        @param height: the thumbnail height.
-        @param crop: Should the picture be cropped to preserve source aspect ratio.
-        @param picture_type: The thumbnail picture type \saL{PictureType}.
-        @param timeout: A timeout value in ms, or 0 to disable timeout.
-        @return: A valid opaque request object, or None in case of failure. It may be cancelled by L{thumbnail_request_cancel}(). It must be released by L{thumbnail_request_destroy}().
-        @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
-        '''
-        return libvlc_media_thumbnail_request_by_time(self, time, speed, width, height, crop, picture_type, timeout)
-
-
-    def thumbnail_request_by_pos(self, pos, speed, width, height, crop, picture_type, timeout):
-        '''\brief libvlc_media_request_thumbnail_by_pos Start an asynchronous thumbnail generation
-        If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
-        is guaranteed to be emited.
-        The resulting thumbnail size can either be:
-        - Hardcoded by providing both width & height. In which case, the image will
-          be stretched to match the provided aspect ratio, or cropped if crop is true.
-        - Derived from the media aspect ratio if only width or height is provided and
-          the other one is set to 0.
-        @param pos: The position at which the thumbnail should be generated.
-        @param speed: The seeking speed \saL{ThumbnailerSeekSpeed}.
-        @param width: The thumbnail width.
-        @param height: the thumbnail height.
-        @param crop: Should the picture be cropped to preserve source aspect ratio.
-        @param picture_type: The thumbnail picture type \saL{PictureType}.
-        @param timeout: A timeout value in ms, or 0 to disable timeout.
-        @return: A valid opaque request object, or None in case of failure. It may be cancelled by L{thumbnail_request_cancel}(). It must be released by L{thumbnail_request_destroy}().
-        @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
-        '''
-        return libvlc_media_thumbnail_request_by_pos(self, pos, speed, width, height, crop, picture_type, timeout)
-
-
     def slaves_add(self, i_type, i_priority, psz_uri):
         '''Add a slave to the current media.
         A slave is an external input source that may contains an additional subtitle
         track (like a .srt) or an additional audio track (like a .ac3).
         @note: This function must be called before the media is parsed (via
-        L{parse_with_options}()) or before the media is played (via
+        L{parse_request}()) or before the media is played (via
         L{player_play}()).
         @param i_type: subtitle or audio.
         @param i_priority: from 0 (low priority) to 4 (high priority).
@@ -2814,13 +2817,6 @@ class Media(_Ctype):
         @version: LibVLC 3.0.0 and later. See L{slaves_add}.
         '''
         return libvlc_media_slaves_get(self, ppp_slaves)
-
-
-    def player_new_from_media(self):
-        '''Create a Media Player object from a Media.
-        @return: a new media player object, or None on error. It must be released by L{player_release}().
-        '''
-        return libvlc_media_player_new_from_media(self)
 
 class MediaDiscoverer(_Ctype):
     '''N/A
@@ -3417,7 +3413,7 @@ class MediaPlayer(_Ctype):
         previous md will be released.
         @note: The user should listen to the libvlc_MediaPlayerMediaChanged event, to
         know when the new media is actually used by the player (or to known that the
-        older media is no longuer used).
+        older media is no longer used).
         @param p_md: the Media. Afterwards the p_md can be safely destroyed.
         '''
         return libvlc_media_player_set_media(self, p_md)
@@ -3676,7 +3672,13 @@ class MediaPlayer(_Ctype):
         '''Sets a fixed decoded audio format.
         This only works in combination with L{audio_set_callbacks}(),
         and is mutually exclusive with L{audio_set_format_callbacks}().
-        @param format: a four-characters string identifying the sample format (e.g. "S16N" or "f32l").
+        The supported formats are:
+        - "S16N" for signed 16-bit PCM
+        - "S32N" for signed 32-bit PCM
+        - "FL32" for single precision IEEE 754
+        All supported formats use the native endianess.
+        If there are more than one channel, samples are interleaved.
+        @param format: a four-characters string identifying the sample format.
         @param rate: sample rate (expressed in Hz).
         @param channels: channels count.
         @version: LibVLC 2.0.0 or later.
@@ -3861,13 +3863,14 @@ class MediaPlayer(_Ctype):
         return libvlc_media_player_set_video_title_display(self, position, timeout)
 
 
-    def get_tracklist(self, type):
+    def get_tracklist(self, type, selected):
         '''Get the track list for one type.
         @param type: type of the track list to request.
+        @param selected: filter only selected tracks if true (return all tracks, even selected ones if false).
         @return: a valid libvlc_media_tracklist_t or None in case of error, if there is no track for a category, the returned list will have a size of 0, delete with L{media_tracklist_delete}().
-        @version: LibVLC 4.0.0 and later. @note You need to call L{media_parse_with_options}() or play the media at least once before calling this function.  Not doing this will result in an empty list. @note This track list is a snapshot of the current tracks when this function is called. If a track is updated after this call, the user will need to call this function again to get the updated track. The track list can be used to get track informations and to select specific tracks.
+        @version: LibVLC 4.0.0 and later. @note You need to call L{media_parse_request}() or play the media at least once before calling this function.  Not doing this will result in an empty list. @note This track list is a snapshot of the current tracks when this function is called. If a track is updated after this call, the user will need to call this function again to get the updated track. The track list can be used to get track information and to select specific tracks.
         '''
-        return libvlc_media_player_get_tracklist(self, type)
+        return libvlc_media_player_get_tracklist(self, type, selected)
 
 
     def get_selected_track(self, type):
@@ -3883,7 +3886,7 @@ class MediaPlayer(_Ctype):
         '''Get a track from a track id.
         @param psz_id: valid string representing a track id (cf. psz_id from \ref L{MediaTrack}).
         @return: a valid track or None if there is currently no tracks identified by the string id, release it with L{media_track_release}().
-        @version: LibVLC 4.0.0 and later. This function can be used to get the last updated informations of a track.
+        @version: LibVLC 4.0.0 and later. This function can be used to get the last updated information of a track.
         '''
         return libvlc_media_player_get_track_from_id(self, str_to_bytes(psz_id))
 
@@ -3892,7 +3895,7 @@ class MediaPlayer(_Ctype):
         '''Select a track
         This will unselected the current track.
         @param track: track to select, can't be None.
-        @version: LibVLC 4.0.0 and later. @note Use L{select_tracks}() for multiple selection.
+        @version: LibVLC 4.0.0 and later. @note Use L{select_tracks}() for multiple selection @warning Only use a \ref L{MediaTrack} retrieved with \ref L{get_tracklist}.
         '''
         return libvlc_media_player_select_track(self, track)
 
@@ -3910,7 +3913,7 @@ class MediaPlayer(_Ctype):
         @param type: type of the selected track.
         @param tracks: pointer to the track array, or None if track_count is 0.
         @param track_count: number of tracks in the track array.
-        @version: LibVLC 4.0.0 and later. @note The internal track list can change between the calls of L{get_tracklist}() and libvlc_media_player_set_tracks(). If a track selection change but the track is not present anymore, the player will just ignore it. @note selecting multiple audio tracks is currently not supported.
+        @version: LibVLC 4.0.0 and later. @note The internal track list can change between the calls of L{get_tracklist}() and libvlc_media_player_set_tracks(). If a track selection change but the track is not present anymore, the player will just ignore it. @note selecting multiple audio tracks is currently not supported. @warning Only use a \ref L{MediaTrack} retrieved with \ref L{get_tracklist}.
         '''
         return libvlc_media_player_select_tracks(self, type, tracks, track_count)
 
@@ -3919,7 +3922,7 @@ class MediaPlayer(_Ctype):
         '''Select tracks by their string identifier.
         @param type: type to select.
         @param psz_ids: list of string identifier or None.
-        @version: LibVLC 4.0.0 and later. This function can be used pre-select a list of tracks before starting the player. It has only effect for the current media. It can also be used when the player is already started. 'str_ids' can contain more than one track id, delimited with ','. "" or any invalid track id will cause the player to unselect all tracks of that category. None will disable the preference for newer tracks without unselecting any current tracks. Example: - (libvlc_track_video, "video/1,video/2") will select these 2 video tracks. If there is only one video track with the id "video/0", no tracks will be selected. - (L{TrackType}, "$slave_url_md5sum/spu/0) will select one spu added by an input slave with the corresponding url. @note The string identifier of a track can be found via psz_id from \ref L{MediaTrack} @note selecting multiple audio tracks is currently not supported.
+        @version: LibVLC 4.0.0 and later. This function can be used pre-select a list of tracks before starting the player. It has only effect for the current media. It can also be used when the player is already started. 'str_ids' can contain more than one track id, delimited with ','. "" or any invalid track id will cause the player to unselect all tracks of that category. None will disable the preference for newer tracks without unselecting any current tracks. Example: - (libvlc_track_video, "video/1,video/2") will select these 2 video tracks. If there is only one video track with the id "video/0", no tracks will be selected. - (L{TrackType}, "$slave_url_md5sum/spu/0) will select one spu added by an input slave with the corresponding url. @note The string identifier of a track can be found via psz_id from \ref L{MediaTrack} @note selecting multiple audio tracks is currently not supported. @warning Only use a \ref L{MediaTrack} id retrieved with \ref L{get_tracklist}.
         '''
         return libvlc_media_player_select_tracks_by_ids(self, type, str_to_bytes(psz_ids))
 
@@ -3967,7 +3970,7 @@ class MediaPlayer(_Ctype):
     def get_programlist(self):
         '''Get the program list.
         @return: a valid libvlc_media_programlist_t or None in case of error or empty list, delete with libvlc_media_programlist_delete().
-        @version: LibVLC 4.0.0 and later. @note This program list is a snapshot of the current programs when this function is called. If a program is updated after this call, the user will need to call this function again to get the updated program. The program list can be used to get program informations and to select specific programs.
+        @version: LibVLC 4.0.0 and later. @note This program list is a snapshot of the current programs when this function is called. If a program is updated after this call, the user will need to call this function again to get the updated program. The program list can be used to get program information and to select specific programs.
         '''
         return libvlc_media_player_get_programlist(self)
 
@@ -4309,8 +4312,8 @@ class MediaPlayer(_Ctype):
 
 
     def audio_output_device_enum(self):
-        '''Gets a list of potential audio output devices,
-        See L{audio_output_device_set}().
+        '''Gets a list of potential audio output devices.
+        See also L{audio_output_device_set}().
         @note: Not all audio outputs support enumerating devices.
         The audio output may be functional even if the list is empty (None).
         @note: The list may not be exhaustive.
@@ -4323,32 +4326,20 @@ class MediaPlayer(_Ctype):
         return libvlc_audio_output_device_enum(self)
 
 
-    def audio_output_device_set(self, module, device_id):
+    def audio_output_device_set(self, device_id):
         '''Configures an explicit audio output device.
-        If the module paramater is None, audio output will be moved to the device
-        specified by the device identifier string immediately. This is the
-        recommended usage.
         A list of adequate potential device strings can be obtained with
         L{audio_output_device_enum}().
-        However passing None is supported in LibVLC version 2.2.0 and later only;
-        in earlier versions, this function would have no effects when the module
-        parameter was None.
-        If the module parameter is not None, the device parameter of the
-        corresponding audio output, if it exists, will be set to the specified
-        string. Note that some audio output modules do not have such a parameter
-        (notably MMDevice and PulseAudio).
-        A list of adequate potential device strings can be obtained with
-        L{audio_output_device_list_get}().
         @note: This function does not select the specified audio output plugin.
         L{audio_output_set}() is used for that purpose.
         @warning: The syntax for the device parameter depends on the audio output.
         Some audio output modules require further parameters (e.g. a channels map
         in the case of ALSA).
-        @param module: If None, current audio output module. if non-None, name of audio output module.
         @param device_id: device identifier string (see \ref L{AudioOutputDevice}::psz_device).
-        @bug: This function returns nothing. Errors are ignored (this is a design bug).
+        @return: If the change of device was requested succesfully, zero is returned (the actual change is asynchronous and not guaranteed to succeed). On error, a non-zero value is returned.
+        @version: This function originally expected three parameters. The middle parameter was removed from LibVLC 4.0 onward.
         '''
-        return libvlc_audio_output_device_set(self, str_to_bytes(module), str_to_bytes(device_id))
+        return libvlc_audio_output_device_set(self, str_to_bytes(device_id))
 
 
     def audio_output_device_get(self):
@@ -4357,8 +4348,8 @@ class MediaPlayer(_Ctype):
         @warning: The initial value for the current audio output device identifier
         may not be set or may be some unknown value. A LibVLC application should
         compare this value against the known device identifiers (e.g. those that
-        were previously retrieved by a call to L{audio_output_device_enum} or
-        L{audio_output_device_list_get}) to find the current audio output device.
+        were previously retrieved by a call to L{audio_output_device_enum}) to
+        find the current audio output device.
         It is possible that the selected audio output device changes (an external
         change) without a call to L{audio_output_device_set}. That may make this
         method unsuitable to use if a LibVLC application is attempting to track
@@ -4473,6 +4464,39 @@ class MediaPlayer(_Ctype):
         @return: 0 on success, -1 on error.
         '''
         return libvlc_media_player_set_role(self, role)
+
+
+    def record(self, enable, dir_path):
+        '''Start/stop recording
+        @note: The user should listen to the libvlc_MediaPlayerRecordChanged event,
+        to monitor the recording state.
+        @param enable: true to start recording, false to stop.
+        @param dir_path: path of the recording directory or None (use default path), has only an effect when first enabling recording.
+        @version: LibVLC 4.0.0 and later.
+        '''
+        return libvlc_media_player_record(self, enable, str_to_bytes(dir_path))
+
+
+    def watch_time(self, min_period_us, on_update, on_discontinuity, cbs_data):
+        '''Watch for times updates
+        @warning: Only one watcher can be registered at a time. Calling this function
+        a second time (if L{unwatch_time}() was not called
+        in-between) will fail.
+        @param min_period_us: corresponds to the minimum period, in us, between each updates, use it to avoid flood from too many source updates, set it to 0 to receive all updates.
+        @param on_update: callback to listen to update events (must not be None).
+        @param on_discontinuity: callback to listen to discontinuity events (can be be None).
+        @param cbs_data: opaque pointer used by the callbacks.
+        @return: 0 on success, -1 on error (allocation error, or if already watching).
+        @version: LibVLC 4.0.0 or later.
+        '''
+        return libvlc_media_player_watch_time(self, min_period_us, on_update, on_discontinuity, cbs_data)
+
+
+    def unwatch_time(self):
+        '''Unwatch time updates.
+        @version: LibVLC 4.0.0 or later.
+        '''
+        return libvlc_media_player_unwatch_time(self)
 
 class Picture(_Ctype):
     '''N/A
@@ -4661,79 +4685,6 @@ class RendererDiscoverer(_Ctype):
 
  # LibVLC __version__ functions #
 
-def libvlc_media_parse(p_md):
-    '''Parse a media.
-    This fetches (local) art, meta data and tracks information.
-    The method is synchronous.
-    \deprecated This function could block indefinitely.
-                Use L{libvlc_media_parse_with_options}() instead
-    See L{libvlc_media_parse_with_options}
-    See L{libvlc_media_get_meta}.
-    @param p_md: media descriptor object.
-    '''
-    f = _Cfunctions.get('libvlc_media_parse', None) or \
-        _Cfunction('libvlc_media_parse', ((1,),), None,
-                    None, Media)
-    return f(p_md)
-
-def libvlc_media_parse_async(p_md):
-    '''Parse a media.
-    This fetches (local) art, meta data and tracks information.
-    The method is the asynchronous of L{libvlc_media_parse}().
-    To track when this is over you can listen to libvlc_MediaParsedChanged
-    event. However if the media was already parsed you will not receive this
-    event.
-    \deprecated You can't be sure to receive the libvlc_MediaParsedChanged
-                event (you can wait indefinitely for this event).
-                Use L{libvlc_media_parse_with_options}() instead
-    See L{libvlc_media_parse}
-    See libvlc_MediaParsedChanged
-    See L{libvlc_media_get_meta}.
-    @param p_md: media descriptor object.
-    '''
-    f = _Cfunctions.get('libvlc_media_parse_async', None) or \
-        _Cfunction('libvlc_media_parse_async', ((1,),), None,
-                    None, Media)
-    return f(p_md)
-
-def libvlc_media_is_parsed(p_md):
-    '''Return true is the media descriptor object is parsed
-    \deprecated This can return true in case of failure.
-                Use L{libvlc_media_get_parsed_status}() instead
-    See libvlc_MediaParsedChanged.
-    @param p_md: media descriptor object \retval true media object has been parsed \retval false otherwise.
-    '''
-    f = _Cfunctions.get('libvlc_media_is_parsed', None) or \
-        _Cfunction('libvlc_media_is_parsed', ((1,),), None,
-                    ctypes.c_bool, Media)
-    return f(p_md)
-
-def libvlc_media_tracks_get(p_md, tracks):
-    '''Get media descriptor's elementary streams description
-    Note, you need to call L{libvlc_media_parse_with_options}() or play the media
-    at least once before calling this function.
-    Not doing this will result in an empty array.
-    @param p_md: media descriptor object.
-    @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed with L{libvlc_media_tracks_release}.
-    @return: the number of Elementary Streams (zero on error).
-    @version: LibVLC 2.1.0 and later. See L{libvlc_media_parse_with_options}.
-    '''
-    f = _Cfunctions.get('libvlc_media_tracks_get', None) or \
-        _Cfunction('libvlc_media_tracks_get', ((1,), (1,),), None,
-                    ctypes.c_uint, Media, ctypes.POINTER(ctypes.POINTER(MediaTrack)))
-    return f(p_md, tracks)
-
-def libvlc_media_tracks_release(p_tracks, i_count):
-    '''Release media descriptor's elementary streams description array.
-    @param p_tracks: tracks info array to release.
-    @param i_count: number of elements in the array.
-    @version: LibVLC 2.1.0 and later.
-    '''
-    f = _Cfunctions.get('libvlc_media_tracks_release', None) or \
-        _Cfunction('libvlc_media_tracks_release', ((1,), (1,),), None,
-                    None, ctypes.POINTER(ctypes.POINTER(MediaTrack)), ctypes.c_uint)
-    return f(p_tracks, i_count)
-
 def libvlc_track_description_list_release(p_track_description):
     '''Release (free) L{TrackDescription}.
     @param p_track_description: the structure to release.
@@ -4868,7 +4819,7 @@ def libvlc_audio_set_track(p_mi, i_track):
 
 def libvlc_playlist_play(p_instance):
     '''Start playing (if there is any item in the playlist).
-    Additionnal playlist item options can be specified for addition to the
+    Additional playlist item options can be specified for addition to the
     item before it is played.
     @param p_instance: the playlist instance.
     '''
@@ -4876,6 +4827,18 @@ def libvlc_playlist_play(p_instance):
         _Cfunction('libvlc_playlist_play', ((1,),), None,
                     None, Instance)
     return f(p_instance)
+
+def libvlc_errmsg():
+    '''A human-readable error message for the last LibVLC error in the calling
+    thread. The resulting string is valid until another error occurs (at least
+    until the next LibVLC call).
+    @warning
+    This will be None if there was no error.
+    '''
+    f = _Cfunctions.get('libvlc_errmsg', None) or \
+        _Cfunction('libvlc_errmsg', (), None,
+                    ctypes.c_char_p)
+    return f()
 
 def libvlc_clearerr():
     '''Clears the LibVLC error status for the current thread. This is optional.
@@ -4886,18 +4849,6 @@ def libvlc_clearerr():
         _Cfunction('libvlc_clearerr', (), None,
                     None)
     return f()
-
-def libvlc_vprinterr(fmt, ap):
-    '''Sets the LibVLC error status and message for the current thread.
-    Any previous error is overridden.
-    @param fmt: the format string.
-    @param ap: the arguments.
-    @return: a nul terminated string in any case.
-    '''
-    f = _Cfunctions.get('libvlc_vprinterr', None) or \
-        _Cfunction('libvlc_vprinterr', ((1,), (1,),), None,
-                    ctypes.c_char_p, ctypes.c_char_p, ctypes.c_void_p)
-    return f(fmt, ap)
 
 def libvlc_new(argc, argv):
     '''Create and initialize a libvlc instance.
@@ -5171,15 +5122,23 @@ def libvlc_video_filter_list_get(p_instance):
 def libvlc_clock():
     '''Return the current time as defined by LibVLC. The unit is the microsecond.
     Time increases monotonically (regardless of time zone changes and RTC
-    adjustements).
+    adjustments).
     The origin is arbitrary but consistent across the whole system
-    (e.g. the system uptim, the time since the system was booted).
+    (e.g. the system uptime, the time since the system was booted).
     @note: On systems that support it, the POSIX monotonic clock is used.
     '''
     f = _Cfunctions.get('libvlc_clock', None) or \
         _Cfunction('libvlc_clock', (), None,
                     ctypes.c_int64)
     return f()
+
+def libvlc_dialog_set_error_callback(p_instance, p_cbs, p_data):
+    '''
+    '''
+    f = _Cfunctions.get('libvlc_dialog_set_error_callback', None) or \
+        _Cfunction('libvlc_dialog_set_error_callback', ((1,), (1,), (1,),), None,
+                    None, Instance, DialogErrorCbs, ctypes.c_void_p)
+    return f(p_instance, p_cbs, p_data)
 
 def libvlc_dialog_set_context(p_id, p_context):
     '''Associate an opaque pointer with the dialog id.
@@ -5243,7 +5202,7 @@ def libvlc_dialog_dismiss(p_id):
                     ctypes.c_int, ctypes.c_void_p)
     return f(p_id)
 
-def libvlc_media_new_location(p_instance, psz_mrl):
+def libvlc_media_new_location(psz_mrl):
     '''Create a media with a certain given media resource location,
     for instance a valid URL.
     @note: To refer to a local file with this function,
@@ -5251,28 +5210,26 @@ def libvlc_media_new_location(p_instance, psz_mrl):
     We recommend using L{libvlc_media_new_path}() instead when dealing with
     local files.
     See L{libvlc_media_release}.
-    @param p_instance: the instance.
     @param psz_mrl: the media location.
     @return: the newly created media or None on error.
     '''
     f = _Cfunctions.get('libvlc_media_new_location', None) or \
-        _Cfunction('libvlc_media_new_location', ((1,), (1,),), class_result(Media),
-                    ctypes.c_void_p, Instance, ctypes.c_char_p)
-    return f(p_instance, psz_mrl)
+        _Cfunction('libvlc_media_new_location', ((1,),), class_result(Media),
+                    ctypes.c_void_p, ctypes.c_char_p)
+    return f(psz_mrl)
 
-def libvlc_media_new_path(p_instance, path):
+def libvlc_media_new_path(path):
     '''Create a media for a certain file path.
     See L{libvlc_media_release}.
-    @param p_instance: the instance.
     @param path: local filesystem path.
     @return: the newly created media or None on error.
     '''
     f = _Cfunctions.get('libvlc_media_new_path', None) or \
-        _Cfunction('libvlc_media_new_path', ((1,), (1,),), class_result(Media),
-                    ctypes.c_void_p, Instance, ctypes.c_char_p)
-    return f(p_instance, path)
+        _Cfunction('libvlc_media_new_path', ((1,),), class_result(Media),
+                    ctypes.c_void_p, ctypes.c_char_p)
+    return f(path)
 
-def libvlc_media_new_fd(p_instance, fd):
+def libvlc_media_new_fd(fd):
     '''Create a media for an already open file descriptor.
     The file descriptor shall be open for reading (or reading and writing).
     Regular file descriptors, pipe read descriptors and character device
@@ -5286,19 +5243,17 @@ def libvlc_media_new_fd(p_instance, fd):
     rendered once in a media player. To render it a second time, the file
     descriptor should probably be rewound to the beginning with lseek().
     See L{libvlc_media_release}.
-    @param p_instance: the instance.
     @param fd: open file descriptor.
     @return: the newly created media or None on error.
     @version: LibVLC 1.1.5 and later.
     '''
     f = _Cfunctions.get('libvlc_media_new_fd', None) or \
-        _Cfunction('libvlc_media_new_fd', ((1,), (1,),), class_result(Media),
-                    ctypes.c_void_p, Instance, ctypes.c_int)
-    return f(p_instance, fd)
+        _Cfunction('libvlc_media_new_fd', ((1,),), class_result(Media),
+                    ctypes.c_void_p, ctypes.c_int)
+    return f(fd)
 
-def libvlc_media_new_callbacks(instance, open_cb, read_cb, seek_cb, close_cb, opaque):
+def libvlc_media_new_callbacks(open_cb, read_cb, seek_cb, close_cb, opaque):
     '''Create a media with custom callbacks to read the data from.
-    @param instance: LibVLC instance.
     @param open_cb: callback to open the custom bitstream input media.
     @param read_cb: callback to read data (must not be None).
     @param seek_cb: callback to seek, or None if seeking is not supported.
@@ -5308,21 +5263,20 @@ def libvlc_media_new_callbacks(instance, open_cb, read_cb, seek_cb, close_cb, op
     @version: LibVLC 3.0.0 and later.
     '''
     f = _Cfunctions.get('libvlc_media_new_callbacks', None) or \
-        _Cfunction('libvlc_media_new_callbacks', ((1,), (1,), (1,), (1,), (1,), (1,),), class_result(Media),
-                    ctypes.c_void_p, Instance, MediaOpenCb, MediaReadCb, MediaSeekCb, MediaCloseCb, ctypes.c_void_p)
-    return f(instance, open_cb, read_cb, seek_cb, close_cb, opaque)
+        _Cfunction('libvlc_media_new_callbacks', ((1,), (1,), (1,), (1,), (1,),), class_result(Media),
+                    ctypes.c_void_p, MediaOpenCb, MediaReadCb, MediaSeekCb, MediaCloseCb, ctypes.c_void_p)
+    return f(open_cb, read_cb, seek_cb, close_cb, opaque)
 
-def libvlc_media_new_as_node(p_instance, psz_name):
+def libvlc_media_new_as_node(psz_name):
     '''Create a media as an empty node with a given name.
     See L{libvlc_media_release}.
-    @param p_instance: the instance.
     @param psz_name: the name of the node.
     @return: the new empty media or None on error.
     '''
     f = _Cfunctions.get('libvlc_media_new_as_node', None) or \
-        _Cfunction('libvlc_media_new_as_node', ((1,), (1,),), class_result(Media),
-                    ctypes.c_void_p, Instance, ctypes.c_char_p)
-    return f(p_instance, psz_name)
+        _Cfunction('libvlc_media_new_as_node', ((1,),), class_result(Media),
+                    ctypes.c_void_p, ctypes.c_char_p)
+    return f(psz_name)
 
 def libvlc_media_add_option(p_md, psz_options):
     '''Add an option to the media.
@@ -5409,10 +5363,9 @@ def libvlc_media_duplicate(p_md):
 
 def libvlc_media_get_meta(p_md, e_meta):
     '''Read the meta of the media.
-    Note, you need to call L{libvlc_media_parse_with_options}() or play the media
+    Note, you need to call L{libvlc_media_parse_request}() or play the media
     at least once before calling this function.
     If the media has not yet been parsed this will return None.
-    See L{libvlc_media_parse_with_options}
     See libvlc_MediaMetaChanged.
     @param p_md: the media descriptor.
     @param e_meta: the meta to read.
@@ -5435,28 +5388,16 @@ def libvlc_media_set_meta(p_md, e_meta, psz_value):
                     None, Media, Meta, ctypes.c_char_p)
     return f(p_md, e_meta, psz_value)
 
-def libvlc_media_save_meta(p_md):
+def libvlc_media_save_meta(inst, p_md):
     '''Save the meta previously set.
-    @param p_md: the media desriptor.
+    @param inst: LibVLC instance.
+    @param p_md: the media descriptor.
     @return: true if the write operation was successful.
     '''
     f = _Cfunctions.get('libvlc_media_save_meta', None) or \
-        _Cfunction('libvlc_media_save_meta', ((1,),), None,
-                    ctypes.c_int, Media)
-    return f(p_md)
-
-def libvlc_media_get_state(p_md):
-    '''Get current state of media descriptor object. Possible media states are
-    libvlc_NothingSpecial=0, libvlc_Opening, libvlc_Playing, libvlc_Paused,
-    libvlc_Stopped, libvlc_Ended, libvlc_Error.
-    See L{State}.
-    @param p_md: a media descriptor object.
-    @return: state of media descriptor object.
-    '''
-    f = _Cfunctions.get('libvlc_media_get_state', None) or \
-        _Cfunction('libvlc_media_get_state', ((1,),), None,
-                    State, Media)
-    return f(p_md)
+        _Cfunction('libvlc_media_save_meta', ((1,), (1,),), None,
+                    ctypes.c_int, Instance, Media)
+    return f(inst, p_md)
 
 def libvlc_media_get_stats(p_md, p_stats):
     '''Get the current statistics about the media.
@@ -5493,10 +5434,9 @@ def libvlc_media_event_manager(p_md):
 
 def libvlc_media_get_duration(p_md):
     '''Get duration (in ms) of media descriptor object item.
-    Note, you need to call L{libvlc_media_parse_with_options}() or play the media
+    Note, you need to call L{libvlc_media_parse_request}() or play the media
     at least once before calling this function.
     Not doing this will result in an undefined result.
-    See L{libvlc_media_parse_with_options}.
     @param p_md: media descriptor object.
     @return: duration of media item or -1 on error.
     '''
@@ -5505,7 +5445,23 @@ def libvlc_media_get_duration(p_md):
                     ctypes.c_longlong, Media)
     return f(p_md)
 
-def libvlc_media_parse_with_options(p_md, parse_flag, timeout):
+def libvlc_media_get_filestat(p_md, type, out):
+    '''Get a 'stat' value of media descriptor object item.
+    @note: 'stat' values are currently only parsed by directory accesses. This
+    mean that only sub medias of a directory media, parsed with
+    L{libvlc_media_parse_request}() can have valid 'stat' properties.
+    @param p_md: media descriptor object.
+    @param type: a valid libvlc_media_stat_ define.
+    @param out: field in which the value will be stored.
+    @return: 1 on success, 0 if not found, -1 on error.
+    @version: LibVLC 4.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_media_get_filestat', None) or \
+        _Cfunction('libvlc_media_get_filestat', ((1,), (1,), (1,),), None,
+                    ctypes.c_int, Media, ctypes.c_uint, ctypes.POINTER(ctypes.c_uint64))
+    return f(p_md, type, out)
+
+def libvlc_media_parse_request(inst, p_md, parse_flag, timeout):
     '''Parse the media asynchronously with options.
     This fetches (local or network) art, meta data and/or tracks information.
     To track when this is over you can listen to libvlc_MediaParsedChanged
@@ -5520,35 +5476,37 @@ def libvlc_media_parse_with_options(p_md, parse_flag, timeout):
     See L{libvlc_media_get_tracklist}
     See L{libvlc_media_get_parsed_status}
     See L{MediaParseFlag}.
+    @param inst: LibVLC instance that is to parse the media.
     @param p_md: media descriptor object.
     @param parse_flag: parse options:
     @param timeout: maximum time allowed to preparse the media. If -1, the default "preparse-timeout" option will be used as a timeout. If 0, it will wait indefinitely. If > 0, the timeout will be used (in milliseconds).
     @return: -1 in case of error, 0 otherwise.
-    @version: LibVLC 3.0.0 or later.
+    @version: LibVLC 4.0.0 or later.
     '''
-    f = _Cfunctions.get('libvlc_media_parse_with_options', None) or \
-        _Cfunction('libvlc_media_parse_with_options', ((1,), (1,), (1,),), None,
-                    ctypes.c_int, Media, MediaParseFlag, ctypes.c_int)
-    return f(p_md, parse_flag, timeout)
+    f = _Cfunctions.get('libvlc_media_parse_request', None) or \
+        _Cfunction('libvlc_media_parse_request', ((1,), (1,), (1,), (1,),), None,
+                    ctypes.c_int, Instance, Media, MediaParseFlag, ctypes.c_int)
+    return f(inst, p_md, parse_flag, timeout)
 
-def libvlc_media_parse_stop(p_md):
+def libvlc_media_parse_stop(inst, p_md):
     '''Stop the parsing of the media
     When the media parsing is stopped, the libvlc_MediaParsedChanged event will
     be sent with the libvlc_media_parsed_status_timeout status.
-    See L{libvlc_media_parse_with_options}.
+    See L{libvlc_media_parse_request}().
+    @param inst: LibVLC instance that is to cease or give up parsing the media.
     @param p_md: media descriptor object.
     @version: LibVLC 3.0.0 or later.
     '''
     f = _Cfunctions.get('libvlc_media_parse_stop', None) or \
-        _Cfunction('libvlc_media_parse_stop', ((1,),), None,
-                    None, Media)
-    return f(p_md)
+        _Cfunction('libvlc_media_parse_stop', ((1,), (1,),), None,
+                    None, Instance, Media)
+    return f(inst, p_md)
 
 def libvlc_media_get_parsed_status(p_md):
     '''Get Parsed status for media descriptor object.
     See libvlc_MediaParsedChanged
     See L{MediaParsedStatus}
-    See L{libvlc_media_parse_with_options}.
+    See L{libvlc_media_parse_request}().
     @param p_md: media descriptor object.
     @return: a value of the L{MediaParsedStatus} enum.
     @version: LibVLC 3.0.0 or later.
@@ -5587,7 +5545,7 @@ def libvlc_media_get_tracklist(p_md, type):
     @param p_md: media descriptor object.
     @param type: type of the track list to request.
     @return: a valid libvlc_media_tracklist_t or None in case of error, if there is no track for a category, the returned list will have a size of 0, delete with L{libvlc_media_tracklist_delete}().
-    @version: LibVLC 4.0.0 and later. @note You need to call L{libvlc_media_parse_with_options}() or play the media at least once before calling this function.  Not doing this will result in an empty list. See L{libvlc_media_parse_with_options} See L{libvlc_media_tracklist_count} See L{libvlc_media_tracklist_at}.
+    @version: LibVLC 4.0.0 and later. @note You need to call L{libvlc_media_parse_request}() or play the media at least once before calling this function.  Not doing this will result in an empty list. See L{libvlc_media_tracklist_count} See L{libvlc_media_tracklist_at}.
     '''
     f = _Cfunctions.get('libvlc_media_get_tracklist', None) or \
         _Cfunction('libvlc_media_get_tracklist', ((1,), (1,),), None,
@@ -5596,12 +5554,12 @@ def libvlc_media_get_tracklist(p_md, type):
 
 def libvlc_media_get_codec_description(i_type, i_codec):
     '''Get codec description from media elementary stream
-    Note, you need to call L{libvlc_media_parse_with_options}() or play the media
+    Note, you need to call L{libvlc_media_parse_request}() or play the media
     at least once before calling this function.
     @param i_type: i_type from L{MediaTrack}.
     @param i_codec: i_codec or i_original_fourcc from L{MediaTrack}.
     @return: codec description.
-    @version: LibVLC 3.0.0 and later. See L{MediaTrack} See L{libvlc_media_parse_with_options}.
+    @version: LibVLC 3.0.0 and later. See L{MediaTrack}.
     '''
     f = _Cfunctions.get('libvlc_media_get_codec_description', None) or \
         _Cfunction('libvlc_media_get_codec_description', ((1,), (1,),), None,
@@ -5619,15 +5577,16 @@ def libvlc_media_get_type(p_md):
                     MediaType, Media)
     return f(p_md)
 
-def libvlc_media_thumbnail_request_by_time(md, time, speed, width, height, crop, picture_type, timeout):
+def libvlc_media_thumbnail_request_by_time(inst, md, time, speed, width, height, crop, picture_type, timeout):
     '''\brief libvlc_media_request_thumbnail_by_time Start an asynchronous thumbnail generation
-    If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
-    is guaranteed to be emited.
+    If the request is successfully queued, the libvlc_MediaThumbnailGenerated
+    is guaranteed to be emitted.
     The resulting thumbnail size can either be:
     - Hardcoded by providing both width & height. In which case, the image will
       be stretched to match the provided aspect ratio, or cropped if crop is true.
     - Derived from the media aspect ratio if only width or height is provided and
       the other one is set to 0.
+    @param inst: LibVLC instance to generate the thumbnail with.
     @param md: media descriptor object.
     @param time: The time at which the thumbnail should be generated.
     @param speed: The seeking speed \saL{ThumbnailerSeekSpeed}.
@@ -5640,19 +5599,20 @@ def libvlc_media_thumbnail_request_by_time(md, time, speed, width, height, crop,
     @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
     '''
     f = _Cfunctions.get('libvlc_media_thumbnail_request_by_time', None) or \
-        _Cfunction('libvlc_media_thumbnail_request_by_time', ((1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,),), None,
-                    MediaThumbnailRequest, Media, ctypes.c_longlong, ThumbnailerSeekSpeed, ctypes.c_uint, ctypes.c_uint, ctypes.c_bool, PictureType, ctypes.c_longlong)
-    return f(md, time, speed, width, height, crop, picture_type, timeout)
+        _Cfunction('libvlc_media_thumbnail_request_by_time', ((1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,),), None,
+                    MediaThumbnailRequest, Instance, Media, ctypes.c_longlong, ThumbnailerSeekSpeed, ctypes.c_uint, ctypes.c_uint, ctypes.c_bool, PictureType, ctypes.c_longlong)
+    return f(inst, md, time, speed, width, height, crop, picture_type, timeout)
 
-def libvlc_media_thumbnail_request_by_pos(md, pos, speed, width, height, crop, picture_type, timeout):
+def libvlc_media_thumbnail_request_by_pos(inst, md, pos, speed, width, height, crop, picture_type, timeout):
     '''\brief libvlc_media_request_thumbnail_by_pos Start an asynchronous thumbnail generation
-    If the request is successfuly queued, the libvlc_MediaThumbnailGenerated
-    is guaranteed to be emited.
+    If the request is successfully queued, the libvlc_MediaThumbnailGenerated
+    is guaranteed to be emitted.
     The resulting thumbnail size can either be:
     - Hardcoded by providing both width & height. In which case, the image will
       be stretched to match the provided aspect ratio, or cropped if crop is true.
     - Derived from the media aspect ratio if only width or height is provided and
       the other one is set to 0.
+    @param inst: LibVLC instance to generate the thumbnail with.
     @param md: media descriptor object.
     @param pos: The position at which the thumbnail should be generated.
     @param speed: The seeking speed \saL{ThumbnailerSeekSpeed}.
@@ -5665,13 +5625,13 @@ def libvlc_media_thumbnail_request_by_pos(md, pos, speed, width, height, crop, p
     @version: libvlc 4.0 or later See L{Picture} See L{PictureType}.
     '''
     f = _Cfunctions.get('libvlc_media_thumbnail_request_by_pos', None) or \
-        _Cfunction('libvlc_media_thumbnail_request_by_pos', ((1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,),), None,
-                    MediaThumbnailRequest, Media, ctypes.c_float, ThumbnailerSeekSpeed, ctypes.c_uint, ctypes.c_uint, ctypes.c_bool, PictureType, ctypes.c_longlong)
-    return f(md, pos, speed, width, height, crop, picture_type, timeout)
+        _Cfunction('libvlc_media_thumbnail_request_by_pos', ((1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,),), None,
+                    MediaThumbnailRequest, Instance, Media, ctypes.c_double, ThumbnailerSeekSpeed, ctypes.c_uint, ctypes.c_uint, ctypes.c_bool, PictureType, ctypes.c_longlong)
+    return f(inst, md, pos, speed, width, height, crop, picture_type, timeout)
 
 def libvlc_media_thumbnail_request_cancel(p_req):
     '''@brief libvlc_media_thumbnail_cancel cancels a thumbnailing request.
-    @param p_req: An opaque thumbnail request object. Cancelling the request will still cause libvlc_MediaThumbnailGenerated event to be emited, with a None L{Picture} If the request is cancelled after its completion, the behavior is undefined.
+    @param p_req: An opaque thumbnail request object. Cancelling the request will still cause libvlc_MediaThumbnailGenerated event to be emitted, with a None L{Picture} If the request is cancelled after its completion, the behavior is undefined.
     '''
     f = _Cfunctions.get('libvlc_media_thumbnail_request_cancel', None) or \
         _Cfunction('libvlc_media_thumbnail_request_cancel', ((1,),), None,
@@ -5692,7 +5652,7 @@ def libvlc_media_slaves_add(p_md, i_type, i_priority, psz_uri):
     A slave is an external input source that may contains an additional subtitle
     track (like a .srt) or an additional audio track (like a .ac3).
     @note: This function must be called before the media is parsed (via
-    L{libvlc_media_parse_with_options}()) or before the media is played (via
+    L{libvlc_media_parse_request}()) or before the media is played (via
     L{libvlc_media_player_play}()).
     @param p_md: media descriptor object.
     @param i_type: subtitle or audio.
@@ -6194,15 +6154,16 @@ def libvlc_media_player_new(p_libvlc_instance):
                     ctypes.c_void_p, Instance)
     return f(p_libvlc_instance)
 
-def libvlc_media_player_new_from_media(p_md):
+def libvlc_media_player_new_from_media(inst, p_md):
     '''Create a Media Player object from a Media.
+    @param inst: LibVLC instance to create a media player with.
     @param p_md: the media. Afterwards the p_md can be safely destroyed.
     @return: a new media player object, or None on error. It must be released by L{libvlc_media_player_release}().
     '''
     f = _Cfunctions.get('libvlc_media_player_new_from_media', None) or \
-        _Cfunction('libvlc_media_player_new_from_media', ((1,),), class_result(MediaPlayer),
-                    ctypes.c_void_p, Media)
-    return f(p_md)
+        _Cfunction('libvlc_media_player_new_from_media', ((1,), (1,),), class_result(MediaPlayer),
+                    ctypes.c_void_p, Instance, Media)
+    return f(inst, p_md)
 
 def libvlc_media_player_release(p_mi):
     '''Release a media_player after use
@@ -6232,7 +6193,7 @@ def libvlc_media_player_set_media(p_mi, p_md):
     previous md will be released.
     @note: The user should listen to the libvlc_MediaPlayerMediaChanged event, to
     know when the new media is actually used by the player (or to known that the
-    older media is no longuer used).
+    older media is no longer used).
     @param p_mi: the Media Player.
     @param p_md: the Media. Afterwards the p_md can be safely destroyed.
     '''
@@ -6566,8 +6527,14 @@ def libvlc_audio_set_format(mp, format, rate, channels):
     '''Sets a fixed decoded audio format.
     This only works in combination with L{libvlc_audio_set_callbacks}(),
     and is mutually exclusive with L{libvlc_audio_set_format_callbacks}().
+    The supported formats are:
+    - "S16N" for signed 16-bit PCM
+    - "S32N" for signed 32-bit PCM
+    - "FL32" for single precision IEEE 754
+    All supported formats use the native endianess.
+    If there are more than one channel, samples are interleaved.
     @param mp: the media player.
-    @param format: a four-characters string identifying the sample format (e.g. "S16N" or "f32l").
+    @param format: a four-characters string identifying the sample format.
     @param rate: sample rate (expressed in Hz).
     @param channels: channels count.
     @version: LibVLC 2.0.0 or later.
@@ -6617,7 +6584,7 @@ def libvlc_media_player_get_position(p_mi):
     '''
     f = _Cfunctions.get('libvlc_media_player_get_position', None) or \
         _Cfunction('libvlc_media_player_get_position', ((1,),), None,
-                    ctypes.c_float, MediaPlayer)
+                    ctypes.c_double, MediaPlayer)
     return f(p_mi)
 
 def libvlc_media_player_set_position(p_mi, f_pos, b_fast):
@@ -6631,7 +6598,7 @@ def libvlc_media_player_set_position(p_mi, f_pos, b_fast):
     '''
     f = _Cfunctions.get('libvlc_media_player_set_position', None) or \
         _Cfunction('libvlc_media_player_set_position', ((1,), (1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, ctypes.c_float, ctypes.c_bool)
+                    ctypes.c_int, MediaPlayer, ctypes.c_double, ctypes.c_bool)
     return f(p_mi, f_pos, b_fast)
 
 def libvlc_media_player_set_chapter(p_mi, i_chapter):
@@ -6826,17 +6793,18 @@ def libvlc_media_player_set_video_title_display(p_mi, position, timeout):
                     None, MediaPlayer, Position, ctypes.c_uint)
     return f(p_mi, position, timeout)
 
-def libvlc_media_player_get_tracklist(p_mi, type):
+def libvlc_media_player_get_tracklist(p_mi, type, selected):
     '''Get the track list for one type.
     @param p_mi: the media player.
     @param type: type of the track list to request.
+    @param selected: filter only selected tracks if true (return all tracks, even selected ones if false).
     @return: a valid libvlc_media_tracklist_t or None in case of error, if there is no track for a category, the returned list will have a size of 0, delete with L{libvlc_media_tracklist_delete}().
-    @version: LibVLC 4.0.0 and later. @note You need to call L{libvlc_media_parse_with_options}() or play the media at least once before calling this function.  Not doing this will result in an empty list. @note This track list is a snapshot of the current tracks when this function is called. If a track is updated after this call, the user will need to call this function again to get the updated track. The track list can be used to get track informations and to select specific tracks.
+    @version: LibVLC 4.0.0 and later. @note You need to call L{libvlc_media_parse_request}() or play the media at least once before calling this function.  Not doing this will result in an empty list. @note This track list is a snapshot of the current tracks when this function is called. If a track is updated after this call, the user will need to call this function again to get the updated track. The track list can be used to get track information and to select specific tracks.
     '''
     f = _Cfunctions.get('libvlc_media_player_get_tracklist', None) or \
-        _Cfunction('libvlc_media_player_get_tracklist', ((1,), (1,),), None,
-                    ctypes.c_void_p, MediaPlayer, TrackType)
-    return f(p_mi, type)
+        _Cfunction('libvlc_media_player_get_tracklist', ((1,), (1,), (1,),), None,
+                    ctypes.c_void_p, MediaPlayer, TrackType, ctypes.c_bool)
+    return f(p_mi, type, selected)
 
 def libvlc_media_player_get_selected_track(p_mi, type):
     '''Get the selected track for one type.
@@ -6855,7 +6823,7 @@ def libvlc_media_player_get_track_from_id(p_mi, psz_id):
     @param p_mi: the media player.
     @param psz_id: valid string representing a track id (cf. psz_id from \ref L{MediaTrack}).
     @return: a valid track or None if there is currently no tracks identified by the string id, release it with L{libvlc_media_track_release}().
-    @version: LibVLC 4.0.0 and later. This function can be used to get the last updated informations of a track.
+    @version: LibVLC 4.0.0 and later. This function can be used to get the last updated information of a track.
     '''
     f = _Cfunctions.get('libvlc_media_player_get_track_from_id', None) or \
         _Cfunction('libvlc_media_player_get_track_from_id', ((1,), (1,),), None,
@@ -6867,7 +6835,7 @@ def libvlc_media_player_select_track(p_mi, track):
     This will unselected the current track.
     @param p_mi: the media player.
     @param track: track to select, can't be None.
-    @version: LibVLC 4.0.0 and later. @note Use L{libvlc_media_player_select_tracks}() for multiple selection.
+    @version: LibVLC 4.0.0 and later. @note Use L{libvlc_media_player_select_tracks}() for multiple selection @warning Only use a \ref L{MediaTrack} retrieved with \ref L{libvlc_media_player_get_tracklist}.
     '''
     f = _Cfunctions.get('libvlc_media_player_select_track', None) or \
         _Cfunction('libvlc_media_player_select_track', ((1,), (1,),), None,
@@ -6891,7 +6859,7 @@ def libvlc_media_player_select_tracks(p_mi, type, tracks, track_count):
     @param type: type of the selected track.
     @param tracks: pointer to the track array, or None if track_count is 0.
     @param track_count: number of tracks in the track array.
-    @version: LibVLC 4.0.0 and later. @note The internal track list can change between the calls of L{libvlc_media_player_get_tracklist}() and libvlc_media_player_set_tracks(). If a track selection change but the track is not present anymore, the player will just ignore it. @note selecting multiple audio tracks is currently not supported.
+    @version: LibVLC 4.0.0 and later. @note The internal track list can change between the calls of L{libvlc_media_player_get_tracklist}() and libvlc_media_player_set_tracks(). If a track selection change but the track is not present anymore, the player will just ignore it. @note selecting multiple audio tracks is currently not supported. @warning Only use a \ref L{MediaTrack} retrieved with \ref L{libvlc_media_player_get_tracklist}.
     '''
     f = _Cfunctions.get('libvlc_media_player_select_tracks', None) or \
         _Cfunction('libvlc_media_player_select_tracks', ((1,), (1,), (1,), (1,),), None,
@@ -6903,7 +6871,7 @@ def libvlc_media_player_select_tracks_by_ids(p_mi, type, psz_ids):
     @param p_mi: the media player.
     @param type: type to select.
     @param psz_ids: list of string identifier or None.
-    @version: LibVLC 4.0.0 and later. This function can be used pre-select a list of tracks before starting the player. It has only effect for the current media. It can also be used when the player is already started. 'str_ids' can contain more than one track id, delimited with ','. "" or any invalid track id will cause the player to unselect all tracks of that category. None will disable the preference for newer tracks without unselecting any current tracks. Example: - (libvlc_track_video, "video/1,video/2") will select these 2 video tracks. If there is only one video track with the id "video/0", no tracks will be selected. - (L{TrackType}, "$slave_url_md5sum/spu/0) will select one spu added by an input slave with the corresponding url. @note The string identifier of a track can be found via psz_id from \ref L{MediaTrack} @note selecting multiple audio tracks is currently not supported.
+    @version: LibVLC 4.0.0 and later. This function can be used pre-select a list of tracks before starting the player. It has only effect for the current media. It can also be used when the player is already started. 'str_ids' can contain more than one track id, delimited with ','. "" or any invalid track id will cause the player to unselect all tracks of that category. None will disable the preference for newer tracks without unselecting any current tracks. Example: - (libvlc_track_video, "video/1,video/2") will select these 2 video tracks. If there is only one video track with the id "video/0", no tracks will be selected. - (L{TrackType}, "$slave_url_md5sum/spu/0) will select one spu added by an input slave with the corresponding url. @note The string identifier of a track can be found via psz_id from \ref L{MediaTrack} @note selecting multiple audio tracks is currently not supported. @warning Only use a \ref L{MediaTrack} id retrieved with \ref L{libvlc_media_player_get_tracklist}.
     '''
     f = _Cfunctions.get('libvlc_media_player_select_tracks_by_ids', None) or \
         _Cfunction('libvlc_media_player_select_tracks_by_ids', ((1,), (1,), (1,),), None,
@@ -7011,7 +6979,7 @@ def libvlc_media_player_get_programlist(p_mi):
     '''Get the program list.
     @param p_mi: the media player.
     @return: a valid libvlc_media_programlist_t or None in case of error or empty list, delete with libvlc_media_programlist_delete().
-    @version: LibVLC 4.0.0 and later. @note This program list is a snapshot of the current programs when this function is called. If a program is updated after this call, the user will need to call this function again to get the updated program. The program list can be used to get program informations and to select specific programs.
+    @version: LibVLC 4.0.0 and later. @note This program list is a snapshot of the current programs when this function is called. If a program is updated after this call, the user will need to call this function again to get the updated program. The program list can be used to get program information and to select specific programs.
     '''
     f = _Cfunctions.get('libvlc_media_player_get_programlist', None) or \
         _Cfunction('libvlc_media_player_get_programlist', ((1,),), None,
@@ -7093,7 +7061,9 @@ def libvlc_video_get_size(p_mi, num):
     '''Get the pixel dimensions of a video.
     @param p_mi: media player.
     @param num: number of the video (starting from, and most commonly 0).
-    @return: px pixel width, py pixel height.
+    @param[out] px pointer to get the pixel width.
+    @param[out] py pointer to get the pixel height.
+    @return: 0 on success, -1 if the specified video does not exist.
     '''
     f = _Cfunctions.get('libvlc_video_get_size', None) or \
         _Cfunction('libvlc_video_get_size', ((1,), (1,), (2,), (2,),), None,
@@ -7114,7 +7084,9 @@ def libvlc_video_get_cursor(p_mi, num):
     multiple input devices sharing the same pointer) at the moment.
     @param p_mi: media player.
     @param num: number of the video (starting from, and most commonly 0).
-    @return: px abscissa, py ordinate.
+    @param[out] px pointer to get the abscissa.
+    @param[out] py pointer to get the ordinate.
+    @return: 0 on success, -1 if the specified video does not exist.
     '''
     f = _Cfunctions.get('libvlc_video_get_cursor', None) or \
         _Cfunction('libvlc_video_get_cursor', ((1,), (1,), (2,), (2,),), None,
@@ -7249,7 +7221,7 @@ def libvlc_video_set_spu_delay(p_mi, i_delay):
 def libvlc_media_player_get_full_title_descriptions(p_mi, titles):
     '''Get the full description of available titles.
     @param p_mi: the media player.
-    @param titles: address to store an allocated array of title descriptions descriptions (must be freed with L{libvlc_title_descriptions_release}() by the caller) [OUT].
+    @param[out] titles address to store an allocated array of title descriptions descriptions (must be freed with L{libvlc_title_descriptions_release}() by the caller).
     @return: the number of titles (-1 on error).
     @version: LibVLC 3.0.0 and later.
     '''
@@ -7273,7 +7245,7 @@ def libvlc_media_player_get_full_chapter_descriptions(p_mi, i_chapters_of_title,
     '''Get the full description of available chapters.
     @param p_mi: the media player.
     @param i_chapters_of_title: index of the title to query for chapters (uses current title if set to -1).
-    @param pp_chapters: address to store an allocated array of chapter descriptions descriptions (must be freed with L{libvlc_chapter_descriptions_release}() by the caller) [OUT].
+    @param[out] pp_chapters address to store an allocated array of chapter descriptions descriptions (must be freed with L{libvlc_chapter_descriptions_release}() by the caller).
     @return: the number of chapters (-1 on error).
     @version: LibVLC 3.0.0 and later.
     '''
@@ -7559,8 +7531,8 @@ def libvlc_audio_output_set(p_mi, psz_name):
     return f(p_mi, psz_name)
 
 def libvlc_audio_output_device_enum(mp):
-    '''Gets a list of potential audio output devices,
-    See L{libvlc_audio_output_device_set}().
+    '''Gets a list of potential audio output devices.
+    See also L{libvlc_audio_output_device_set}().
     @note: Not all audio outputs support enumerating devices.
     The audio output may be functional even if the list is empty (None).
     @note: The list may not be exhaustive.
@@ -7576,26 +7548,6 @@ def libvlc_audio_output_device_enum(mp):
                     ctypes.POINTER(AudioOutputDevice), MediaPlayer)
     return f(mp)
 
-def libvlc_audio_output_device_list_get(p_instance, aout):
-    '''Gets a list of audio output devices for a given audio output module,
-    See L{libvlc_audio_output_device_set}().
-    @note: Not all audio outputs support this. In particular, an empty (None)
-    list of devices does B{not} imply that the specified audio output does
-    not work.
-    @note: The list might not be exhaustive.
-    @warning: Some audio output devices in the list might not actually work in
-    some circumstances. By default, it is recommended to not specify any
-    explicit audio device.
-    @param p_instance: libvlc instance.
-    @param aout: audio output name (as returned by L{libvlc_audio_output_list_get}()).
-    @return: A None-terminated linked list of potential audio output devices. It must be freed with L{libvlc_audio_output_device_list_release}().
-    @version: LibVLC 2.1.0 or later.
-    '''
-    f = _Cfunctions.get('libvlc_audio_output_device_list_get', None) or \
-        _Cfunction('libvlc_audio_output_device_list_get', ((1,), (1,),), None,
-                    ctypes.POINTER(AudioOutputDevice), Instance, ctypes.c_char_p)
-    return f(p_instance, aout)
-
 def libvlc_audio_output_device_list_release(p_list):
     '''Frees a list of available audio output devices.
     @param p_list: list with audio outputs for release.
@@ -7606,36 +7558,24 @@ def libvlc_audio_output_device_list_release(p_list):
                     None, ctypes.POINTER(AudioOutputDevice))
     return f(p_list)
 
-def libvlc_audio_output_device_set(mp, module, device_id):
+def libvlc_audio_output_device_set(mp, device_id):
     '''Configures an explicit audio output device.
-    If the module paramater is None, audio output will be moved to the device
-    specified by the device identifier string immediately. This is the
-    recommended usage.
     A list of adequate potential device strings can be obtained with
     L{libvlc_audio_output_device_enum}().
-    However passing None is supported in LibVLC version 2.2.0 and later only;
-    in earlier versions, this function would have no effects when the module
-    parameter was None.
-    If the module parameter is not None, the device parameter of the
-    corresponding audio output, if it exists, will be set to the specified
-    string. Note that some audio output modules do not have such a parameter
-    (notably MMDevice and PulseAudio).
-    A list of adequate potential device strings can be obtained with
-    L{libvlc_audio_output_device_list_get}().
     @note: This function does not select the specified audio output plugin.
     L{libvlc_audio_output_set}() is used for that purpose.
     @warning: The syntax for the device parameter depends on the audio output.
     Some audio output modules require further parameters (e.g. a channels map
     in the case of ALSA).
     @param mp: media player.
-    @param module: If None, current audio output module. if non-None, name of audio output module.
     @param device_id: device identifier string (see \ref L{AudioOutputDevice}::psz_device).
-    @bug: This function returns nothing. Errors are ignored (this is a design bug).
+    @return: If the change of device was requested succesfully, zero is returned (the actual change is asynchronous and not guaranteed to succeed). On error, a non-zero value is returned.
+    @version: This function originally expected three parameters. The middle parameter was removed from LibVLC 4.0 onward.
     '''
     f = _Cfunctions.get('libvlc_audio_output_device_set', None) or \
-        _Cfunction('libvlc_audio_output_device_set', ((1,), (1,), (1,),), None,
-                    None, MediaPlayer, ctypes.c_char_p, ctypes.c_char_p)
-    return f(mp, module, device_id)
+        _Cfunction('libvlc_audio_output_device_set', ((1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, ctypes.c_char_p)
+    return f(mp, device_id)
 
 def libvlc_audio_output_device_get(mp):
     '''Get the current audio output device identifier.
@@ -7643,8 +7583,8 @@ def libvlc_audio_output_device_get(mp):
     @warning: The initial value for the current audio output device identifier
     may not be set or may be some unknown value. A LibVLC application should
     compare this value against the known device identifiers (e.g. those that
-    were previously retrieved by a call to L{libvlc_audio_output_device_enum} or
-    L{libvlc_audio_output_device_list_get}) to find the current audio output device.
+    were previously retrieved by a call to L{libvlc_audio_output_device_enum}) to
+    find the current audio output device.
     It is possible that the selected audio output device changes (an external
     change) without a call to L{libvlc_audio_output_device_set}. That may make this
     method unsuitable to use if a LibVLC application is attempting to track
@@ -7943,6 +7883,81 @@ def libvlc_media_player_set_role(p_mi, role):
                     ctypes.c_int, MediaPlayer, ctypes.c_uint)
     return f(p_mi, role)
 
+def libvlc_media_player_record(p_mi, enable, dir_path):
+    '''Start/stop recording
+    @note: The user should listen to the libvlc_MediaPlayerRecordChanged event,
+    to monitor the recording state.
+    @param p_mi: media player.
+    @param enable: true to start recording, false to stop.
+    @param dir_path: path of the recording directory or None (use default path), has only an effect when first enabling recording.
+    @version: LibVLC 4.0.0 and later.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_record', None) or \
+        _Cfunction('libvlc_media_player_record', ((1,), (1,), (1,),), None,
+                    None, MediaPlayer, ctypes.c_bool, ctypes.c_char_p)
+    return f(p_mi, enable, dir_path)
+
+def libvlc_media_player_watch_time(p_mi, min_period_us, on_update, on_discontinuity, cbs_data):
+    '''Watch for times updates
+    @warning: Only one watcher can be registered at a time. Calling this function
+    a second time (if L{libvlc_media_player_unwatch_time}() was not called
+    in-between) will fail.
+    @param p_mi: the media player.
+    @param min_period_us: corresponds to the minimum period, in us, between each updates, use it to avoid flood from too many source updates, set it to 0 to receive all updates.
+    @param on_update: callback to listen to update events (must not be None).
+    @param on_discontinuity: callback to listen to discontinuity events (can be be None).
+    @param cbs_data: opaque pointer used by the callbacks.
+    @return: 0 on success, -1 on error (allocation error, or if already watching).
+    @version: LibVLC 4.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_watch_time', None) or \
+        _Cfunction('libvlc_media_player_watch_time', ((1,), (1,), (1,), (1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, ctypes.c_int64, MediaPlayerWatchTimeOnUpdate, MediaPlayerWatchTimeOnDiscontinuity, ctypes.c_void_p)
+    return f(p_mi, min_period_us, on_update, on_discontinuity, cbs_data)
+
+def libvlc_media_player_unwatch_time(p_mi):
+    '''Unwatch time updates.
+    @param p_mi: the media player.
+    @version: LibVLC 4.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_unwatch_time', None) or \
+        _Cfunction('libvlc_media_player_unwatch_time', ((1,),), None,
+                    None, MediaPlayer)
+    return f(p_mi)
+
+def libvlc_media_player_time_point_interpolate(point, system_now_us, out_ts_us, out_pos):
+    '''Interpolate a timer value to now.
+    @param point: time update obtained via the L{MediaPlayerWatchTimeOnUpdate}() callback.
+    @param system_now_us: current system date, in us, returned by L{libvlc_clock}().
+    @param out_ts_us: pointer where to set the interpolated ts, in us.
+    @param out_pos: pointer where to set the interpolated position.
+    @return: 0 in case of success, -1 if the interpolated ts is negative (could happen during the buffering step).
+    @version: LibVLC 4.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_time_point_interpolate', None) or \
+        _Cfunction('libvlc_media_player_time_point_interpolate', ((1,), (1,), (1,), (1,),), None,
+                    ctypes.c_int, ctypes.POINTER(MediaPlayerTimePoint), ctypes.c_int64, ctypes.POINTER(ctypes.c_int64), ctypes.POINTER(ctypes.c_double))
+    return f(point, system_now_us, out_ts_us, out_pos)
+
+def libvlc_media_player_time_point_get_next_date(point, system_now_us, interpolated_ts_us, next_interval_us):
+    '''Get the date of the next interval
+    Can be used to setup an UI timer in order to update some widgets at specific
+    interval. A next_interval of VLC_TICK_FROM_SEC(1) can be used to update a
+    time widget when the media reaches a new second.
+    @note: The media time doesn't necessarily correspond to the system time, that
+    is why this function is needed and uses the rate of the current point.
+    @param point: time update obtained via the L{MediaPlayerWatchTimeOnUpdate}().
+    @param system_now_us: same system date used by L{libvlc_media_player_time_point_interpolate}().
+    @param interpolated_ts_us: ts returned by L{libvlc_media_player_time_point_interpolate}().
+    @param next_interval_us: next interval, in us.
+    @return: the absolute system date, in us,  of the next interval, use libvlc_delay() to get a relative delay.
+    @version: LibVLC 4.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_media_player_time_point_get_next_date', None) or \
+        _Cfunction('libvlc_media_player_time_point_get_next_date', ((1,), (1,), (1,), (1,),), None,
+                    ctypes.c_int64, ctypes.POINTER(MediaPlayerTimePoint), ctypes.c_int64, ctypes.c_int64, ctypes.c_int64)
+    return f(point, system_now_us, interpolated_ts_us, next_interval_us)
+
 def libvlc_media_tracklist_count(list):
     '''Get the number of tracks in a tracklist.
     @param list: valid tracklist.
@@ -8110,7 +8125,7 @@ def libvlc_picture_list_at(list, index):
 
 def libvlc_picture_list_destroy(list):
     '''Destroys a picture list and releases the pictures it contains.
-    @param list: The list to destroy Calling this function with a None list is safe and will return immediatly.
+    @param list: The list to destroy Calling this function with a None list is safe and will return immediately.
     '''
     f = _Cfunctions.get('libvlc_picture_list_destroy', None) or \
         _Cfunction('libvlc_picture_list_destroy', ((1,),), None,
@@ -8278,14 +8293,13 @@ def libvlc_renderer_discoverer_list_release(pp_services, i_count):
     return f(pp_services, i_count)
 
 
-# 5 function(s) blacklisted:
+# 4 function(s) blacklisted:
 #  libvlc_dialog_set_callbacks
-#  libvlc_printerr
 #  libvlc_set_exit_handler
 #  libvlc_video_output_set_resize_cb
 #  libvlc_video_set_output_callbacks
 
-# 48 function(s) not wrapped as methods:
+# 54 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
 #  libvlc_audio_equalizer_get_preset_count
@@ -8302,6 +8316,7 @@ def libvlc_renderer_discoverer_list_release(pp_services, i_count):
 #  libvlc_dialog_post_action
 #  libvlc_dialog_post_login
 #  libvlc_dialog_set_context
+#  libvlc_errmsg
 #  libvlc_free
 #  libvlc_get_changeset
 #  libvlc_get_compiler
@@ -8311,6 +8326,13 @@ def libvlc_renderer_discoverer_list_release(pp_services, i_count):
 #  libvlc_media_discoverer_list_release
 #  libvlc_media_get_codec_description
 #  libvlc_media_list_new
+#  libvlc_media_new_as_node
+#  libvlc_media_new_callbacks
+#  libvlc_media_new_fd
+#  libvlc_media_new_location
+#  libvlc_media_new_path
+#  libvlc_media_player_time_point_get_next_date
+#  libvlc_media_player_time_point_interpolate
 #  libvlc_media_slaves_release
 #  libvlc_media_thumbnail_request_cancel
 #  libvlc_media_thumbnail_request_destroy
@@ -8319,7 +8341,6 @@ def libvlc_renderer_discoverer_list_release(pp_services, i_count):
 #  libvlc_media_tracklist_at
 #  libvlc_media_tracklist_count
 #  libvlc_media_tracklist_delete
-#  libvlc_media_tracks_release
 #  libvlc_module_description_list_release
 #  libvlc_new
 #  libvlc_picture_list_at
@@ -8333,7 +8354,6 @@ def libvlc_renderer_discoverer_list_release(pp_services, i_count):
 #  libvlc_title_descriptions_release
 #  libvlc_track_description_list_release
 #  libvlc_video_new_viewpoint
-#  libvlc_vprinterr
 
 # Start of footer.py #
 
@@ -8408,6 +8428,38 @@ def debug_callback(event, *args, **kwds):
         l.extend(sorted('%s=%s' % t for t in kwds.items()))
     print('Debug callback (%s)' % ', '.join(l))
 
+def print_python():
+    from platform import architecture, machine, mac_ver, uname, win32_ver
+    if 'intelpython' in sys.executable:
+        t = 'Intel-'
+    # elif 'PyPy ' in sys.version:
+    #     t = 'PyPy-'
+    else:
+        t = ''
+    t = '%sPython: %s (%s)' % (t, sys.version.split()[0], architecture()[0])
+    if win32_ver()[0]:
+        t = t, 'Windows', win32_ver()[0]
+    elif mac_ver()[0]:
+        t = t, ('iOS' if sys.platform == 'ios' else 'macOS'), mac_ver()[0], machine()
+    else:
+        try:
+            import distro  # <http://GitHub.com/nir0s/distro>
+            t = t, bytes_to_str(distro.name()), bytes_to_str(distro.version())
+        except ImportError:
+            t = (t,) + uname()[0:3:2]
+    print(' '.join(t))
+
+def print_version():
+    """Print version of this vlc.py and of the libvlc"""
+    try:
+        print('%s: %s (%s)' % (os.path.basename(__file__), __version__, build_date))
+        print('libVLC: %s (%#x)' % (bytes_to_str(libvlc_get_version()), libvlc_hex_version()))
+        # print('libVLC %s' % bytes_to_str(libvlc_get_compiler()))
+        if plugin_path:
+            print('plugins: %s' % plugin_path)
+    except Exception:
+        print('Error: %s' % sys.exc_info()[1])
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
@@ -8438,38 +8490,6 @@ if __name__ == '__main__':
                                                           event.u.new_position * 100,
                                                           player.get_position() * 100))
             sys.stdout.flush()
-
-    def print_python():
-        from platform import architecture, mac_ver, uname, win32_ver
-        if 'intelpython' in sys.executable:
-            t = 'Intel-'
-        # elif 'PyPy ' in sys.version:
-        #     t = 'PyPy-'
-        else:
-            t = ''
-        t = '%sPython: %s (%s)' % (t, sys.version.split()[0], architecture()[0])
-        if win32_ver()[0]:
-            t = t, 'Windows', win32_ver()[0]
-        elif mac_ver()[0]:
-            t = t, ('iOS' if sys.platform == 'ios' else 'macOS'), mac_ver()[0]
-        else:
-            try:
-                import distro  # <http://GitHub.com/nir0s/distro>
-                t = t, bytes_to_str(distro.name()), bytes_to_str(distro.version())
-            except ImportError:
-                t = (t,) + uname()[0:3:2]
-        print(' '.join(t))
-
-    def print_version():
-        """Print version of this vlc.py and of the libvlc"""
-        try:
-            print('%s: %s (%s)' % (os.path.basename(__file__), __version__, build_date))
-            print('LibVLC version: %s (%#x)' % (bytes_to_str(libvlc_get_version()), libvlc_hex_version()))
-            print('LibVLC compiler: %s' % bytes_to_str(libvlc_get_compiler()))
-            if plugin_path:
-                print('Plugin path: %s' % plugin_path)
-        except Exception:
-            print('Error: %s' % sys.exc_info()[1])
 
     if '-h' in sys.argv[:2] or '--help' in sys.argv[:2]:
         print('Usage: %s [options] <movie_filename>' % sys.argv[0])

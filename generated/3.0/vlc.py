@@ -51,10 +51,10 @@ import inspect as _inspect
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.16120"
-__libvlc_version__ = "3.0.16"
-__generator_version__ = "1.20"
-build_date  = "Mon Feb 28 20:29:27 2022 3.0.16"
+__version__ = "3.0.18121"
+__libvlc_version__ = "3.0.18"
+__generator_version__ = "1.21"
+build_date  = "Wed Nov 16 12:04:29 2022 3.0.18"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -4915,6 +4915,18 @@ def libvlc_playlist_play(p_instance, i_id, i_options, ppsz_options):
                     None, Instance, ctypes.c_int, ctypes.c_int, ListPOINTER(ctypes.c_char_p))
     return f(p_instance, i_id, i_options, ppsz_options)
 
+def libvlc_errmsg():
+    '''A human-readable error message for the last LibVLC error in the calling
+    thread. The resulting string is valid until another error occurs (at least
+    until the next LibVLC call).
+    @warning
+    This will be None if there was no error.
+    '''
+    f = _Cfunctions.get('libvlc_errmsg', None) or \
+        _Cfunction('libvlc_errmsg', (), None,
+                    ctypes.c_char_p)
+    return f()
+
 def libvlc_clearerr():
     '''Clears the LibVLC error status for the current thread. This is optional.
     By default, the error status is automatically overridden when a new error
@@ -8361,7 +8373,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_printerr
 #  libvlc_set_exit_handler
 
-# 39 function(s) not wrapped as methods:
+# 40 function(s) not wrapped as methods:
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
 #  libvlc_audio_equalizer_get_preset_count
@@ -8378,6 +8390,7 @@ def libvlc_vlm_get_event_manager(p_instance):
 #  libvlc_dialog_post_action
 #  libvlc_dialog_post_login
 #  libvlc_dialog_set_context
+#  libvlc_errmsg
 #  libvlc_event_type_name
 #  libvlc_free
 #  libvlc_get_changeset
@@ -8475,6 +8488,38 @@ def debug_callback(event, *args, **kwds):
         l.extend(sorted('%s=%s' % t for t in kwds.items()))
     print('Debug callback (%s)' % ', '.join(l))
 
+def print_python():
+    from platform import architecture, machine, mac_ver, uname, win32_ver
+    if 'intelpython' in sys.executable:
+        t = 'Intel-'
+    # elif 'PyPy ' in sys.version:
+    #     t = 'PyPy-'
+    else:
+        t = ''
+    t = '%sPython: %s (%s)' % (t, sys.version.split()[0], architecture()[0])
+    if win32_ver()[0]:
+        t = t, 'Windows', win32_ver()[0]
+    elif mac_ver()[0]:
+        t = t, ('iOS' if sys.platform == 'ios' else 'macOS'), mac_ver()[0], machine()
+    else:
+        try:
+            import distro  # <http://GitHub.com/nir0s/distro>
+            t = t, bytes_to_str(distro.name()), bytes_to_str(distro.version())
+        except ImportError:
+            t = (t,) + uname()[0:3:2]
+    print(' '.join(t))
+
+def print_version():
+    """Print version of this vlc.py and of the libvlc"""
+    try:
+        print('%s: %s (%s)' % (os.path.basename(__file__), __version__, build_date))
+        print('libVLC: %s (%#x)' % (bytes_to_str(libvlc_get_version()), libvlc_hex_version()))
+        # print('libVLC %s' % bytes_to_str(libvlc_get_compiler()))
+        if plugin_path:
+            print('plugins: %s' % plugin_path)
+    except Exception:
+        print('Error: %s' % sys.exc_info()[1])
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
@@ -8505,38 +8550,6 @@ if __name__ == '__main__':
                                                           event.u.new_position * 100,
                                                           player.get_position() * 100))
             sys.stdout.flush()
-
-    def print_python():
-        from platform import architecture, mac_ver, uname, win32_ver
-        if 'intelpython' in sys.executable:
-            t = 'Intel-'
-        # elif 'PyPy ' in sys.version:
-        #     t = 'PyPy-'
-        else:
-            t = ''
-        t = '%sPython: %s (%s)' % (t, sys.version.split()[0], architecture()[0])
-        if win32_ver()[0]:
-            t = t, 'Windows', win32_ver()[0]
-        elif mac_ver()[0]:
-            t = t, ('iOS' if sys.platform == 'ios' else 'macOS'), mac_ver()[0]
-        else:
-            try:
-                import distro  # <http://GitHub.com/nir0s/distro>
-                t = t, bytes_to_str(distro.name()), bytes_to_str(distro.version())
-            except ImportError:
-                t = (t,) + uname()[0:3:2]
-        print(' '.join(t))
-
-    def print_version():
-        """Print version of this vlc.py and of the libvlc"""
-        try:
-            print('%s: %s (%s)' % (os.path.basename(__file__), __version__, build_date))
-            print('LibVLC version: %s (%#x)' % (bytes_to_str(libvlc_get_version()), libvlc_hex_version()))
-            print('LibVLC compiler: %s' % bytes_to_str(libvlc_get_compiler()))
-            if plugin_path:
-                print('Plugin path: %s' % plugin_path)
-        except Exception:
-            print('Error: %s' % sys.exc_info()[1])
 
     if '-h' in sys.argv[:2] or '--help' in sys.argv[:2]:
         print('Usage: %s [options] <movie_filename>' % sys.argv[0])
