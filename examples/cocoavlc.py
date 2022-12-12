@@ -46,7 +46,7 @@ def _PyPI(package):
     return 'see <https://PyPI.org/project/%s>' % (package,)
 
 __all__  = ('AppVLC',)  # PYCHOK expected
-__version__ = '21.11.02'
+__version__ = '22.12.12'
 
 try:
     import vlc
@@ -57,9 +57,9 @@ try:
                         __version__ as _pycocoa_version
 except ImportError:
     raise ImportError('no %s, %s' % (_pycocoa_, _PyPI('PyCocoa')))
-if _pycocoa_version < __version__:
+if _pycocoa_version < '21.11.04':  # __version__
     raise ImportError('%s %s or later required, %s' % (
-                      _pycocoa_, __version__, _PyPI('PyCocoa')))
+                      _pycocoa_, '21.11.04', _PyPI('PyCocoa')))
 del _PyPI
 
 # all imports listed explicitly to help PyChecker
@@ -68,7 +68,7 @@ from pycocoa import App, app_title, aspect_ratio, bytes2str, closeTables, \
                     OpenPanel, printf, str2bytes, Table, z1000str, zSIstr
 
 from os.path import basename, getsize, isfile, splitext
-import platform as _platform
+from platform import architecture, mac_ver
 import sys
 from threading import Thread
 from time import sleep, strftime, strptime
@@ -84,9 +84,11 @@ _Adjust3 = {_Adjust.Brightness: (0, 1, 2),
             _Adjust.Gamma:   (0.01, 1, 10),
             _Adjust.Hue:     (-180, 0, 180),
             _Adjust.Saturation: (0, 1, 3)}
+_AppleSi = machine().startswith('arm64')
 _Argv0   = splitext(basename(__file__))[0]
 _Movies  = '.m4v', '.mov', '.mp4'  # lower-case file types for movies, videos
-_Python  = sys.version.split()[0], _platform.architecture()[0]  # PYCHOK false
+_PNG     = '.png'  # snapshot always .png, even if .jpg or .tiff specified
+_Python  = sys.version.split()[0], architecture()[0]  # PYCHOK false
 _Select  = 'Select a video file from the panel'
 _VLC_3_  = vlc.__version__.split('.')[0] > '2' and \
            bytes2str(vlc.libvlc_get_version().split(b'.')[0]) > '2'
@@ -114,9 +116,28 @@ class _Color(object):  # PYCHOK expected
 _Color = _Color()  # PYCHOK enum-like
 
 
+def _fstrz(f, n=1, x=''):
+    # format float, strip trailing decimal zeros and point
+    return _fstrz0(f, n).rstrip('.') + x
+
+
+def _fstrz0(f, n=1, x=''):
+    # format float, strip trailing decimal zeros
+    t = '%.*f' % (n, f)
+    return t.rstrip('0') + x
+
+
+def _fstrz1(f, n=1, x=''):
+    # format float, strip trailing decimal zeros, except one
+    t = _fstrz0(f, n)
+    if t.endswith('.'):
+        t += '0'
+    return t + x
+
+
 def _macOS(sep=None):
     # get macOS version and extended platform.machine
-    t = 'macOS', _platform.mac_ver()[0], machine()
+    t = 'macOS', mac_ver()[0], machine()
     return sep.join(t) if sep else t
 
 
@@ -127,7 +148,7 @@ def _mspf(fps):
 
 def _ms2str(ms):
     # convert milliseconds to seconds string
-    return '%.3f s' % (max(ms, 0) * 0.001,)
+    return _fstrz1(max(ms, 0) * 0.001, 3, ' s')
 
 
 def _ratio2str(by, *w_h):
@@ -147,36 +168,41 @@ class AppVLC(App):
     logostr   = ''
     player    = None
     raiser    = False
-    scale     = 1  # media zoom factor
-    sized     = None  # video width, height
+    rate      = 0.0   # rate vs normal
+    rate1X    = 1.0   # rate 1X, fixed
+    scale     = 0.0   # video size / window size
+    scale_1X  = 0.0   # video scale 1X
+    sized     = None  # video (width, height)
     Snapshot  = Item('Snapshot', key='s', alt=True)
-    snapshot  = '.png'  # default, or .jpg or .tiff
+    snapshot  = _PNG  # default: .png, .jpg or .tiff
     snapshots = 0
     Toggle    = None
     video     = None
     window    = None
+    zoomX     = 1.0   # zoom factor
 
     def __init__(self, video=None,       # video file name
                        adjustr='',       # vlc.VideoAdjustOption
                        logostr='',       # vlc.VideoLogoOption
                        marquee=False,    # vlc.VideoMarqueeOption
                        raiser=False,     # re-raise errors
-                       snapshot='png',   # png, jpg or tiff format
+                       snapshot=_PNG,    # png, other formats
                        title='AppVLC'):  # window title
         super(AppVLC, self).__init__(raiser=raiser, title=title)
-        self.adjustr  = adjustr
-        self.logostr  = logostr
-        self.marquee  = marquee
-        self.media    = None
-        self.raiser   = raiser
-        self.snapshot = '.' + snapshot.lstrip('.').lower()
-        self.Toggle   = Item('Play', self.menuToggle_, key='p', ctrl=True)
-        self.video    = video
+        self.adjustr = adjustr
+        self.logostr = logostr
+        self.marquee = marquee
+        self.media   = None
+        self.raiser  = raiser
+        self.Toggle  = Item('Play', self.menuToggle_, key='p', ctrl=True)
+        self.video   = video
 
-        if self.snapshot == '.png':
+        if snapshot != AppVLC.snapshot:
+            self.snapshot = '.' + snapshot.lstrip('.').lower()
+        if self.snapshot in (_PNG,):  # only .PNG works, using .JPG ...
+            # ... or .TIFF is OK, but the snapshot image is always .PNG
             self.player = vlc.MediaPlayer()
-#       # XXX does not work, snapshots are always png
-#       elif self.snapshot in ('.jpg', '.tiff'):
+#       elif self.snapshot in (_JPG, _PNG, _TIFF):  # XXX doesn't work
 #           i = vlc.Instance('--snapshot-format', self.snapshot[1:])  # --verbose 2
 #           self.player = i.media_player_new()
         else:
@@ -217,26 +243,28 @@ class AppVLC(App):
                 # see function pycocoa.title2action.
                 Item('Open...', key='o'),
                 ItemSeparator(),
-                Item('Info', key='i'),
-                Item('Close Windows', key='w'),
-                ItemSeparator(),
                 self.Toggle,  # Play >< Pause
                 Item('Rewind', key='r', ctrl=True),
                 ItemSeparator(),
-                Item('Zoom In',  key='+'),
+                Item('Info',  key='i'),
+                Item('Close', key='w'),
+                ItemSeparator(),
+                Item('Zoom In',  key='+', shift=True),
                 Item('Zoom Out', key='-'),
                 ItemSeparator(),
                 Item('Faster', key='>', shift=True),
                 Item('Slower', key='<', shift=True))
             if _VLC_3_:
                 menu.append(
+                    ItemSeparator(),
                     Item('Brighter', key='b', shift=True),
                     Item('Darker',   key='d', shift=True))
             menu.append(
                 ItemSeparator(),
+                Item('Normal 1X', key='='),
+                ItemSeparator(),
                 Item('Audio Filters', self.menuFilters_, key='a', shift=True),
-                Item('Video Filters', self.menuFilters_, key='v', shift=True))
-            menu.append(
+                Item('Video Filters', self.menuFilters_, key='v', shift=True),
                 ItemSeparator(),
                 self.Snapshot)
             self.append(menu)
@@ -247,7 +275,7 @@ class AppVLC(App):
     def menuBrighter_(self, item):
         self._brightness(item, +0.1)
 
-    def menuCloseWindows_(self, item):  # PYCHOK expected
+    def menuClose_(self, item):  # PYCHOK expected
         # close window(s) from menu Cmd+W
         # printf('%s %r', 'close_', item)
         if not closeTables():
@@ -310,36 +338,37 @@ class AppVLC(App):
                 t.append('size', z1000str(z), zSIstr(z))
             t.append('state', str(p.get_state()))
             f = max(p.get_position(), 0)
-            t.append('position/length', '%.2f%%' % (f * 100,), _ms2str(p.get_length()))
+            t.append('position/length', _fstrz(f * 100, 2), _ms2str(p.get_length()))
             f = map(_ms2str, (p.get_time(), m.get_duration()))
             t.append('time/duration', *f)
             t.append('track/count', z1000str(p.video_get_track()), z1000str(p.video_get_track_count()))
             t.separator()
 
             f = p.get_fps()
-            t.append('fps/mspf', '%.6f' % (f,), '%.3f ms' % (_mspf(f),))
+            t.append('fps/mspf', _fstrz(f, 5), _fstrz(_mspf(f), 3, ' ms'))
             r = p.get_rate()
-            t.append('rate', '%s%%' % (int(r * 100),), r)
-            w, h = p.video_get_size(0)
-            t.append('video size', _ratio2str('x', w, h))  # num=0
-            r = _ratio2str(':', *aspect_ratio(w, h))  # p.video_get_aspect_ratio()
+            t.append('rate', r, '%s%%' % (int(r * 100),))
+            a, b = p.video_get_size(0)  # num=0
+            w, h = map(int, self.window.frame.size.size)
+            t.append('video size', _ratio2str('x', a, b), _ratio2str('x', w, h))
+            r = _ratio2str(':', *aspect_ratio(a, b))  # p.video_get_aspect_ratio()
             t.append('aspect ratio', r, _ratio2str(':', *self.window.ratio))
-            t.append('scale', '%.3f' % (p.video_get_scale(),), '%.3f' % (self.scale,))
+            t.append('scale', _fstrz1(p.video_get_scale(), 3), _fstrz(self.zoomX, 2, 'X'))
             t.separator()
 
-            def VLCadjustr2(option):  # get option value
+            def VLCadjustr3(f, option):  # get option value
                 lo, _, hi = _Adjust3[option]
-                f = self.player.video_get_adjust_float(option)
-                p = max(0, (f - lo)) * 100.0 / (hi - lo)
-                t = '%.2f %.1f%%' % (f, p)
-                # return 2-tuple (value, percentage) as strings
-                return t.replace('.0%', '%').replace('.00', '.0').split()
+                v = f(option)
+                p = max(0, (v - lo)) * 100.0 / (hi - lo)
+                n = str(option).split('.')[-1]  # 'VideoAdjustOption.Xyz'
+                return n.lower(), _fstrz1(v, 2), _fstrz(p, 1, '%')
 
-            t.append('brightness', *VLCadjustr2(_Adjust.Brightness))
-            t.append('contrast',   *VLCadjustr2(_Adjust.Contrast))
-            t.append('gamma',      *VLCadjustr2(_Adjust.Gamma))
-            t.append('hue',        *VLCadjustr2(_Adjust.Hue))
-            t.append('saturation', *VLCadjustr2(_Adjust.Saturation))
+            f = self.player.video_get_adjust_float
+            t.append(*VLCadjustr3(f, _Adjust.Brightness))
+            t.append(*VLCadjustr3(f, _Adjust.Contrast))
+            t.append(*VLCadjustr3(f, _Adjust.Gamma))
+            t.append(*VLCadjustr3(f, _Adjust.Hue))
+            t.append(*VLCadjustr3(f, _Adjust.Saturation))
             t.separator()
 
             s = vlc.MediaStats()  # re-use single MediaStats instance?
@@ -373,6 +402,16 @@ class AppVLC(App):
                 raise
             printf('%s', x, nl=1, nt=1)
 
+    def menuNormal1X_(self, item):
+        # set rate and zoom to 1X
+        self._brightness(item)
+#       self._contrast(item)
+#       self._gamma(item)
+#       self._hue(item)
+        self._rate(item)
+#       self._saturation(item)
+        self._zoom(item)
+
     def menuOpen_(self, item):
         # stop the current video and show
         # the panel to select another video
@@ -382,7 +421,7 @@ class AppVLC(App):
         if v:
             self.window.title = self.video = v
             self.player.set_mrl(v)
-            self.sized = None
+            self._reset()
 
     def menuPause_(self, item, pause=False):  # PYCHOK expected
         # note, .player.pause() pauses and un-pauses the video,
@@ -400,10 +439,11 @@ class AppVLC(App):
 
     def menuRewind_(self, item):  # PYCHOK expected
         self.player.set_position(0.0)
+        self.player.set_time(0.0)
         # note, can't re-play once at the end
         # self.menuPlay_()
         self.badge.label = 'R'
-        self.sized = None
+        self._reset()
 
     def menuSlower_(self, item):
         self._rate(item, 0.80)
@@ -446,32 +486,38 @@ class AppVLC(App):
 
     def windowResize_(self, window):
         if window is self.window:
-            self._resizer()
+            self._reset(True)
         super(AppVLC, self).windowResize_(window)
 
     def windowScreen_(self, window, change):
         if window is self.window:
-            self._resizer()
+            self._reset(True)
         super(AppVLC, self).windowScreen_(window, change)
 
-    def _brightness(self, unused, fraction):  # change brightness
+    def _brightness(self, unused, fraction=0):  # change brightness
         self._VLCadjust(_Adjust.Brightness, fraction)
 
-    def _contrast(self, unused, fraction):  # change contrast
+    def _contrast(self, unused, fraction=0):  # change contrast
         self._VLCadjust(_Adjust.Contrast, fraction)
 
-    def _gamma(self, unused, fraction):  # change gamma
+    def _gamma(self, unused, fraction=0):  # change gamma
         self._VLCadjust(_Adjust.Gamma, fraction)
 
-    def _hue(self, unused, fraction):  # change hue
+    def _hue(self, unused, fraction=0):  # change hue
         self._VLCadjust(_Adjust.Hue, fraction)
 
-    def _saturation(self, unused, fraction):  # change saturation
-        self._VLCadjust(_Adjust.Saturation, fraction)
+    def _rate(self, unused, factor=0):  # change the video rate
+        p = self.player
+        r = p.get_rate() * factor
+        r = max(0.2, min(10.0, r)) if r > 0 else self.rate1X
+        p.set_rate(r)
+        self.rate = r
 
-    def _rate(self, unused, factor):  # change the video rate
-        r = max(0.2, min(10.0, self.player.get_rate() * factor))
-        self.player.set_rate(r)
+    def _reset(self, resize=False):
+        self.scale_1X = 0.0  # 1X zoom
+        self.sized = None
+        if resize:
+            Thread(target=self._sizer).start()
 
     def _resizer(self):  # adjust aspect ratio and marquee height
         if self.sized:
@@ -480,19 +526,21 @@ class AppVLC(App):
         else:
             Thread(target=self._sizer).start()
 
-    def _sizer(self, secs=0.25):
+    def _saturation(self, unused, fraction=0):  # change saturation
+        self._VLCadjust(_Adjust.Saturation, fraction)
+
+    def _sizer(self, secs=0.25):  # asynchronously
         while True:
-            p = self.player
-            # wiggle the video to fill the window
-            s = p.video_get_scale()
-            p.video_set_scale(0.0 if s else 1.0)
-            p.video_set_scale(s)
             # the first call(s) returns (0, 0),
             # subsequent calls return (w, h)
-            w, h = p.video_get_size(0)
-            if h > 0 and w > 0:
-                # window's contents' aspect ratio
-                self.window.ratio = self.sized = w, h
+            a, b = self.player.video_get_size(0)
+            if b > 0 and a > 0:
+                w = self.window
+                # set window's contents' aspect ratio
+                w.ratio = self.sized = a, b
+                # get video scale for 1X zoom
+                self.scale_1X = float(w.frame.width) / a
+                self._wiggle()
                 break
             elif secs > 0.001:
                 sleep(secs)
@@ -506,12 +554,12 @@ class AppVLC(App):
         # note, .Enable must be set to 1, but once is sufficient
         p.video_set_adjust_int(_Adjust.Enable, 1)
         try:
-            lo, _, hi = _Adjust3[option]
-            if value is None:
-                v = p.video_get_adjust_float(option)
-            else:
-                v = float(value)
+            lo, v, hi = _Adjust3[option]
             if fraction:
+                if value is None:
+                    v = p.video_get_adjust_float(option)
+                else:
+                    v = float(value)
                 v += fraction * (hi - lo)
             v = float(max(lo, min(hi, v)))
             p.video_set_adjust_float(option, v)
@@ -545,11 +593,26 @@ class AppVLC(App):
         p.video_set_marquee_int(m.Refresh, 1000)  # millisec (or sec?)
         p.video_set_marquee_string(m.Text, str2bytes('%Y-%m-%d  %T  %z'))
 
-    def _zoom(self, unused, factor):
-        # zoom the video rate in/out
-        if factor > 0:
-            self.scale *= factor
-            self.player.video_set_scale(self.scale)  # if abs(self.scale - 1.0) > 0.01 else 0.0)
+    def _wiggle(self):
+        # wiggle the video to fill the window
+        p = self.player
+        s = p.video_get_scale()
+        p.video_set_scale(0.0 if s else self.scale_1X)
+        p.video_set_scale(s)
+
+    def _zoom(self, unused, factor=0):
+        # zoom the video in/out, see tkvlc.py
+        X = self.scale_1X
+        p = self.player
+        c = p.video_get_scale()
+        s = (c or X) * factor
+        if s < X:
+            s = 0.0  # 1X
+        # wiggle the video to fill the window
+        p.video_set_scale(0.0 if c else X)
+        p.video_set_scale(s)
+        self.scale =  s
+        self.zoomX = (s / (X or 1.0)) or 1.0
 
 
 if __name__ == '__main__':  # MCCABE 24
@@ -570,7 +633,7 @@ if __name__ == '__main__':  # MCCABE 24
     _logostr  = ''
     _marquee  = False
     _raiser   = False
-    _snapshot = 'png'
+    _snapshot = AppVLC.snapshot  # default
     _timeout  = None
     _title    = splitext(_argv0)[0]
     _video    = None
