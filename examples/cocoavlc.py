@@ -46,7 +46,7 @@ def _PyPI(package):
     return 'see <https://PyPI.org/project/%s>' % (package,)
 
 __all__  = ('AppVLC',)  # PYCHOK expected
-__version__ = '22.12.12'
+__version__ = '22.12.14'
 
 try:
     import vlc
@@ -165,13 +165,12 @@ class AppVLC(App):
     '''
     adjustr   = ''
     marquee   = None
+    media     = None
     logostr   = ''
     player    = None
     raiser    = False
     rate      = 0.0   # rate vs normal
-    rate1X    = 1.0   # rate 1X, fixed
     scale     = 0.0   # video size / window size
-    scale_1X  = 0.0   # video scale 1X
     sized     = None  # video (width, height)
     Snapshot  = Item('Snapshot', key='s', alt=True)
     snapshot  = _PNG  # default: .png, .jpg or .tiff
@@ -179,7 +178,7 @@ class AppVLC(App):
     Toggle    = None
     video     = None
     window    = None
-    zoomX     = 1.0   # zoom factor
+    zoomX     = 1.0   # zoom factor, >= 1.0
 
     def __init__(self, video=None,       # video file name
                        adjustr='',       # vlc.VideoAdjustOption
@@ -192,7 +191,7 @@ class AppVLC(App):
         self.adjustr = adjustr
         self.logostr = logostr
         self.marquee = marquee
-        self.media   = None
+#       self.media   = None
         self.raiser  = raiser
         self.Toggle  = Item('Play', self.menuToggle_, key='p', ctrl=True)
         self.video   = video
@@ -509,12 +508,12 @@ class AppVLC(App):
     def _rate(self, unused, factor=0):  # change the video rate
         p = self.player
         r = p.get_rate() * factor
-        r = max(0.2, min(10.0, r)) if r > 0 else self.rate1X
+        r = max(0.2, min(10.0, r)) if r > 0 else 1.0
         p.set_rate(r)
         self.rate = r
 
     def _reset(self, resize=False):
-        self.scale_1X = 0.0  # 1X zoom
+        self.zoomX = 1
         self.sized = None
         if resize:
             Thread(target=self._sizer).start()
@@ -538,8 +537,8 @@ class AppVLC(App):
                 w = self.window
                 # set window's contents' aspect ratio
                 w.ratio = self.sized = a, b
-                # get video scale for 1X zoom
-                self.scale_1X = float(w.frame.width) / a
+                # get video scale factor
+                self.scale = float(w.frame.width) / a
                 self._wiggle()
                 break
             elif secs > 0.001:
@@ -597,22 +596,20 @@ class AppVLC(App):
         # wiggle the video to fill the window
         p = self.player
         s = p.video_get_scale()
-        p.video_set_scale(0.0 if s else self.scale_1X)
+        p.video_set_scale(0.0 if s else self.scale)
         p.video_set_scale(s)
 
     def _zoom(self, unused, factor=0):
         # zoom the video in/out, see tkvlc.py
-        X = self.scale_1X
         p = self.player
-        c = p.video_get_scale()
-        s = (c or X) * factor
-        if s < X:
-            s = 0.0  # 1X
-        # wiggle the video to fill the window
-        p.video_set_scale(0.0 if c else X)
+        x = self.zoomX * factor
+        if x > 1:
+            s = x
+        else:  # not below 1X
+            s, x = 0.0, 1.0
         p.video_set_scale(s)
-        self.scale =  s
-        self.zoomX = (s / (X or 1.0)) or 1.0
+        self.scale = s
+        self.zoomX = x
 
 
 if __name__ == '__main__':  # MCCABE 24
