@@ -29,7 +29,7 @@ Date: 23-09-2015
 # and 3.7.4 and with tkinter/Tk 8.6.9 on macOS 13.0.1 (amd64 M1), 11.6.1
 # (10.16 amd64 M1), 11.0.1 (10.16 x86-64) and 10.13.6 and with VLC 3.0.18,
 # Python 3.11.0 and tkinter/Tk 8.6.9 on Windows 10, all in 64-bit only.
-__version__ = '22.12.14'  # mrJean1 at Gmail
+__version__ = '22.12.22'  # mrJean1 at Gmail
 
 import sys
 try:  # Python 3.4+ only
@@ -73,22 +73,33 @@ _KEY_SYMBOL  = {'~': 'asciitilde',  '`': 'grave',
                 '<': 'less',        '>': 'greater',
                 ',': 'comma',       '.': 'period',
                 '?': 'question',    '/': 'slash',
-                ' ': 'space',      '\b': 'BackSpace',
+                ' ': 'space',      '\b': 'BackSpace',  # S!
                '\n': 'KP_Enter',   '\r': 'Return',
                '\f': 'Next',       '\v': 'Prior',
                '\t': 'Tab'}  # '\a': 'space'?
 # see definition of specialAccelerators in <https://
 # GitHub.com/tcltk/tk/blob/main/macosx/tkMacOSXMenu.c>
-_MAC_ACCEL   = {' ': 'Space',       '\b': 'Backspace',
-               '\n': 'Enter',       '\r': 'Return',
-               '\f': 'PageDown',    '\v': 'PageUp',
+_MAC_ACCEL   = {' ': 'Space',    '\b': 'Backspace',  # s!
+               '\n': 'Enter',    '\r': 'Return',
+               '\f': 'PageDown', '\v': 'PageUp',
                '\t': 'Tab',  # 'BackTab', 'Eject'?
-             'Next': 'PageDown', 'Prior': 'PageUp'}
+            'Prior': 'PageUp', 'Next': 'PageDown'}
+
 _MIN_W       =  420
+_MOD_ALT     =  1 << 17  # alt key down?
+_MOD_CMD     =  1 << 3   # command key down
+_MOD_CTRL    =  1 << 2   # ctrl key down
+_MOD_LOCK    =  1 << 1   # caps lock down
+_MOD_SHIFT   =  1 << 0   # shift key down
 _OPACITY     = 'Opacity %s%%'
 _TAB_X       =  32
 _T_CONFIGURE =  Tk.EventType.Configure
+_T_KEY       =  Tk.EventType.Key  # KeyPress
 _TICK_MS     =  100  # millisecs per time tick
+_Tk_Canvas   =  Tk.Canvas
+_Tk_Frame    =  ttk.Frame
+_Tk_Toplevel =  Tk.Toplevel
+_Tk_Version  =  Tk.TkVersion
 _UN_ANCHORED = 'Un-' + _ANCHORED
 _VOLUME      = 'Volume'
 
@@ -130,7 +141,7 @@ if _isMacOS:  # MCCABE 14
 
     try:
         env = os.environ.get(_TKVLC_LIBTK_PATH, '')
-        lib = 'libtk%s.dylib' % (Tk.TkVersion,)
+        lib = 'libtk%s.dylib' % (_Tk_Version,)
         for libtk in _find_lib(lib, _find(lib), *env.split(os.pathsep)):
             if libtk and lib in libtk and os.access(libtk, os.F_OK):
                 break
@@ -161,11 +172,20 @@ if _isMacOS:  # MCCABE 14
             return None
 
     del cdll, c_void_p, env, _find
-    Cmd_ = 'Command+'  # 'Meta_L' shortcut key modifier
+    Cmd_ = 'Command+'  # shortcut key modifier, aka Meta_L
+    # With Python 3.9+ on macOS (only!), accelerator keys specified
+    # with the Shift modifier invoke the callback (command) twice,
+    # once without and once with a Key (or KeyPress) event: hold the
+    # former as a pseudo Key event possibly absorbed by the actual
+    # Key event about 1 millisec later.  With Python 3.8- on macOS,
+    # Shift accelerator keys do not work at all: do not define any
+    # Shift accelerator keys in that case
+    _3_9 = sys.version_info[:2] >= (3, 9)
 
-else:  # Windows OK, untested *nix, Xwindows
+else:  # Windows OK, untested on *nix, Xwindows
     libtk = 'N/A'
     Cmd_  = 'Ctrl+'  # shortcut key modifier, Control!
+    _3_9  =  True
 
 
 def _frontmost(panel, *ontop):
@@ -195,9 +215,16 @@ def _fullscreen(panel, *full):
 
 def _geometry(panel, g_w, *h_x_y):
     # set a panel geometry to C{g} or C{w, h, x, y}.
-    g = _geometrystr(g_w, *h_x_y) if h_x_y else g_w
-    panel.geometry(g)  # update geometry
-    panel._g = g = _geometry1(panel)  # get actual
+    if h_x_y:
+        t = '+'.join(map(str, h_x_y))
+        g = 'x'.join((str(g_w), t))
+    else:
+        g = g_w
+    panel.geometry(g)  # update geometry, then ...
+    g, *t = _geometry5(panel)  # ... get actual ...
+    panel._g = g  # ... as a C{str} and 4 C{int}s
+    # == panel.winfo_width(), _height(), _x(), _y()
+    panel._whxy = tuple(map(int, t))
     return g
 
 
@@ -213,13 +240,6 @@ def _geometry5(panel):
     z, x, y = g.split('+')
     w, h = z.split('x')
     return g, w, h, x, y
-
-
-def _geometrystr(w, *h_x_y):
-    # return geometry as str "wxh+x+y"
-    t = '+'.join(map(str, h_x_y))
-    g = 'x'.join((str(w), t))
-    return g
 
 
 def _hms(tensecs, secs=''):
@@ -284,7 +304,7 @@ class _Tk_Item(object):
         '''New menu item.
         '''
         self.menu = menu
-        self.item = menu.index(label)
+        self.idx  = menu.index(label)
         self.key  = key  # <...>
 
         self._cfg_d = dict(label=label, **kwds)
@@ -298,7 +318,7 @@ class _Tk_Item(object):
         cfg.update(kwds)
         if self._under:  # update underlining
             _, cfg = _underline2(self._under, **cfg)
-        self.menu.entryconfig(self.item, **cfg)
+        self.menu.entryconfig(self.idx, **cfg)
 
     def disabled(self, *disable):
         '''Dis-/enable this menu item.
@@ -370,8 +390,8 @@ class _Tk_Menu(Tk.Menu):
             for w in self._shortcuts_widgets:
                 w.bind(key, command)
             if label:  # remember the key in this menu
-                item = self.index(label)
-                self._shortcuts_entries[item] = key
+                idx = self.index(label)
+                self._shortcuts_entries[idx] = key
         # The Tk modifier for macOS' Command key is called Meta
         # with Meta_L and Meta_R for the left and right keyboard
         # keys.  Similarly for macOS' Option key, the modifier
@@ -396,14 +416,14 @@ class _Tk_Menu(Tk.Menu):
         '''
         if command is None:  # XXX postcommand for sub-menu
             Tk.Menu.entryconfig(self, idx, **kwds)
-        else:  # adjust the shortcut key binding also
+        elif callable(command):  # adjust the shortcut key binding
             Tk.Menu.entryconfig(self, idx, command=command, **kwds)
             key = self._shortcuts_entries.get(idx, None)
             if key is not None:
                 for w in self._shortcuts_widgets:
                     w.bind(key, command)
 
-    def _Item(self, _add, key, label, **kwds):
+    def _Item(self, add_, key, label, **kwds):
         # Add and bind a menu item or sub~menu with an
         # optional accelerator key (not <..> enclosed)
         # or underline letter (preceded by underscore),
@@ -419,6 +439,9 @@ class _Tk_Menu(Tk.Menu):
                 else:
                     m = key.split(c)
                     c = m.pop()
+                for k in ('Key', 'KeyPress', 'KeyRelease'):
+                    while k in m:
+                        m.remove(k)
                 # adjust accelerator key for specials like KP_1,
                 # PageDown and PageUp (on macOS, see function
                 # ParseAccelerator in <https://GitHub.com/tcltk/tk/
@@ -429,6 +452,7 @@ class _Tk_Menu(Tk.Menu):
                 if a.upper().startswith('KP_'):
                     a = a[3:]
                 # accelerator strings are only used for display
+                # ('+' or '-' OK, ' ' space isn't for macOS)
                 cfg.update(accelerator='+'.join(m + [a]))
                 # replace key with Tk keysymb, allow F1 thru F35
                 # (F19 on macOS) and because shortcut keys are
@@ -438,6 +462,9 @@ class _Tk_Menu(Tk.Menu):
                 if len(s) == 1 and s.isupper() \
                                and 'Shift' not in m:
                     s = s.lower()
+                # default to single key down case
+                if len(c) == 1:
+                    m.append('Key')  # == KeyPress
                 # replace Ctrl modifier with Tk Control
                 while 'Ctrl' in m:
                     m[m.index('Ctrl')] = 'Control'
@@ -454,12 +481,12 @@ class _Tk_Menu(Tk.Menu):
                 label = label[:u] + label[u+1:]
                 cfg.update(label=label)
                 if u < len(label) and not _isMacOS:
-#                   c = label[u]
+                    # c = label[u]
                     cfg.update(underline=u)
 
         if kwds:  # may still override accelerator ...
             cfg.update(kwds)  # ... and underline
-        _add(self, **cfg)  # first _add then ...
+        add_(self, **cfg)  # first _add then ...
         self.bind_shortcut(key, **cfg)  # ... bind
         return _Tk_Item(self, key=key, under=c, **cfg)
 
@@ -488,7 +515,7 @@ class _Tk_Slider(Tk.Scale):
         Tk.Scale.set(self, value)
 
 
-class Player(Tk.Frame):
+class Player(_Tk_Frame):
     '''The main window handling with events, etc.
     '''
     _anchored  =  True  # under the video panel
@@ -501,6 +528,7 @@ class Player(Tk.Frame):
     _opacity   =  90 if _isMacOS else 100  # percent
     _opaque    =  False
     _rate      =  0.0
+    _ratestr   = ''
     _scaleX    =  1
     _scaleXstr = ''
     _sliding   =  False
@@ -510,31 +538,33 @@ class Player(Tk.Frame):
     _volume    =  50  # percent
 
     def __init__(self, parent, title='', video='', debug=False):  # PYCHOK called!
-        Tk.Frame.__init__(self, parent)
+        _Tk_Frame.__init__(self, parent)
 
         self.debug  = bool(debug)
         self.parent = parent  # == root
         self.video  = os.path.expanduser(video)
         if title:
             self._title = str(title)
-        parent.title(title)
-#       parent.iconname(title)
+        parent.title(self._title)
+#       parent.iconname(self._title)
 
         # set up tickers to avoid None error
         def _pass():
             pass
-        self._tick_1 = self.after(1, _pass)
-        self._tick_2 = self.after(2, _pass)
-        self._tick_3 = self.after(3, _pass)
-        self._tick_4 = self.after(4, _pass)  # .after_idle
+        self._tick_a = self.after(1, _pass)
+        self._tick_c = self.after(2, _pass)
+        self._tick_r = self.after(3, _pass)
+        self._tick_s = self.after(4, _pass)  # .after_idle
+        self._tick_t = self.after(5, _pass)
+        self._tick_z = self.after(5, _pass)
 
         # panels to play videos and hold buttons, sliders,
         # created *before* the File menu to be able to bind
         # the shortcuts keys to both windows/panels.
         self.videoPanel = v = self._VideoPanel()
-        self._handleEvents(v)  # or parent
+        self._bind_events(v)  # or parent
         self.buttonsPanel = b = self._ButtonsPanel()
-        self._handleEvents(b)
+        self._bind_events(b)
 
         mb = _Tk_Menu(self.parent)  # menu bar
         parent.config(menu=mb)
@@ -548,22 +578,22 @@ class Player(Tk.Frame):
         self.playItem = m.add_item('Play', self.OnPlay, key=Cmd_ + 'P')  # Play/Pause
         m.add_item('Stop', self.OnStop, key=Cmd_ + '\b')  # BackSpace
         m.add_separator()
-        self.muteItem = m.add_item('Mute', self.OnMute, key=Cmd_ + 'M')
+        m.add_item('Zoom In',  self.OnZoomIn,  key=(Cmd_ + 'Shift++') if _3_9 else '')
+        m.add_item('Zoom Out', self.OnZoomOut, key=(Cmd_ + '-')       if _3_9 else '')
         m.add_separator()
-        m.add_item('Zoom In',  self.OnZoomIn,  key=Cmd_ + 'Shift++')
-        m.add_item('Zoom Out', self.OnZoomOut, key=Cmd_ + '-')
+        m.add_item('Faster', self.OnFaster, key=(Cmd_ + 'Shift+>') if _3_9 else '')
+        m.add_item('Slower', self.OnSlower, key=(Cmd_ + 'Shift+<') if _3_9 else '')
         m.add_separator()
         m.add_item('Normal 1X', self.OnNormal, key=Cmd_ + '=')
         m.add_separator()
-        m.add_item('Faster', self.OnFaster, key=Cmd_ + 'Shift+>')
-        m.add_item('Slower', self.OnSlower, key=Cmd_ + 'Shift+<')
+        self.muteItem = m.add_item('Mute', self.OnMute, key=Cmd_ + 'M')
         m.add_separator()
         m.add_item('Snapshot', self.OnSnapshot, key=Cmd_ + 'T')
         m.add_separator()
         self.fullItem = m.add_item(_FULL_SCREEN, self.OnFull, key=Cmd_ + 'F')
         m.add_separator()
         m.add_item('Close', self.OnClose, key=Cmd_ + 'W')
-        mb.add_cascade(label='Video', menu=m)
+        mb.add_cascade(menu=m, label='Video')
 #       self.videoMenu = m
 
         m = _Tk_Menu(mb)  # Video menu, shortcuts to both panels
@@ -572,7 +602,7 @@ class Player(Tk.Frame):
         m.add_separator()
         self.opaqueItem = m.add_item(_OPACITY % (self._opacity,), self.OnOpacity, key=Cmd_ + 'Y')
         m.add_item('Normal 100%', self.OnOpacity100)
-        mb.add_cascade(label=_BUTTONS, menu=m)
+        mb.add_cascade(menu=m, label=_BUTTONS)
 #       self.buttonsMenu = m
 
         if _isMacOS and self.debug:  # Special macOS "windows" menu
@@ -642,16 +672,46 @@ class Player(Tk.Frame):
 #               _g = g._g
                 _geometry(g, max(w, _MIN_W), h, x, y)
                 if video:  # and g._g != _g:
-                    self._set_aspect(True)
+                    self._set_aspect_ratio(True)
+
+    def _bind_events(self, panel):
+        # set up handlers for several events
+        try:
+            p  = panel
+            p_ = p.protocol
+        except AttributeError:
+            p  = p.master  # == p.parent
+            p_ = p.protocol
+        if _isWindows:  # OK for macOS
+            p_('WM_DELETE_WINDOW', self.OnClose)
+#       Event Types <https://www.Tcl.Tk/man/tcl8.6/TkCmd/bind.html#M7>
+        p.bind('<Configure>',       self.OnConfigure)  # window resize, position, etc.
+        # needed on macOS to catch window close events
+        p.bind('<Destroy>',         self.OnClose)      # window half-dead
+#       p.bind('<Activate>',        self.OnActive)     # window activated
+#       p.bind('<Deactivate>',      self.OffActive)    # window deactivated
+        p.bind('<FocusIn>',         self.OnFocus)      # getting keyboard focus
+#       p.bind('<FocusOut>',        self.OffFocus)     # losing keyboard focus
+#       p.bind('<Return>',          self.OnReturn)     # highlighted button
+        p.bind('<Double-Button-1>', self.OnFront)      # front window
+        if _isMacOS:
+            p.bind('<Command-.>', self.OnClose)
+#           p.bind('<Command-,.'. self.OnPreferences)
+#           p.bind('<KP_Enter>',  self.OnReturn)  # highlighted button
+        # attrs holding the most recently set _geometry ...
+        assert not hasattr(panel, '_g')
+        panel._g = ''  # ... as a sC{str} and ...
+        assert not hasattr(panel, '_whxy')
+        panel._whxy = ()  # ... 4-tuple of C{ints}s
 
     def _ButtonsPanel(self):
         # create panel with buttons and sliders
-        b = Tk.Toplevel(self.parent, name='buttons')
+        b = _Tk_Toplevel(self.parent, name='buttons')
         t = '%s - %s' % (self._title, _BUTTONS)
-        b.title(t)  # '' removes the banner
+        b.title(t)  # '' removes the window banner
         b.resizable(True, False)
 
-        f = ttk.Frame(b)
+        f = _Tk_Frame(b)
         # button are too small on Windows if width is given
         p = _Tk_Button(f, label='Play', command=self.OnPlay)
         #                 width=len('Pause'), underline=0
@@ -666,7 +726,7 @@ class Player(Tk.Frame):
         q.pack(fill=Tk.X,    padx=4, expand=1)
         f.pack(side=Tk.BOTTOM, fill=Tk.X)
 
-        f = ttk.Frame(b)  # new frame?
+        f = _Tk_Frame(b)  # new frame?
         t = _Tk_Slider(f, command=self.OnTime, to=1000,  # millisecs
                           length=_MIN_W)  # label='Time'
         t.pack(side=Tk.BOTTOM, fill=Tk.X, expand=1)
@@ -718,26 +778,6 @@ class Player(Tk.Frame):
             d = ', '.join('%s=%s' % t for t in sorted(d.items()))
             print('%4s: %s %s' % (self._debugs, where.__name__, d))
 
-    def _handleEvents(self, panel):
-        # set up handlers for several events
-        panel._g = ''  # holds most recent _geometry
-        try:
-            p  = panel
-            p_ = p.protocol
-        except AttributeError:
-            p  = p.master  # == p.parent
-            p_ = p.protocol
-        if _isWindows:  # OK for macOS
-            p_('WM_DELETE_WINDOW', self.OnClose)
-#       Event Types <https://www.Tcl.Tk/man/tcl8.6/TkCmd/bind.html#M7>
-        p.bind('<Configure>',  self.OnConfigure)  # window resize, position, etc.
-        # needed on macOS to catch window close events
-        p.bind('<Destroy>',    self.OnClose)      # window half-dead
-#       p.bind('<Activate>',   self.OnActive)     # window activated
-#       p.bind('<Deactivate>', self.OffActive)    # window deactivated
-        p.bind('<FocusIn>',    self.OnFocus)      # getting keyboard focus
-#       p.bind('<FocusOut>',   self.OffFocus)     # losing keyboard focus
-
     def OnAnchor(self, *unused):
         '''Toggle anchoring of the panels.
         '''
@@ -758,10 +798,12 @@ class Player(Tk.Frame):
         '''
         self._debug(self.OnClose, *event)
         # print('_quit: bye')
-        self.after_cancel(self._tick_1)
-        self.after_cancel(self._tick_2)
-        self.after_cancel(self._tick_3)
-        self.after_cancel(self._tick_4)
+        self.after_cancel(self._tick_c)
+        self.after_cancel(self._tick_t)
+        self.after_cancel(self._tick_a)
+        self.after_cancel(self._tick_s)
+        self.after_cancel(self._tick_r)
+        self.after_cancel(self._tick_z)
         v = self.videoPanel
         v.update_idletasks()
         self.quit()  # stops .mainloop
@@ -773,37 +815,43 @@ class Player(Tk.Frame):
         if T == _T_CONFIGURE and w.winfo_toplevel() is w:
             # i.e. w is videoFrame/Panel or buttonsPanel
             if w is self.videoPanel:
-                a = self._set_aspect  # force=True
+                a = self._set_aspect_ratio  # force=True
             elif w is self.buttonsPanel and self._anchored:
                 a = self._anchorPanels  # video=True
             else:
                 a = None
             # prevent endless, recursive onConfigure events due to changing
             # the buttons- and videoPanel geometry, especially on Windows
-            if a and w._g != _geometrystr(event.width, event.height, event.x, event.y):
-                self.after_cancel(self._tick_1)
+            if a and w._whxy != (event.width, event.height, event.x, event.y):
+                self.after_cancel(self._tick_c)
                 self._debug(self.OnConfigure, event)
-                self._tick_1 = self.after(250, a, True)
+                self._tick_c = self.after(250, a, True)
 
-    def OnFaster(self, *unused):
+    def OnFaster(self, *event):
         '''Speed the video up by 25%.
         '''
-        self._set_rate(1.25)
+        self._set_rate(1.25, *event)
         self._debug(self.OnFaster)
 
     def OnFocus(self, *unused):
         '''Got the keyboard focus.
         '''
         self._debug(self.OnFocus)
-        self._set_aspect()
+        self._set_aspect_ratio()
 #       self._wiggle()
+
+    def OnFront(self, *unused):
+        '''Move panels to the front.
+        '''
+        _frontmost(self.buttonsPanel, True)
+        _frontmost(self.videoPanel, True)
 
     def OnFull(self, *unused):
         '''Toggle full/off screen.
         '''
         self._debug(self.OnFull)
         # <https://www.Tcl.Tk/man/tcl8.6/TkCmd/wm.htm#M10>
-        # self.after_cancel(self._tick_2)
+        # self.after_cancel(self._tick_t)
         v = self.videoPanel
         if not _fullscreen(v):
             self._isFull = _geometry1(v)
@@ -837,12 +885,11 @@ class Player(Tk.Frame):
     def OnNormal(self, *unused):
         '''Normal speed and 1X zoom.
         '''
+        self.OnFront()
         self._set_rate(0.0)
         self._set_zoom(0.0)
 #       self._wiggle()
-        _frontmost(self.buttonsPanel, True)
-        _frontmost(self.videoPanel, True)
-        self._set_aspect(True)
+        self._set_aspect_ratio(True)
         self._debug(self.OnNormal)
 
     def OnOpacity(self, *unused):
@@ -874,7 +921,7 @@ class Player(Tk.Frame):
                                        ('mp4 files', '*.mp4'),
                                        ('mov files', '*.mov')))
         self._play(os.path.expanduser(v))
-        self._set_aspect(True)
+        self._set_aspect_ratio(True)
 
     def OnPause(self, *unused):
         '''Toggle between Pause and Play.
@@ -916,10 +963,10 @@ class Player(Tk.Frame):
             if _isMacOS:
                 self._wiggle()
 
-    def OnSlower(self, *unused):
+    def OnSlower(self, *event):
         '''Slow the video down by 20%.
         '''
-        self._set_rate(0.80)
+        self._set_rate(0.80, *event)
         self._debug(self.OnSlower)
 
     def OnSnapshot(self, *unused):
@@ -950,7 +997,7 @@ class Player(Tk.Frame):
                     t = max(0, p.get_time() // _TICK_MS)
                     if t != s.get():
                         s.set(t)
-                        self._set_buttons(t)
+                        self._set_buttons_title(t)
             else:  # get video length in millisecs
                 t = p.get_length()
                 if t > 0:
@@ -958,29 +1005,29 @@ class Player(Tk.Frame):
                     self._lengthstr = _hms(t, secs=' secs')
                     s.config(to=t)  # tickinterval=t / 5)
         # re-start the 1/4-second timer
-        self._tick_2 = self.after(250, self.OnTick)
+        self._tick_t = self.after(250, self.OnTick)
 
     def OnTime(self, *unused):
         '''Time slider has been moved by user.
         '''
         if self.player and self._length:
             self._sliding = True  # slider moving, see .OnTick
-            self.after_cancel(self._tick_4)
+            self.after_cancel(self._tick_s)
             t = self.timeSlider.get()
-            self._tick_4 = self.after_idle(self._set_time, t * _TICK_MS)
-            self._set_buttons(t)
+            self._tick_s = self.after_idle(self._set_time, t * _TICK_MS)
+            self._set_buttons_title(t)
             self._debug(self.OnTime, tensecs=t)
 
-    def OnZoomIn(self, *unused):
-        '''Zoom in 25%.
+    def OnZoomIn(self, *event):
+        '''Zoom in by 25%.
         '''
-        self._set_zoom(1.25)
+        self._set_zoom(1.25, *event)
         self._debug(self.OnZoomIn)
 
-    def OnZoomOut(self, *unused):
-        '''Zoom out 20%.
+    def OnZoomOut(self, *event):
+        '''Zoom out by 20%.
         '''
-        self._set_zoom(0.80)
+        self._set_zoom(0.80, *event)
         self._debug(self.OnZoomOut)
 
     def _pause_play(self, playing):
@@ -992,10 +1039,10 @@ class Player(Tk.Frame):
         self.muteButton.disabled(False)
         self.muteItem.disabled(False)
         self._stopped = self._opaque = False
-        self._set_buttons(self.timeSlider.get())
+        self._set_buttons_title()
         self._set_opacity()  # no re-label
         self._set_volume()
-        self._set_aspect(True)
+        self._set_aspect_ratio(True)
 
     def _play(self, video):
         # helper for OnOpen and OnPlay
@@ -1035,14 +1082,14 @@ class Player(Tk.Frame):
             self._stopped = True
             self.OnOpacity()
 
-    def _set_aspect(self, force=False):
+    def _set_aspect_ratio(self, force=False):
         # set the video panel aspect ratio and re-anchor
         p = self.player
         if p and not self._isFull:
             v = self.videoPanel
             g, w, h, x, y = _geometry5(v)
             if force or g != v._g:  # update
-                self.after_cancel(self._tick_3)
+                self.after_cancel(self._tick_a)
                 a, b = p.video_get_size(0)  # often (0, 0)
                 if b > 0 and a > 0:
                     # adjust the video panel ...
@@ -1051,22 +1098,22 @@ class Player(Tk.Frame):
                     else:  # ... or portrait width
                         w = round(float(h) * a / a)
                     _g = _geometry(v, w, h, x, y)
-                    self._debug(self._set_aspect, a=a, b=b)
+                    self._debug(self._set_aspect_ratio, a=a, b=b)
                     if self._anchored and (force or _g != g):
                         self._anchorPanels()
                 # redo periodically since (1) player.video_get_size()
                 # only returns non-zero width and height after playing
                 # for a while and (2) avoid too frequent updates during
                 # manual resizing of the video panel
-                self._tick_3 = self.after(500, self._set_aspect)
+                self._tick_a = self.after(500, self._set_aspect_ratio)
 
-    def _set_buttons(self, *tensecs):
+    def _set_buttons_title(self, *tensecs):
         # set the buttons panel title
-        s = self._length
-        if s and tensecs:
-            t =  tensecs[0]
-            t = _hms(t) if t < s else self._lengthstr
-            t = '%s - %s / %s%s' % (self._title, t, self._lengthstr, self._scaleXstr)
+        T, s = self._length, self._lengthstr
+        if s and T:
+            t =  tensecs[0] if tensecs else self.timeSlider.get()
+            t = _hms(t) if t < T else s
+            t = '%s - %s / %s%s%s' % (self._title, t, s, self._scaleXstr, self._ratestr)
         else:  # reset panel title
             t = '%s - %s' % (self._title, _BUTTONS)
             self._length = 0
@@ -1094,14 +1141,24 @@ class Player(Tk.Frame):
         self.percentSlider.config(**cfg)
         self.percentSlider.set(percent)
 
-    def _set_rate(self, factor):
+    def _set_rate(self, factor, *event):
         # change the video rate
         p = self.player
-        if p:
+        self.after_cancel(self._tick_r)
+        if not event:  # delay the menu event as a false key event ...
+            # ... and possibly overwritten by the actual key event
+            self._tick_r = self.after(3, self._set_rate, factor, False)
+        elif p:
             r = p.get_rate() * factor
-            r = max(0.2, min(10.0, r)) if r > 0 else 1.0
+            if r > 0:
+                r = max(0.2, min(10.0, r))
+                t = ' - %d%%' % (int(r * 100),)
+            else:
+                r, t = 1.0, ''
             p.set_rate(r)
             self._rate = r
+            self._ratestr = t
+            self._set_buttons_title()
 
     def _set_time(self, millisecs):
         # set player to time
@@ -1126,10 +1183,14 @@ class Player(Tk.Frame):
             if p.audio_set_volume(v):  # and p.get_media():
                 self._showError('set ' + V)
 
-    def _set_zoom(self, factor):
+    def _set_zoom(self, factor, *event):
         # zoom the video in/out, see cocoavlc.py
         p = self.player
-        if p:
+        self.after_cancel(self._tick_z)
+        if not event:  # delay the menu event as a false key event ...
+            # ... and possibly overwritten by the actual key event
+            self._tick_z = self.after(3, self._set_zoom, factor, False)
+        elif p:
             x = self._scaleX * factor
             if x > 1:
                 s = x
@@ -1140,7 +1201,7 @@ class Player(Tk.Frame):
 #           self.videoPanel.update_idletasks()
             self._scaleX = x
             self._scaleXstr = t
-            self._set_buttons(self.timeSlider.get())
+            self._set_buttons_title()
 
     def _showError(self, verb):
         '''Display a simple error dialog.
@@ -1151,8 +1212,8 @@ class Player(Tk.Frame):
 
     def _VideoPanel(self):
         # create panel to play video
-        v = ttk.Frame(self.parent)
-        c = Tk.Canvas(v)  # takefocus=True
+        v = _Tk_Frame(self.parent)
+        c = _Tk_Canvas(v)  # takefocus=True
         c.pack(fill=Tk.BOTH, expand=1)
         v.pack(fill=Tk.BOTH, expand=1)
         v.update_idletasks()
@@ -1182,7 +1243,7 @@ def print_version(name=''):  # imported by psgvlc.py
     # sample output on macOS:
 
     # % python3 ./tkvlc.py -v
-    # tkvlc.py: 22.12.14
+    # tkvlc.py: 22.12.22
     # tkinter: 8.6
     # libTk: /Library/Frameworks/Python.framework/Versions/3.11/lib/libtk8.6.dylib
     # is_TK: aqua, isAquaTk, isCocoaTk
@@ -1193,8 +1254,8 @@ def print_version(name=''):  # imported by psgvlc.py
 
     # sample output on Windows:
 
-    # PS C: python3 ./tkvlc.py -v
-    # tkvlc.py: 22.12.14
+    # PS C: python3 .\tkvlc.py -v
+    # tkvlc.py: 22.12.22
     # tkinter: 8.6
     # libTk: N/A
     # is_TK: win32
@@ -1203,20 +1264,23 @@ def print_version(name=''):  # imported by psgvlc.py
     # plugins: C:\Program Files\VideoLAN\VLC
     # Python: 3.11.0 (64bit) Windows 10
 
-    try:  # private property
-        t = Tk.Tk()._windowingsystem,
-    except AttributeError:
-        t = ()
+    # see <https://TkDocs.com/tutorial/menus.html> or private property
+    r = Tk.Tk()
+    t = r.tk.call('tk', 'windowingsystem'),  # r._windowingsystem
+    r.destroy()
     if _isMacOS:
-        from idlelib import macosx
-        m  = macosx.__dict__
-        t += tuple(sorted(n for n, t in m.items() if n.startswith('is') and
-                                                     n.endswith('Tk') and
-                                                     callable(t) and t()))
-    t = ', '.join(t) or 'n/a'
+        try:
+            from idlelib import macosx
+            m  = macosx.__dict__
+            t += tuple(sorted(n for n, t in m.items() if n.startswith('is') and
+                                                         n.endswith('Tk') and
+                                                         callable(t) and t()))
+        except ImportError:  # Python 10: no test.support ...
+            pass
+    t = ', '.join(t) or 'N/A'
 
     n = os.path.basename(name or __file__)
-    for t in ((n, __version__), (Tk.__name__, Tk.TkVersion), ('libTk', libtk), ('is_Tk', t)):
+    for t in ((n, __version__), (Tk.__name__, _Tk_Version), ('libTk', libtk), ('is_Tk', t)):
         print('%s: %s' % t)
 
     try:
@@ -1237,10 +1301,10 @@ if __name__ == '__main__':  # MCCABE 13
 
     while len(sys.argv) > 1:
         arg = sys.argv.pop(1)
-        if arg.lower() in ('-v', '--version'):
+        if arg in ('-v', '--version'):
             print_version()
             sys.exit(0)
-        elif '-debug'.startswith(arg) and len(arg) > 2:
+        elif '-debug'.startswith(arg) and len(arg) > 3:
             _debug = True
         elif arg.startswith('-'):
             print('usage: %s  [-v | --version]  [-debug]  [<video_file_name>]' % (_argv0,))
