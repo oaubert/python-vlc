@@ -40,9 +40,10 @@ The C{#PYCHOK ...} comments direct the PyChecker/-Flakes post-
 processor, see U{http://code.activestate.com/recipes/546532}.
 
 This module and the generated Python bindings have been tested with
-32- and 64-bit Python 2.6, 2.7 and 3.6 on Linux, Windows XP SP3, MacOS
-X 10.4.11 (Intel) and MacOS X 10.11.3 using the public API include
-files from VLC 1.1.4.1, 1.1.5, 2.1.0, 2.2.2, 3.0.3.
+32- and 64-bit Python 2.6, 2.7, 3.6 and 3.11 on Linux, Windows XP SP3,
+MacOS X 10.4.11 (Intel), 10.11.3 (Intel) and macOS 13.0.1 (Apple Silicon)
+using the public API include files from VLC 1.1.4.1, 1.1.5, 2.1.0, 2.2.2,
+3.0.3 and 3.0.18.
 
 B{**)} Java/JNA bindings for the VLC public API can be created in a
 similar manner and depend on 3 Java files: C{boilerplate.java},
@@ -56,7 +57,7 @@ __all__     = ('Parser',
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ =  '1.20'
+__version__ =  '1.21'
 
 _debug = False
 
@@ -614,12 +615,18 @@ class Parser(object):
             yield Func(name, type_.replace(' ', ''), pars, docs,
                        file_=self.h_file, line=line)
 
+    FIXME_enums = {'libvlc_position_t': '''libvlc_position_disable=-1,
+                    libvlc_position_center=0, libvlc_position_left, libvlc_position_right,
+                    libvlc_position_top=4, libvlc_position_top_left, libvlc_position_top_right,
+                    libvlc_position_bottom=8, libvlc_position_bottom_left, libvlc_position_bottom_right'''}
+
     def parse_enums(self):
         """Parse header file for enum type definitions.
 
         @return: yield an Enum instance for each enum.
         """
         for typ, name, enum, docs, line in self.parse_groups(enum_type_re.match, enum_re.match):
+            enum = self.FIXME_enums.get(name, enum)
             vals, locs, e = [], {}, -1  # enum value(s)
             for t in paramlist_re.split(enum):
                 n = t.split('/*')[0].strip()
@@ -685,7 +692,6 @@ class Parser(object):
             return _VLC_PUBLIC_API_ in t
 
         for name, pars, docs, line in self.parse_groups(match_t, api_re.match, ');'):
-
             f = Par.parse_param(name)
             if f.name in _blacklist:
                 _blacklist[f.name] = f.type
@@ -851,12 +857,11 @@ class _Generator(object):
     def class4(self, type, flag=None):
         """Return the class name for a type or enum.
         """
-        cl = None
+        cl, out = None, ''
         if flag == Flag.Out:
-            cl = self.type2class_out.get(type)
+            cl, out = self.type2class_out.get(type, None), 'OUT_'
         if cl is None:
-            cl = self.type2class.get(type, 'FIXME_%s%s' % ('OUT_' if flag == Flag.Out else '',
-                                                           type))
+            cl = self.type2class.get(type, '') or ('FIXME_%s%s' % (out, type))
         return cl
 
     def convert_classnames(self, element_list):
@@ -880,7 +885,7 @@ class _Generator(object):
             elif c[0].islower():
                 c = c.capitalize()
             self.type2class[e.name] = c
-            self.type2class[e.name+'*'] = f"ctypes.POINTER({c})"
+            self.type2class[e.name+'*']  = f"ctypes.POINTER({c})"
             self.type2class[e.name+'**'] = f"ctypes.POINTER(ctypes.POINTER({c}))"
 
     def dump_dicts(self):  # for debug
@@ -1105,6 +1110,36 @@ class PythonGenerator(_Generator):
         'RendererDiscoverer'
     )
 
+    # C enums become an unsigned _Enum or a signed
+    # _Enim class in Python to avoid TypeError in
+    # libvlc_... function arguments of type c_int
+    enum2Enim = (  # signed C enum classes only
+        'libvlc_audio_output_channel_t',
+        'libvlc_audio_output_device_types_t',
+#       'libvlc_dialog_question_type',
+#       'libvlc_enum_t',
+#       'libvlc_event_e',
+        'libvlc_log_level',
+#       'libvlc_media_discoverer_category_t',
+#       'libvlc_media_parse_flag_t',
+#       'libvlc_media_parsed_status_t',
+#       'libvlc_media_player_role',
+#       'libvlc_media_slave_type_t',
+#       'libvlc_media_type_t',
+#       'libvlc_meta_t',
+#       'libvlc_navigate_mode_t',
+#       'libvlc_playback_mode_t',
+        'libvlc_position_t',
+#       'libvlc_state_t',
+#       'libvlc_teletext_key_t',
+        'libvlc_track_type_t',
+#       'libvlc_video_adjust_option_t',
+#       'libvlc_video_logo_option_t',
+#       'libvlc_video_marquee_option_t',
+#       'libvlc_video_orient_t',
+#       'libvlc_video_projection_t'
+    )
+
     def __init__(self, parser=None):
         """New instance.
 
@@ -1204,7 +1239,7 @@ class PythonGenerator(_Generator):
         """Generate classes for all enum types.
         """
         self.output("""
-class _Enum(ctypes.c_uint):
+class _EnumBase():
     '''(INTERNAL) Base class
     '''
     _enum_names_ = {}
@@ -1220,19 +1255,30 @@ class _Enum(ctypes.c_uint):
         return '.'.join((self.__class__.__module__, self.__str__()))
 
     def __eq__(self, other):
-        return ( (isinstance(other, _Enum) and self.value == other.value)
-              or (isinstance(other, _Ints) and self.value == other) )
+        return ( (isinstance(other, (_Enum, _Enim)) and self.value == other.value)
+              or (isinstance(other,  _Ints)         and self.value == other) )
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+class _Enum(_EnumBase, ctypes.c_uint):
+    '''(INTERNAL) Unsigned C enum.
+    '''
+    pass
+
+class _Enim(_EnumBase, ctypes.c_int):
+    '''(INTERNAL) Signed C enum.
+    '''
+    pass
 """)
         for e in self.parser.enums:
 
             cls = self.class4(e.name)
-            self.output("""class %s(_Enum):
+            u_i = 'i' if e.name in self.enum2Enim else 'u'
+            self.output("""class %s(_En%sm):
     '''%s
     '''
-    _enum_names_ = {""" % (cls, e.epydocs() or _NA_))
+    _enum_names_ = {""" % (cls, u_i, e.epydocs() or _NA_))
 
             for v in e.vals:
                 self.output("        %s: '%s'," % (v.value, v.name))
