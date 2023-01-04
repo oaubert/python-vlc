@@ -3,26 +3,29 @@
 
 # Example of using PyCocoa <https://PyPI.org/project/PyCocoa> to create a
 # window, table and an application menu to run a video using VLC on macOS.
-# The Python-VLC binding <https://PyPI.Python.org/pypi/python-vlc> and the
-# corresponding VLC App, see <https://www.VideoLan.org/index.html>.
 
-# PyCocoa version 21.11.02 or later must be installed (on macOS Monterey)
+# PyCocoa <https://PyPI.org/project/PyCocoa> version 21.11.04 or later,
+# the Python-VLC binding <https://PyPI.Python.org/pypi/python-vlc> and
+# the corresponding VLC App, see <https://www.VideoLan.org/index.html>
+# (for macOS on Apple Silicon and/or Intel) must be installed.
 
-# This VLC player has been tested with VLC 3.0.10-16, 3.0.6-8, 3.0.4,
+# This VLC player has been tested with VLC 3.0.10-18, 3.0.6-8, 3.0.4,
 # 3.0.1-2, 2.2.8 and 2.2.6 and the compatible vlc.py Python-VLC binding
-# using 64-bit Python 3.10.0, 3.9.6, 3.9.0-1, 3.8.10, 3.8.6, 3.7.0-4,
-# 3.6.4-5 and 2.7.14-18 on macOS 12.0.1 Monterey, 11.5.2-6.1 Big Sur
-# (aka 10.16), 10.15.6 Catalina, 10.14.6 Mojave and 10.13.4-6 High Sierra.
-# This player does not work with PyPy <https://PyPy.org> nor with Intel(R)
-# Python <https://Software.Intel.com/en-us/distribution-for-python>.
+# using 64-bit Python 3.11.0, 3.10.0, 3.9.6, 3.9.0-1, 3.8.10, 3.8.6,
+# 3.7.0-4, 3.6.4-5 and 2.7.14-18 on macOS 13.0.1 Venture, 12.0.1 Monterey,
+# 11.5.2-6.1 Big Sur (aka 10.16), 10.15.6 Catalina, 10.14.6 Mojave and
+# 10.13.4-6 High Sierra.
 
-# Python 3.10.0, 3.9.6 and macOS' Python 2.7.16 run on Apple Silicon
+# Python 3.11.0, 3.10.0, 3.9.6 and macOS' Python 2.7.16 run on Apple Silicon
 # (C{arm64} I{natively}), all other Python versions run on Intel (C{x86_64})
 # or I{emulated} Intel (C{"arm64_x86_64"}, see function C{pycocoa.machine}).
 
+# Note, this VLC player does NOT work with PyPy <https://PyPy.org> NOR with
+# Intel(R) Python <https://Software.Intel.com/en-us/distribution-for-python>.
+
 # MIT License <https://OpenSource.org/licenses/MIT>
 #
-# Copyright (C) 2017-2021 -- mrJean1 at Gmail -- All Rights Reserved.
+# Copyright (C) 2017-2023 -- mrJean1 at Gmail -- All Rights Reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -46,7 +49,7 @@ def _PyPI(package):
     return 'see <https://PyPI.org/project/%s>' % (package,)
 
 __all__  = ('AppVLC',)  # PYCHOK expected
-__version__ = '22.12.14'
+__version__ = '23.01.04'
 
 try:
     import vlc
@@ -518,7 +521,7 @@ class AppVLC(App):
         if resize:
             Thread(target=self._sizer).start()
 
-    def _resizer(self):  # adjust aspect ratio and marquee height
+    def _resizer(self):  # adjust aspect ratio
         if self.sized:
             # window's contents' aspect ratio
             self.window.ratio = self.sized
@@ -547,7 +550,8 @@ class AppVLC(App):
                 break
 
     def _VLCadjust(self, option, fraction=0, value=None):
-        # adjust a video option like brightness, contrast, etc.
+        # adjust a video option like brightness, contrast, etc.,
+        # example "... -adjust gamma=3,hue=180 ..."
         p = self.player
         # <https://Wiki.VideoLan.org/Documentation:Modules/adjust>
         # note, .Enable must be set to 1, but once is sufficient
@@ -560,37 +564,42 @@ class AppVLC(App):
                 else:
                     v = float(value)
                 v += fraction * (hi - lo)
+            elif value:  # is not None
+                v  = float(value)
             v = float(max(lo, min(hi, v)))
+            print(option, v)
             p.video_set_adjust_float(option, v)
         except (KeyError, ValueError):
             pass
 
     def _VLClogo(self, logostr):
-        # add a video logo, example "python cocoavlc.py -logo
-        # cone-altglass2.png\;cone-icon-small.png ..."
+        # add a video logo image, example "... -logo
+        # cone-logo-altglass2.png\;cone-logo-icon-small.png ..."
         p = self.player
         g = vlc.VideoLogoOption  # Enum
         # <https://Wiki.VideoLan.org/Documentation:Modules/logo>
-        p.video_set_logo_int(g.enable, 1)
-        p.video_set_logo_int(g.position, vlc.Position.Center)
-        p.video_set_logo_int(g.opacity, 128)  # 0-255
-        # p.video_set_logo_int(g.delay, 1000)  # millisec
-        # p.video_set_logo_int(g.repeat, -1)  # forever
-        p.video_set_logo_string(g.file, logostr)
+        _g_int = p.video_set_logo_int
+        _g_int(g.logo_enable, 1)
+        _g_int(g.logo_position, 0)  # FIXME: 0 == vlc.Position.center.value
+        _g_int(g.logo_opacity, 128)  # 0-255
+        # _g_int(g.logo_delay, 1000)  # millisec
+        # _g_int(g.logo_repeat, -1)  # forever
+        p.video_set_logo_string(g.logo_file, logostr)
 
-    def _VLCmarquee(self, size=36):
-        # put video marquee at the bottom-center
+    def _VLCmarquee(self, size=36, marqueestr='%Y-%m-%d  %T  %z'):
+        # put video marquee at the bottom-center, example "... -marquee ..."
         p = self.player
         m = vlc.VideoMarqueeOption  # Enum
         # <https://Wiki.VideoLan.org/Documentation:Modules/marq>
-        p.video_set_marquee_int(m.Enable, 1)
-        p.video_set_marquee_int(m.Size, int(size))  # pixels
-        p.video_set_marquee_int(m.Position, vlc.Position.Bottom)
-        p.video_set_marquee_int(m.Opacity, 255)  # 0-255
-        p.video_set_marquee_int(m.Color, _Color.Yellow)
-        p.video_set_marquee_int(m.Timeout, 0)  # millisec, 0==forever
-        p.video_set_marquee_int(m.Refresh, 1000)  # millisec (or sec?)
-        p.video_set_marquee_string(m.Text, str2bytes('%Y-%m-%d  %T  %z'))
+        _m_int = p.video_set_marquee_int
+        _m_int(m.Enable, 1)
+        _m_int(m.Size, int(size))  # pixels
+        _m_int(m.Position, 8)  # FIXME: 8 == vlc.Position.bottom.value
+        _m_int(m.Opacity, 255)  # 0-255
+        _m_int(m.Color, _Color.Yellow)
+        _m_int(m.Timeout, 0)  # millisec, 0==forever
+        _m_int(m.Refresh, 1000)  # millisec (or sec?)
+        p.video_set_marquee_string(m.Text, str2bytes(marqueestr))
 
     def _wiggle(self):
         # wiggle the video to fill the window
