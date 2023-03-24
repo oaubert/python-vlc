@@ -259,7 +259,7 @@ if __name__ == '__main__':
 
         print('Press q to quit, ? to get help.%s' % os.linesep)
         while True:
-            k = getch()
+            k = bytes_to_str(getch())
             print('> %s' % k)
             if k in keybindings:
                 keybindings[k]()
