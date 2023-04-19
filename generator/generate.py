@@ -56,7 +56,7 @@ __all__     = ('Parser',
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ =  '1.21'
+__version__ =  '1.22'
 
 _debug = False
 
@@ -149,7 +149,7 @@ _VLC_PUBLIC_API_  = 'LIBVLC_API'
 api_re       = re.compile(r'(?:LIBVLC_DEPRECATED\s+)?' + _VLC_PUBLIC_API_ + r'\s+(\S+\s+.+?)\s*\(\s*(.+?)\s*\)')
 at_param_re  = re.compile(r'(@param\s+\S+)(.+)')
 bs_param_re  = re.compile(r'\\param\s+(\S+)')
-class_re     = re.compile(r'class\s+(\S+):')
+class_re     = re.compile(r'class\s+(\S+?)(?:\(\S+\))?:')
 def_re       = re.compile(r'^\s+def\s+(\w+)', re.MULTILINE)
 enum_type_re = re.compile(r'^(?:typedef\s+)?enum')
 enum_re      = re.compile(r'(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\S+)?;')
@@ -1257,28 +1257,30 @@ class _Enum(ctypes.c_uint):
         for e in self.parser.structs:
             cls = self.class4(e.name)
 
-            # We can override struct definitions
-            # (for tricky ones) in override.py
-            if cls in self.overrides.codes:
-                continue
             # We use a forward declaration here to allow for self-referencing structures - cf
             # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
-            self.output("""class %s(ctypes.Structure):
-    '''%s
+            self.output(f"""class {cls}(ctypes.Structure):
+    '''{e.epydocs() or _NA_}
     '''
-    pass
-%s._fields_ = (""" % (cls, e.epydocs() or _NA_, cls))
+    pass""")
 
-            for v in e.fields:
-                # Strip the polish-notation prefixes from entries, to
-                # preserve compatibility in 3.x series.
+            # We can override struct definitions (for tricky ones) in override.py
+            if cls in self.overrides.codes:
+                # Assume the overriding definition contains all code in .codes
+                self.output(self.overrides.codes[cls])
+            else:
+                self.output(f"""{cls}._fields_ = (""")
 
-                # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
+                for v in e.fields:
+                    # Strip the polish-notation prefixes from entries, to
+                    # preserve compatibility in 3.x series.
 
-                # See https://github.com/oaubert/python-vlc/issues/174
-                self.output("        ('%s', %s)," % (re.sub('^(i_|f_|p_|psz_)', '', v.name) if self.parser.version < "4" else v.name,
-                                                     self.class4(v.type)))
-            self.output('    )')
+                    # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
+
+                    # See https://github.com/oaubert/python-vlc/issues/174
+                    self.output("        ('%s', %s)," % (re.sub('^(i_|f_|p_|psz_)', '', v.name) if self.parser.version < "4" else v.name,
+                                                         self.class4(v.type)))
+                self.output('    )')
             self.output('')
 
     def generate_callbacks(self):

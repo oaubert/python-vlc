@@ -51,10 +51,10 @@ import inspect as _inspect
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.18121"
+__version__ = "3.0.18122"
 __libvlc_version__ = "3.0.18"
-__generator_version__ = "1.21"
-build_date  = "Wed Nov 16 12:04:29 2022 3.0.18"
+__generator_version__ = "1.22"
+build_date  = "Wed Apr 19 17:27:23 2023 3.0.18"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -1060,6 +1060,28 @@ MediaPlayerRole._None         = MediaPlayerRole(0)
 
 # End of generated enum types #
 
+class EventUnion(ctypes.Union):
+    _fields_ = [
+        ('meta_type',    ctypes.c_uint    ),
+        ('new_child',    ctypes.c_uint    ),
+        ('new_duration', ctypes.c_longlong),
+        ('new_status',   ctypes.c_int     ),
+        ('media',        ctypes.c_void_p  ),
+        ('new_state',    ctypes.c_uint    ),
+        # FIXME: Media instance
+        ('new_cache', ctypes.c_float   ),
+        ('new_position', ctypes.c_float   ),
+        ('new_time',     ctypes.c_longlong),
+        ('new_title',    ctypes.c_int     ),
+        ('new_seekable', ctypes.c_longlong),
+        ('new_pausable', ctypes.c_longlong),
+        ('new_scrambled', ctypes.c_longlong),
+        ('new_count', ctypes.c_longlong),
+        # FIXME: Skipped MediaList and MediaListView...
+        ('filename',     ctypes.c_char_p  ),
+        ('new_length',   ctypes.c_longlong),
+    ]
+
 # Generated structs #
 class LogMessage(ctypes.Structure):
     '''N/A
@@ -1096,11 +1118,13 @@ class Event(ctypes.Structure):
     '''A libvlc event.
     '''
     pass
-Event._fields_ = (
-        ('type', ctypes.c_int),
-        ('obj', ctypes.c_void_p),
-        ('meta_type', Meta),
-    )
+    _fields_ = [
+        ('type',   EventType      ),
+        ('object', ctypes.c_void_p),
+        ('u',      EventUnion     ),
+    ]
+
+
 
 class MediaStats(ctypes.Structure):
     '''Note the order of libvlc_state_t enum must match exactly the order of

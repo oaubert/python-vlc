@@ -51,10 +51,10 @@ import inspect as _inspect
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "4.0.0-dev-20729-g085d1ae71b121"
-__libvlc_version__ = "4.0.0-dev-20729-g085d1ae71b"
-__generator_version__ = "1.21"
-build_date  = "Wed Nov 16 12:04:29 2022 4.0.0-dev-20729-g085d1ae71b"
+__version__ = "4.0.0122"
+__libvlc_version__ = "4.0.0"
+__generator_version__ = "1.22"
+build_date  = "Wed Apr 19 17:27:22 2023 4.0.0"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -732,12 +732,14 @@ class MediaParseFlag(_Enum):
         0x2: 'fetch_local',
         0x4: 'fetch_network',
         0x8: 'do_interact',
+        0x10: 'no_skip',
     }
 MediaParseFlag.do_interact   = MediaParseFlag(0x8)
 MediaParseFlag.fetch_local   = MediaParseFlag(0x2)
 MediaParseFlag.fetch_network = MediaParseFlag(0x4)
 MediaParseFlag.local         = MediaParseFlag(0x0)
 MediaParseFlag.network       = MediaParseFlag(0x1)
+MediaParseFlag.no_skip       = MediaParseFlag(0x10)
 
 class MediaParsedStatus(_Enum):
     '''Parse status used sent by libvlc_media_parse_request() or returned by
@@ -1015,23 +1017,43 @@ VideoAdjustOption.Gamma      = VideoAdjustOption(5)
 VideoAdjustOption.Hue        = VideoAdjustOption(3)
 VideoAdjustOption.Saturation = VideoAdjustOption(4)
 
-class AudioOutputChannel(_Enum):
-    '''Audio channels.
+class AudioOutputStereomode(_Enum):
+    '''Audio stereo modes.
     '''
     _enum_names_ = {
-        -1: 'Error',
-        1: 'Stereo',
-        2: 'RStereo',
-        3: 'Left',
-        4: 'Right',
-        5: 'Dolbys',
+        0: 'AudioStereoMode_Unset',
+        1: 'AudioStereoMode_Stereo',
+        2: 'AudioStereoMode_RStereo',
+        3: 'AudioStereoMode_Left',
+        4: 'AudioStereoMode_Right',
+        5: 'AudioStereoMode_Dolbys',
+        7: 'AudioStereoMode_Mono',
     }
-AudioOutputChannel.Dolbys  = AudioOutputChannel(5)
-AudioOutputChannel.Error   = AudioOutputChannel(-1)
-AudioOutputChannel.Left    = AudioOutputChannel(3)
-AudioOutputChannel.RStereo = AudioOutputChannel(2)
-AudioOutputChannel.Right   = AudioOutputChannel(4)
-AudioOutputChannel.Stereo  = AudioOutputChannel(1)
+AudioOutputStereomode.AudioStereoMode_Dolbys  = AudioOutputStereomode(5)
+AudioOutputStereomode.AudioStereoMode_Left    = AudioOutputStereomode(3)
+AudioOutputStereomode.AudioStereoMode_Mono    = AudioOutputStereomode(7)
+AudioOutputStereomode.AudioStereoMode_RStereo = AudioOutputStereomode(2)
+AudioOutputStereomode.AudioStereoMode_Right   = AudioOutputStereomode(4)
+AudioOutputStereomode.AudioStereoMode_Stereo  = AudioOutputStereomode(1)
+AudioOutputStereomode.AudioStereoMode_Unset   = AudioOutputStereomode(0)
+
+class AudioOutputMixmode(_Enum):
+    '''Audio mix modes.
+    '''
+    _enum_names_ = {
+        0: 'AudioMixMode_Unset',
+        1: 'AudioMixMode_Stereo',
+        2: 'AudioMixMode_Binaural',
+        3: 'AudioMixMode_4_0',
+        4: 'AudioMixMode_5_1',
+        5: 'AudioMixMode_7_1',
+    }
+AudioOutputMixmode.AudioMixMode_4_0      = AudioOutputMixmode(3)
+AudioOutputMixmode.AudioMixMode_5_1      = AudioOutputMixmode(4)
+AudioOutputMixmode.AudioMixMode_7_1      = AudioOutputMixmode(5)
+AudioOutputMixmode.AudioMixMode_Binaural = AudioOutputMixmode(2)
+AudioOutputMixmode.AudioMixMode_Stereo   = AudioOutputMixmode(1)
+AudioOutputMixmode.AudioMixMode_Unset    = AudioOutputMixmode(0)
 
 class MediaPlayerRole(_Enum):
     '''Media player roles.
@@ -1149,6 +1171,28 @@ PictureType.Png  = PictureType(1)
 
 # End of generated enum types #
 
+class EventUnion(ctypes.Union):
+    _fields_ = [
+        ('meta_type',    ctypes.c_uint    ),
+        ('new_child',    ctypes.c_uint    ),
+        ('new_duration', ctypes.c_longlong),
+        ('new_status',   ctypes.c_int     ),
+        ('media',        ctypes.c_void_p  ),
+        ('new_state',    ctypes.c_uint    ),
+        # FIXME: Media instance
+        ('new_cache', ctypes.c_float   ),
+        ('new_position', ctypes.c_float   ),
+        ('new_time',     ctypes.c_longlong),
+        ('new_title',    ctypes.c_int     ),
+        ('new_seekable', ctypes.c_longlong),
+        ('new_pausable', ctypes.c_longlong),
+        ('new_scrambled', ctypes.c_longlong),
+        ('new_count', ctypes.c_longlong),
+        # FIXME: Skipped MediaList and MediaListView...
+        ('filename',     ctypes.c_char_p  ),
+        ('new_length',   ctypes.c_longlong),
+    ]
+
 # Generated structs #
 class TrackDescription(ctypes.Structure):
     '''Description for video, audio tracks and subtitles. it contains
@@ -1188,11 +1232,13 @@ class Event(ctypes.Structure):
     '''A libvlc event.
     '''
     pass
-Event._fields_ = (
-        ('type', ctypes.c_int),
-        ('p_obj', ctypes.c_void_p),
-        ('meta_type', Meta),
-    )
+    _fields_ = [
+        ('type',   EventType      ),
+        ('object', ctypes.c_void_p),
+        ('u',      EventUnion     ),
+    ]
+
+
 
 class MediaStats(ctypes.Structure):
     '''Libvlc media or media_player state.
@@ -4395,19 +4441,50 @@ class MediaPlayer(_Ctype):
         return libvlc_audio_set_volume(self, i_volume)
 
 
-    def audio_get_channel(self):
-        '''Get current audio channel.
-        @return: the audio channel See L{AudioOutputChannel}.
+    def audio_get_stereomode(self):
+        '''Get current audio stereo-mode.
+        @return: the audio stereo-mode, See L{AudioOutputStereomode}.
+        @version: LibVLC 4.0.0 or later.
         '''
-        return libvlc_audio_get_channel(self)
+        return libvlc_audio_get_stereomode(self)
 
 
-    def audio_set_channel(self, channel):
-        '''Set current audio channel.
-        @param channel: the audio channel, See L{AudioOutputChannel}.
+    def audio_set_stereomode(self, mode):
+        '''Set current audio stereo-mode.
+        @param channel: the audio stereo-mode, See L{AudioOutputStereomode}.
         @return: 0 on success, -1 on error.
+        @version: LibVLC 4.0.0 or later.
         '''
-        return libvlc_audio_set_channel(self, channel)
+        return libvlc_audio_set_stereomode(self, mode)
+
+
+    def audio_get_mixmode(self):
+        '''Get current audio mix-mode.
+        @return: the audio mix-mode, See L{AudioOutputMixmode}.
+        @version: LibVLC 4.0.0 or later.
+        '''
+        return libvlc_audio_get_mixmode(self)
+
+
+    def audio_set_mixmode(self, mode):
+        '''Set current audio mix-mode.
+        By default (libvlc_AudioMixMode_Unset), the audio output will keep its
+        original channel configuration (play stereo as stereo, or 5.1 as 5.1). Yet,
+        the OS and Audio API might refuse a channel configuration and asks VLC to
+        adapt (Stereo played as 5.1 or vice-versa).
+        This function allows to force a channel configuration, it will only work if
+        the OS and Audio API accept this configuration (otherwise, it won't have any
+        effects). Here are some examples:
+         - Play multi-channels (5.1, 7.1...) as stereo (libvlc_AudioMixMode_Stereo)
+         - Play Stereo or 5.1 as 7.1 (libvlc_AudioMixMode_7_1)
+         - Play multi-channels as stereo with a binaural effect
+         (libvlc_AudioMixMode_Binaural). It might be selected automatically if the
+         OS and Audio API can detect if a headphone is plugged.
+        @param channel: the audio mix-mode, See L{AudioOutputMixmode}.
+        @return: 0 on success, -1 on error.
+        @version: LibVLC 4.0.0 or later.
+        '''
+        return libvlc_audio_set_mixmode(self, mode)
 
 
     def audio_get_delay(self):
@@ -4907,6 +4984,18 @@ def libvlc_retain(p_instance):
         _Cfunction('libvlc_retain', ((1,),), None,
                     None, Instance)
     return f(p_instance)
+
+def libvlc_abi_version():
+    '''Get the ABI version of the libvlc library.
+    This is different than the VLC version, which is the version of the whole
+    VLC package. The value is the same as LIBVLC_ABI_VERSION_INT used when
+    compiling.
+    @return: a value with the following mask in hexadecimal 0xFF000000: major VLC version, similar to VLC major version, 0x00FF0000: major ABI version, incremented incompatible changes are added, 0x0000FF00: minor ABI version, incremented when new functions are added 0x000000FF: micro ABI version, incremented with new release/builds @note This the same value as the .so version but cross platform.
+    '''
+    f = _Cfunctions.get('libvlc_abi_version', None) or \
+        _Cfunction('libvlc_abi_version', (), None,
+                    ctypes.c_int)
+    return f()
 
 def libvlc_add_intf(p_instance, name):
     '''Try to start a user interface for the libvlc instance.
@@ -7648,26 +7737,63 @@ def libvlc_audio_set_volume(p_mi, i_volume):
                     ctypes.c_int, MediaPlayer, ctypes.c_int)
     return f(p_mi, i_volume)
 
-def libvlc_audio_get_channel(p_mi):
-    '''Get current audio channel.
+def libvlc_audio_get_stereomode(p_mi):
+    '''Get current audio stereo-mode.
     @param p_mi: media player.
-    @return: the audio channel See L{AudioOutputChannel}.
+    @return: the audio stereo-mode, See L{AudioOutputStereomode}.
+    @version: LibVLC 4.0.0 or later.
     '''
-    f = _Cfunctions.get('libvlc_audio_get_channel', None) or \
-        _Cfunction('libvlc_audio_get_channel', ((1,),), None,
-                    ctypes.c_int, MediaPlayer)
+    f = _Cfunctions.get('libvlc_audio_get_stereomode', None) or \
+        _Cfunction('libvlc_audio_get_stereomode', ((1,),), None,
+                    AudioOutputStereomode, MediaPlayer)
     return f(p_mi)
 
-def libvlc_audio_set_channel(p_mi, channel):
-    '''Set current audio channel.
+def libvlc_audio_set_stereomode(p_mi, mode):
+    '''Set current audio stereo-mode.
     @param p_mi: media player.
-    @param channel: the audio channel, See L{AudioOutputChannel}.
+    @param channel: the audio stereo-mode, See L{AudioOutputStereomode}.
     @return: 0 on success, -1 on error.
+    @version: LibVLC 4.0.0 or later.
     '''
-    f = _Cfunctions.get('libvlc_audio_set_channel', None) or \
-        _Cfunction('libvlc_audio_set_channel', ((1,), (1,),), None,
-                    ctypes.c_int, MediaPlayer, ctypes.c_int)
-    return f(p_mi, channel)
+    f = _Cfunctions.get('libvlc_audio_set_stereomode', None) or \
+        _Cfunction('libvlc_audio_set_stereomode', ((1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, AudioOutputStereomode)
+    return f(p_mi, mode)
+
+def libvlc_audio_get_mixmode(p_mi):
+    '''Get current audio mix-mode.
+    @param p_mi: media player.
+    @return: the audio mix-mode, See L{AudioOutputMixmode}.
+    @version: LibVLC 4.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_audio_get_mixmode', None) or \
+        _Cfunction('libvlc_audio_get_mixmode', ((1,),), None,
+                    AudioOutputMixmode, MediaPlayer)
+    return f(p_mi)
+
+def libvlc_audio_set_mixmode(p_mi, mode):
+    '''Set current audio mix-mode.
+    By default (libvlc_AudioMixMode_Unset), the audio output will keep its
+    original channel configuration (play stereo as stereo, or 5.1 as 5.1). Yet,
+    the OS and Audio API might refuse a channel configuration and asks VLC to
+    adapt (Stereo played as 5.1 or vice-versa).
+    This function allows to force a channel configuration, it will only work if
+    the OS and Audio API accept this configuration (otherwise, it won't have any
+    effects). Here are some examples:
+     - Play multi-channels (5.1, 7.1...) as stereo (libvlc_AudioMixMode_Stereo)
+     - Play Stereo or 5.1 as 7.1 (libvlc_AudioMixMode_7_1)
+     - Play multi-channels as stereo with a binaural effect
+     (libvlc_AudioMixMode_Binaural). It might be selected automatically if the
+     OS and Audio API can detect if a headphone is plugged.
+    @param p_mi: media player.
+    @param channel: the audio mix-mode, See L{AudioOutputMixmode}.
+    @return: 0 on success, -1 on error.
+    @version: LibVLC 4.0.0 or later.
+    '''
+    f = _Cfunctions.get('libvlc_audio_set_mixmode', None) or \
+        _Cfunction('libvlc_audio_set_mixmode', ((1,), (1,),), None,
+                    ctypes.c_int, MediaPlayer, AudioOutputMixmode)
+    return f(p_mi, mode)
 
 def libvlc_audio_get_delay(p_mi):
     '''Get current audio delay.
@@ -8299,7 +8425,8 @@ def libvlc_renderer_discoverer_list_release(pp_services, i_count):
 #  libvlc_video_output_set_resize_cb
 #  libvlc_video_set_output_callbacks
 
-# 54 function(s) not wrapped as methods:
+# 55 function(s) not wrapped as methods:
+#  libvlc_abi_version
 #  libvlc_audio_equalizer_get_band_count
 #  libvlc_audio_equalizer_get_band_frequency
 #  libvlc_audio_equalizer_get_preset_count
