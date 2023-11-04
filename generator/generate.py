@@ -2,7 +2,7 @@
 
 # Code generator for python ctypes bindings for VLC
 #
-# Copyright (C) 2009-2017 the VideoLAN team
+# Copyright (C) 2009-2023 the VideoLAN team
 # $Id: $
 #
 # Authors: Olivier Aubert <contact at olivieraubert.net>
@@ -56,7 +56,7 @@ __all__     = ('Parser',
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ =  '1.22'
+__version__ =  '1.23'
 
 _debug = False
 
@@ -1060,6 +1060,7 @@ class PythonGenerator(_Generator):
         'bool':      'ctypes.c_bool',
         'bool*':      'ctypes.POINTER(ctypes.c_bool)',
         'char**':    'ListPOINTER(ctypes.c_char_p)',
+        'char***':    'ctypes.POINTER(ListPOINTER(ctypes.c_char_p))',
         'double':    'ctypes.c_double',
         'double*':   'ctypes.POINTER(ctypes.c_double)',
         'float':     'ctypes.c_float',
