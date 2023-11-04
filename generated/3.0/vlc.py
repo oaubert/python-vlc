@@ -51,10 +51,10 @@ import inspect as _inspect
 import logging
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.18122"
-__libvlc_version__ = "3.0.18"
-__generator_version__ = "1.22"
-build_date  = "Wed Apr 19 17:27:23 2023 3.0.18"
+__version__ = "3.0.20123"
+__libvlc_version__ = "3.0.20"
+__generator_version__ = "1.23"
+build_date  = "Sat Nov  4 17:10:43 2023 3.0.20"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,

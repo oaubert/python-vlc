@@ -121,7 +121,7 @@ class DecoratedVLCWidget(Gtk.VBox):
             (_("Quit"), _("Quit"), 'gtk-quit', Gtk.main_quit),
             ):
             i = Gtk.Image.new_from_icon_name(iconname, Gtk.IconSize.MENU)
-            b = Gtk.ToolButton(i, text)
+            b = Gtk.ToolButton.new(i, text)
             b.set_tooltip_text(tooltip)
             b.connect("clicked", callback)
             tb.insert(b, -1)
