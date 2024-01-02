@@ -87,6 +87,19 @@ class Instance:
         m._instance = self
         return m
 
+    def media_new_location(self, psz_mrl):
+        '''Create a media with a certain given media resource location,
+        for instance a valid URL.
+        @note: To refer to a local file with this function,
+        the file://... URI syntax B{must} be used (see IETF RFC3986).
+        We recommend using L{media_new_path}() instead when dealing with
+        local files.
+        See L{media_release}.
+        @param psz_mrl: the media location.
+        @return: the newly created media or None on error.
+        '''
+        return libvlc_media_new_location(self, str_to_bytes(psz_mrl))
+
     def media_new_path(self, path):
         """Create a media for a certain file path.
         See L{media_release}.
