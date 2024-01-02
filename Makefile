@@ -5,7 +5,11 @@ UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),FreeBSD)
     INSTALLED_INCLUDE_DIR=/usr/local/include/vlc
 else
+ifeq ($(UNAME_S),Darwin)
+    INSTALLED_INCLUDE_DIR=/Applications/VLC.app/Contents/MacOS/include/vlc
+else
     INSTALLED_INCLUDE_DIR=/usr/include/vlc
+endif
 endif
 
 PROJECT_ROOT=$(shell pwd)
