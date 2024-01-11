@@ -38,3 +38,12 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Treesitter grammar(s)
+vendor
+
+# Virtual environment
+venv
+
+# pyenv version
+.python-version
