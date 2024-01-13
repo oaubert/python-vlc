@@ -69,6 +69,7 @@ import shutil
 import subprocess
 import sys
 import time
+from tree_sitter import Language, Parser as TSParser, Node
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATEDIR = os.path.join(BASEDIR, 'templates')
@@ -554,6 +555,16 @@ class Parser(object):
     h_file = ''
 
     def __init__(self, h_files, version=''):
+        Language.build_library(
+            "build/c.so",
+            ["vendor/tree-sitter-c"],
+        )
+        C_LANGUAGE = Language("build/c.so", "c")
+        self.tsp = TSParser()
+        self.tsp.set_language(C_LANGUAGE)
+        
+        self.preprocess(h_files)
+
         self.enums = []
         self.callbacks = []
         self.structs = []
@@ -598,6 +609,18 @@ class Parser(object):
         sys.stderr.write('%s==== %s ==== %s\n' % (_NL_, attr, self.version))
         for a in getattr(self, attr, ()):
             a.dump()
+
+    def preprocess(self, h_files):
+        # call C preprocess (cpp) on each header file
+        for h_file in h_files:
+            dirname = os.path.dirname(h_file)
+            filename = os.path.splitext(os.path.basename(h_file))[0]
+            preprocessed_file = f'{dirname}/{filename}.i'
+
+            if not os.path.exists(preprocessed_file):
+                with open(preprocessed_file, 'w') as f:
+                    completed_process = subprocess.run(['cpp', h_file], stdout=f)
+                    completed_process.check_returncode()
 
     def parse_callbacks(self):
         """Parse header file for callback signature definitions.
