@@ -47,3 +47,6 @@ venv
 
 # pyenv version
 .python-version
+
+# Preprocessed libvlc header files
+*.preprocessed*

@@ -69,10 +69,11 @@ import shutil
 import subprocess
 import sys
 import time
-from tree_sitter import Language, Parser as TSParser, Node
+from tree_sitter import Language, Parser as TSParser, Node, Tree
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATEDIR = os.path.join(BASEDIR, 'templates')
+PREPROCESSEDDIR = os.path.join(BASEDIR, 'preprocessed')
 
 str = str
 
@@ -612,11 +613,11 @@ class Parser(object):
             "build/c.so",
             ["vendor/tree-sitter-c"],
         )
-        C_LANGUAGE = Language("build/c.so", "c")
+        self.C_LANGUAGE = Language("build/c.so", "c")
         self.tsp = TSParser()
-        self.tsp.set_language(C_LANGUAGE)
+        self.tsp.set_language(self.C_LANGUAGE)
         
-        self.preprocess(h_files)
+        preprocessed_files = self.preprocess(h_files)
 
         self.enums = []
         self.callbacks = []
@@ -664,16 +665,57 @@ class Parser(object):
             a.dump()
 
     def preprocess(self, h_files):
-        # call C preprocess (cpp) on each header file
-        for h_file in h_files:
-            dirname = os.path.dirname(h_file)
-            filename = os.path.splitext(os.path.basename(h_file))[0]
-            preprocessed_file = f'{dirname}/{filename}.i'
+        preprocessed_files = []
 
+        libvlc_h = list(filter(lambda h_file: h_file.endswith('libvlc.h'), h_files))
+        if libvlc_h:
+            libvlc_h = libvlc_h[0]
+        else:
+            raise Exception("No libvlc.h file found. Need it for macro definitions.")
+
+        if not (os.path.exists(PREPROCESSEDDIR) and os.path.isdir(PREPROCESSEDDIR)):
+            os.mkdir(PREPROCESSEDDIR)
+
+        for h_file in h_files:
+            filename = os.path.splitext(os.path.basename(h_file))[0]
+            preprocessed_file = f'{PREPROCESSEDDIR}/{filename}.preprocessed'
+            preprocessed_file_stage1 = f'{PREPROCESSEDDIR}/{filename}.preprocessed1'
+            preprocessed_files.append(preprocessed_file)
+
+            # call C preprocessor (cpp) on header file
             if not os.path.exists(preprocessed_file):
-                with open(preprocessed_file, 'w') as f:
-                    completed_process = subprocess.run(['cpp', h_file], stdout=f)
-                    completed_process.check_returncode()
+                command = (
+                    ["cpp", "-P", "-C", h_file, "-o", preprocessed_file_stage1]
+                    if h_file == libvlc_h
+                    else [
+                        "cpp",
+                        "-P",
+                        "-C",
+                        "-imacros",
+                        libvlc_h,
+                        h_file,
+                        "-o",
+                        preprocessed_file_stage1,
+                    ]
+                )
+                completed_process = subprocess.run(command)
+                completed_process.check_returncode()
+
+                # remove empty lines at the beginning of the preprocessed file
+                # to make it smaller and easier to read
+                with open(preprocessed_file_stage1, 'r') as f1, open(preprocessed_file, 'w') as f:
+                    line = f1.readline()
+                    while line.isspace():
+                        line = f1.readline()
+                    while len(line) != 0:
+                        f.write(line)
+                        line = f1.readline()
+                
+                # remove secondary files used for processing purposes
+                if os.path.exists(preprocessed_file_stage1):
+                    os.remove(preprocessed_file_stage1)
+
+        return preprocessed_files
 
     def parse_callbacks(self):
         """Parse header file for callback signature definitions.
