@@ -245,7 +245,7 @@ def format_sexp(s_exp, indent_size=4):
     return output
 
 def get_tsnode_sexp(tsnode):
-    format_sexp(tsnode.sexp())
+    return format_sexp(tsnode.sexp())
 
 def get_tsnode_text(tsnode, encoding ="utf-8"):
     return tsnode.text.decode(encoding)
