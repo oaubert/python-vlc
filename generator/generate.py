@@ -649,6 +649,13 @@ class Parser(object):
             self.callbacks.extend(self.parse_callbacks())
             self.funcs.extend(self.parse_funcs())
 
+        # self.enums.sort(key=lambda enum: enum.name)
+        # for enum in self.enums:
+        #     enum.dump()
+        # self.enums_with_ts.sort(key=lambda enum: enum.name)
+        # for enum in self.enums_with_ts:
+        #     enum.dump()
+
     def bindings_version(self):
         """Return the bindings version number.
 
@@ -671,6 +678,45 @@ class Parser(object):
             f.check()
         for s in self.structs:
             s.check()
+
+    def __clean_doxygen_comment_block(self, docs):
+        """This function assumes that the Doxygen comment block syntax used
+        is the Javadoc style one, which consists of the block starting with /**.
+        See https://www.doxygen.nl/manual/docblocks.html#cppblock for all the ways
+        to mark a comment block.
+        """
+        if not docs.startswith('/**'):
+            raise Exception('Expected a Doxygen block comment in Javadoc style, with /** at the beginning.')
+
+        lines = docs.split('\n')
+        i = 0
+        while i < len(lines):
+            # remove the /** at the beginning of first line
+            if i == 0:
+                lines[i] = re.sub(r'/\*\*\s?', '', lines[i])
+            # remove the */ at the end of last line
+            if i == len(lines) - 1:
+                lines[i] = re.sub(r'\s*\*/\s*', '', lines[i])
+            # remove the * at the begining of in-between lines
+            lines[i] = re.sub(r'^\s*\*\s?', '', lines[i])
+
+            lines[i] = lines[i].strip()
+            i += 1
+
+        # remove potential empty lines at the beginning and end of comment block
+        start = 0
+        while start < len(lines) and lines[start] == '':
+            start += 1
+        end = len(lines) - 1
+        while end >= 0 and lines[end] == '':
+            end -= 1
+
+        cleaned_docs = []
+        for j in range(start, end + 1):
+            cleaned_docs.append(lines[j])
+        cleaned_docs = '\n'.join(cleaned_docs)
+
+        return cleaned_docs
 
     def dump(self, attr):
         sys.stderr.write('%s==== %s ==== %s\n' % (_NL_, attr, self.version))
@@ -743,6 +789,7 @@ class Parser(object):
 
                 if parent.prev_sibling is not None and parent.prev_sibling.type == 'comment':
                     docs = get_tsnode_text(parent.prev_sibling)
+                    docs = self.__clean_doxygen_comment_block(docs)
             else: # the case where the enum is a regular one
                 type_id = node.child_by_field_name('name')
                 if type_id is not None:
