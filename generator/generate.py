@@ -630,6 +630,8 @@ class Parser(object):
         with open(vlc_preprocessed, "rb") as file:
             self.tstree = tsp.parse(file.read())
 
+        self.enums_with_ts = self.parse_enums_with_ts()
+
         self.enums = []
         self.callbacks = []
         self.structs = []
@@ -712,6 +714,90 @@ class Parser(object):
 
             yield Func(name, type_.replace(' ', ''), pars, docs,
                        file_=self.h_file, line=line)
+
+    def parse_enums_with_ts(self):
+        # TODO:
+        # 1) Do we want to match anonymous enums?
+        # 2) In case of an enum typedef, do we keep the enum id or the typedef id as name?
+
+        enum_query = self.C_LANGUAGE.query('(enum_specifier) @enum')
+        enum_captures = enum_query.captures(self.tstree.root_node)
+
+        enums = []
+        for node, node_type in enum_captures:
+            parent = node.parent
+            name = 'libvlc_enum_t' # default if anonymous enum
+            typ = 'enum'
+            docs = ''
+            vals = []
+            # add one because starts from zero by default
+            line = node.start_point[0] + 1
+            e = -1
+            locs = {}
+
+            # the case where the enum is part of a typedef
+            if parent is not None and parent.type == 'type_definition':
+                type_id = parent.child_by_field_name('declarator')
+                if type_id is not None and not type_id.is_missing:
+                    name = get_tsnode_text(type_id)
+
+                if parent.prev_sibling is not None and parent.prev_sibling.type == 'comment':
+                    docs = get_tsnode_text(parent.prev_sibling)
+            else: # the case where the enum is a regular one
+                type_id = node.child_by_field_name('name')
+                if type_id is not None:
+                    name = get_tsnode_text(type_id)
+
+                if node.prev_sibling is not None and node.prev_sibling.type == 'comment':
+                    docs = get_tsnode_text(node.prev_sibling)
+
+            # find enum's values
+            body = node.child_by_field_name('body')
+            if body is None:
+                raise Exception('There should always be a body for enum_specifier node. Otherwise we are parsingmalformed C code.')
+            for child in body.named_children:
+                if child.type != 'enumerator':
+                    continue
+
+                vname_node = child.child_by_field_name('name')
+                if vname_node is None:
+                    raise Exception('There should always be a name for enumerator node. Otherwise we are parsingmalformed C code.')
+                vname = get_tsnode_text(vname_node)
+
+                vvalue_node = child.child_by_field_name('value')
+                if vvalue_node is not None:
+                    vvalue = get_tsnode_text(vvalue_node)
+
+                    # Handle bit-shifted values.
+                    # Bit-shifted characters cannot be directly evaluated in Python.
+                    m = re.search(r"'(.)'\s*(<<|>>)\s*(.+)", vvalue)
+                    if m:
+                        vvalue = "%s %s %s" % (ord(m.group(1)), m.group(2), m.group(3))
+
+                    # Handle expressions.
+                    try:
+                        e = eval(vvalue, locs)
+                    except (SyntaxError, TypeError, ValueError):
+                        errorf('%s %s (l.%s)', typ, name, line)
+                        raise
+                    locs[vname] = e
+
+                    # Preserve hex values.
+                    if vvalue[:2] in ('0x', '0X'):
+                        vvalue = hex(e)
+                    else:
+                        vvalue = str(e)
+
+                    vals.append(Val(vname, vvalue, context=name))
+                else:
+                    e += 1
+                    locs[vname] = e
+                    vals.append(Val(vname, str(e), context=name))
+
+            enums.append(Enum(name, typ, vals, docs,
+                       file_=self.h_file, line=line))
+
+        return enums
 
     def parse_enums(self):
         """Parse header file for enum type definitions.
