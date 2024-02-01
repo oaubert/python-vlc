@@ -610,13 +610,18 @@ class Parser(object):
 
     def __init__(self, h_files, version=''):
         vlc_h = ''
+        libvlc_version_h = ''
         for h_file in h_files:
-            if os.path.basename(h_file) == 'vlc.h':
+            basename = os.path.basename(h_file)
+            if basename == 'vlc.h':
                 vlc_h = h_file
-                break
+            if basename == 'libvlc_version.h':
+                libvlc_version_h = h_file
 
         if vlc_h == '':
             raise Exception("Didn't found vlc.h amongst header files, but need it for preprocessing.")
+        if libvlc_version_h == '':
+            raise Exception("Didn't found libvlc_version.h amongst header files, but need it for finding libvlc version.")
 
         Language.build_library(
             "build/c.so",
@@ -630,15 +635,19 @@ class Parser(object):
         with open(vlc_preprocessed, "rb") as file:
             self.tstree = tsp.parse(file.read())
 
+        with open(libvlc_version_h, "rb") as file:
+            self.libvlc_version_tstree = tsp.parse(file.read())
+
+        self.enums_with_ts = self.parse_enums_with_ts()
+        self.version = version
+        if not self.version:
+            self.version = self.parse_version(libvlc_version_h)
+
         self.enums = []
         self.callbacks = []
         self.structs = []
         self.funcs = []
         self.typedefs = {}
-        self.version = version
-
-        if not self.version:
-            self.version = self.parse_version(h_files)
         for h in h_files:
             self.h_file = h
             self.typedefs.update(self.parse_typedefs())
@@ -646,6 +655,13 @@ class Parser(object):
             self.enums.extend(self.parse_enums())
             self.callbacks.extend(self.parse_callbacks())
             self.funcs.extend(self.parse_funcs())
+
+        # self.enums.sort(key=lambda enum: enum.name)
+        # for enum in self.enums:
+        #     enum.dump()
+        # self.enums_with_ts.sort(key=lambda enum: enum.name)
+        # for enum in self.enums_with_ts:
+        #     enum.dump()
 
     def bindings_version(self):
         """Return the bindings version number.
@@ -669,6 +685,45 @@ class Parser(object):
             f.check()
         for s in self.structs:
             s.check()
+
+    def __clean_doxygen_comment_block(self, docs):
+        """This function assumes that the Doxygen comment block syntax used
+        is the Javadoc style one, which consists of the block starting with /**.
+        See https://www.doxygen.nl/manual/docblocks.html#cppblock for all the ways
+        to mark a comment block.
+        """
+        if not docs.startswith('/**'):
+            raise Exception('Expected a Doxygen block comment in Javadoc style, with /** at the beginning.')
+
+        lines = docs.split('\n')
+        i = 0
+        while i < len(lines):
+            # remove the /** at the beginning of first line
+            if i == 0:
+                lines[i] = re.sub(r'/\*\*\s?', '', lines[i])
+            # remove the */ at the end of last line
+            if i == len(lines) - 1:
+                lines[i] = re.sub(r'\s*\*/\s*', '', lines[i])
+            # remove the * at the begining of in-between lines
+            lines[i] = re.sub(r'^\s*\*\s?', '', lines[i])
+
+            lines[i] = lines[i].strip()
+            i += 1
+
+        # remove potential empty lines at the beginning and end of comment block
+        start = 0
+        while start < len(lines) and lines[start] == '':
+            start += 1
+        end = len(lines) - 1
+        while end >= 0 and lines[end] == '':
+            end -= 1
+
+        cleaned_docs = []
+        for j in range(start, end + 1):
+            cleaned_docs.append(lines[j])
+        cleaned_docs = '\n'.join(cleaned_docs)
+
+        return cleaned_docs
 
     def dump(self, attr):
         sys.stderr.write('%s==== %s ==== %s\n' % (_NL_, attr, self.version))
@@ -712,6 +767,91 @@ class Parser(object):
 
             yield Func(name, type_.replace(' ', ''), pars, docs,
                        file_=self.h_file, line=line)
+
+    def parse_enums_with_ts(self):
+        # TODO:
+        # 1) Do we want to match anonymous enums?
+        # 2) In case of an enum typedef, do we keep the enum id or the typedef id as name?
+
+        enum_query = self.C_LANGUAGE.query('(enum_specifier) @enum')
+        enum_captures = enum_query.captures(self.tstree.root_node)
+
+        enums = []
+        for node, node_type in enum_captures:
+            parent = node.parent
+            name = 'libvlc_enum_t' # default if anonymous enum
+            typ = 'enum'
+            docs = ''
+            vals = []
+            # add one because starts from zero by default
+            line = node.start_point[0] + 1
+            e = -1
+            locs = {}
+
+            # the case where the enum is part of a typedef
+            if parent is not None and parent.type == 'type_definition':
+                type_id = parent.child_by_field_name('declarator')
+                if type_id is not None and not type_id.is_missing:
+                    name = get_tsnode_text(type_id)
+
+                if parent.prev_sibling is not None and parent.prev_sibling.type == 'comment':
+                    docs = get_tsnode_text(parent.prev_sibling)
+                    docs = self.__clean_doxygen_comment_block(docs)
+            else: # the case where the enum is a regular one
+                type_id = node.child_by_field_name('name')
+                if type_id is not None:
+                    name = get_tsnode_text(type_id)
+
+                if node.prev_sibling is not None and node.prev_sibling.type == 'comment':
+                    docs = get_tsnode_text(node.prev_sibling)
+
+            # find enum's values
+            body = node.child_by_field_name('body')
+            if body is None:
+                raise Exception('There should always be a body for enum_specifier node. Otherwise we are parsingmalformed C code.')
+            for child in body.named_children:
+                if child.type != 'enumerator':
+                    continue
+
+                vname_node = child.child_by_field_name('name')
+                if vname_node is None:
+                    raise Exception('There should always be a name for enumerator node. Otherwise we are parsingmalformed C code.')
+                vname = get_tsnode_text(vname_node)
+
+                vvalue_node = child.child_by_field_name('value')
+                if vvalue_node is not None:
+                    vvalue = get_tsnode_text(vvalue_node)
+
+                    # Handle bit-shifted values.
+                    # Bit-shifted characters cannot be directly evaluated in Python.
+                    m = re.search(r"'(.)'\s*(<<|>>)\s*(.+)", vvalue)
+                    if m:
+                        vvalue = "%s %s %s" % (ord(m.group(1)), m.group(2), m.group(3))
+
+                    # Handle expressions.
+                    try:
+                        e = eval(vvalue, locs)
+                    except (SyntaxError, TypeError, ValueError):
+                        errorf('%s %s (l.%s)', typ, name, line)
+                        raise
+                    locs[vname] = e
+
+                    # Preserve hex values.
+                    if vvalue[:2] in ('0x', '0X'):
+                        vvalue = hex(e)
+                    else:
+                        vvalue = str(e)
+
+                    vals.append(Val(vname, vvalue, context=name))
+                else:
+                    e += 1
+                    locs[vname] = e
+                    vals.append(Val(vname, str(e), context=name))
+
+            enums.append(Enum(name, typ, vals, docs,
+                       file_=self.h_file, line=line))
+
+        return enums
 
     def parse_enums(self):
         """Parse header file for enum type definitions.
@@ -912,32 +1052,30 @@ class Parser(object):
                     d = []
         f.close()
 
-    def parse_version(self, h_files):
+    def parse_version(self, libvlc_version_h):
         """Get the libvlc version from the C header files:
            LIBVLC_VERSION_MAJOR, _MINOR, _REVISION, _EXTRA
         """
         version = None
-        version_file = [ h for h in h_files if
-                         h.lower().endswith('libvlc_version.h') ]
-        if version_file:
-            # Version file exists. Parse the version number.
-            f, v = opener(version_file[0]), []
-            for t in f:
-                m = LIBVLC_V_re.match(t)
-                if m:
-                    t, m = m.groups()
-                    if t in ('MAJOR', 'MINOR', 'REVISION'):
-                        v.append((t, m))
-                    elif t == 'EXTRA' and m not in ('0', ''):
-                        v.append((t[1:], m))
-            f.close()
-            if v:
-                version = '.'.join(m for _, m in sorted(v))
+
+        f, v = opener(libvlc_version_h), []
+        for t in f:
+            m = LIBVLC_V_re.match(t)
+            if m:
+                t, m = m.groups()
+                if t in ('MAJOR', 'MINOR', 'REVISION'):
+                    v.append((t, m))
+                elif t == 'EXTRA' and m not in ('0', ''):
+                    v.append((t[1:], m))
+        f.close()
+        if v:
+            version = '.'.join(m for _, m in sorted(v))
+
         # Version was not found in include files themselves. Try other
         # approaches.
         if version is None:
             # Try to get version information from git describe
-            git_dir = Path(h_files[0]).absolute().parents[2].joinpath('.git')
+            git_dir = Path(libvlc_version_h).absolute().parents[2].joinpath('.git')
             if git_dir.is_dir():
                 # We are in a git tree. Let's get the version information
                 # from there if we can call git
@@ -945,6 +1083,7 @@ class Parser(object):
                     version = subprocess.check_output(["git", "--git-dir=%s" % git_dir.as_posix(), "describe"]).strip().decode('utf-8')
                 except:
                     pass
+
         return version
 
 class _Generator(object):
