@@ -610,13 +610,18 @@ class Parser(object):
 
     def __init__(self, h_files, version=''):
         vlc_h = ''
+        libvlc_version_h = ''
         for h_file in h_files:
-            if os.path.basename(h_file) == 'vlc.h':
+            basename = os.path.basename(h_file)
+            if basename == 'vlc.h':
                 vlc_h = h_file
-                break
+            if basename == 'libvlc_version.h':
+                libvlc_version_h = h_file
 
         if vlc_h == '':
             raise Exception("Didn't found vlc.h amongst header files, but need it for preprocessing.")
+        if libvlc_version_h == '':
+            raise Exception("Didn't found libvlc_version.h amongst header files, but need it for finding libvlc version.")
 
         Language.build_library(
             "build/c.so",
@@ -630,17 +635,19 @@ class Parser(object):
         with open(vlc_preprocessed, "rb") as file:
             self.tstree = tsp.parse(file.read())
 
+        with open(libvlc_version_h, "rb") as file:
+            self.libvlc_version_tstree = tsp.parse(file.read())
+
         self.enums_with_ts = self.parse_enums_with_ts()
+        self.version = version
+        if not self.version:
+            self.version = self.parse_version(libvlc_version_h)
 
         self.enums = []
         self.callbacks = []
         self.structs = []
         self.funcs = []
         self.typedefs = {}
-        self.version = version
-
-        if not self.version:
-            self.version = self.parse_version(h_files)
         for h in h_files:
             self.h_file = h
             self.typedefs.update(self.parse_typedefs())
@@ -1012,32 +1019,30 @@ class Parser(object):
                     d = []
         f.close()
 
-    def parse_version(self, h_files):
+    def parse_version(self, libvlc_version_h):
         """Get the libvlc version from the C header files:
            LIBVLC_VERSION_MAJOR, _MINOR, _REVISION, _EXTRA
         """
         version = None
-        version_file = [ h for h in h_files if
-                         h.lower().endswith('libvlc_version.h') ]
-        if version_file:
-            # Version file exists. Parse the version number.
-            f, v = opener(version_file[0]), []
-            for t in f:
-                m = LIBVLC_V_re.match(t)
-                if m:
-                    t, m = m.groups()
-                    if t in ('MAJOR', 'MINOR', 'REVISION'):
-                        v.append((t, m))
-                    elif t == 'EXTRA' and m not in ('0', ''):
-                        v.append((t[1:], m))
-            f.close()
-            if v:
-                version = '.'.join(m for _, m in sorted(v))
+
+        f, v = opener(libvlc_version_h), []
+        for t in f:
+            m = LIBVLC_V_re.match(t)
+            if m:
+                t, m = m.groups()
+                if t in ('MAJOR', 'MINOR', 'REVISION'):
+                    v.append((t, m))
+                elif t == 'EXTRA' and m not in ('0', ''):
+                    v.append((t[1:], m))
+        f.close()
+        if v:
+            version = '.'.join(m for _, m in sorted(v))
+
         # Version was not found in include files themselves. Try other
         # approaches.
         if version is None:
             # Try to get version information from git describe
-            git_dir = Path(h_files[0]).absolute().parents[2].joinpath('.git')
+            git_dir = Path(libvlc_version_h).absolute().parents[2].joinpath('.git')
             if git_dir.is_dir():
                 # We are in a git tree. Let's get the version information
                 # from there if we can call git
@@ -1045,6 +1050,7 @@ class Parser(object):
                     version = subprocess.check_output(["git", "--git-dir=%s" % git_dir.as_posix(), "describe"]).strip().decode('utf-8')
                 except:
                     pass
+
         return version
 
 class _Generator(object):
