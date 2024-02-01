@@ -762,18 +762,51 @@ class Parser(object):
 
         @return: yield a Struct instance for each struct.
         """
-        for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile(r'^\}(\s*\S+)?\s*;$')):
-            fields = [ Par.parse_param(t.strip()) for t in decllist_re.split(body) if t.strip() and not '%s()' % name in t ]
-            fields = [ f for f in fields if f is not None ]
+        root = self.tstree.root_node
+        
+        for node in root.children:
+            if node.type == 'struct_declaration':
+                # Extract struct name and fields
+                name_node = node.child_by_field_name('name')
+                name = name_node.text if name_node else 'FIXME_undefined_name'
 
-            name = name.strip()
-            if not name:  # anonymous?
-                name = 'FIXME_undefined_name'
+                fields_node = node.child_by_field_name('declaration_list')
+                fields = [Par.parse_param(field.text.strip()) for field in fields_node.children if field.type == 'declaration']
 
-            # more doc string cleanup
-            docs = endot(docs).capitalize()
-            yield Struct(name, typ, fields, docs,
-                         file_=self.h_file, line=line)
+                
+                        
+                        
+                # more doc string cleanup
+                # Extract documentation from comments
+                docs = []
+                prev_sibling = node.prev_sibling
+                while prev_sibling and prev_sibling.type == 'comment' and prev_sibling.text.startswith('/**'):
+                    docs.insert(0, prev_sibling.text)
+                    prev_sibling = prev_sibling.prev_sibling
+                    
+                # Iterate over children to find comments inside the struct
+                for child in node.children:
+                    if child.type == 'comment' and child.text.startswith('/**'):
+                        docs.append(child.text)
+
+                # Combine and clean up docs for documentation
+                docs = '\n'.join(comment.strip('/*').strip() for comment in docs).strip()
+
+                # yield a Struct instance
+                yield Struct(name, 'struct', fields, docs, file_=self.h_file, line=node.start_point[1])
+        
+        # for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile(r'^\}(\s*\S+)?\s*;$')):
+        #     fields = [ Par.parse_param(t.strip()) for t in decllist_re.split(body) if t.strip() and not '%s()' % name in t ]
+        #     fields = [ f for f in fields if f is not None ]
+
+        #     name = name.strip()
+        #     if not name:  # anonymous?
+        #         name = 'FIXME_undefined_name'
+
+        #     # more doc string cleanup
+        #     docs = endot(docs).capitalize()
+        #     yield Struct(name, typ, fields, docs,
+        #                  file_=self.h_file, line=line)
 
     def parse_funcs(self):
         """Parse header file for public function definitions.
