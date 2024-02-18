@@ -914,43 +914,60 @@ class Parser(object):
                        file_=self.h_file, line=line)
 
 
-    def parse_structs_with_ts(sefl):
+    def parse_structs_with_ts(self):
         """Parse header file for struct definitions.
 
         @return: yield a Struct instance for each struct.
         """
-        root = self.tstree.root_node
         
-        for node in root.children:
-            if node.type == 'struct_declaration':
-                # Extract struct name and fields
-                name_node = node.child_by_field_name('name')
-                name = name_node.text if name_node else 'FIXME_undefined_name'
-
-                fields_node = node.child_by_field_name('declaration_list')
-                fields = [Par.parse_param(field.text.strip()) for field in fields_node.children if field.type == 'declaration']
-
-                
-                        
-                        
-                # more doc string cleanup
-                # Extract documentation from comments
-                docs = []
-                prev_sibling = node.prev_sibling
-                while prev_sibling and prev_sibling.type == 'comment' and prev_sibling.text.startswith('/**'):
-                    docs.insert(0, prev_sibling.text)
-                    prev_sibling = prev_sibling.prev_sibling
-                    
-                # Iterate over children to find comments inside the struct
-                for child in node.children:
-                    if child.type == 'comment' and child.text.startswith('/**'):
-                        docs.append(child.text)
-
-                # Combine and clean up docs for documentation
-                docs = '\n'.join(comment.strip('/*').strip() for comment in docs).strip()
-
-                # yield a Struct instance
-                yield Struct(name, 'struct', fields, docs, file_=self.h_file, line=node.start_point[1])
+        struct_query = self.C_LANGUAGE.query('(struct_specifier) @struct')
+        struct_captures = struct_query.captures(self.tstree.root_node)
+        
+        structs = []
+        for node,_ in struct_captures:
+            parent = node.parent
+            name = ''
+            typ = 'struct'
+            docs = ''
+            fields = []
+            
+            # Add one because starts from zero by default
+            line = node.start_point[0] + 1
+            
+            # Find and extract struct name
+            if parent is not None and parent.type == "type_definition":
+                type_id = parent.child_by_field_name('declarator')
+                if type_id is not None and not type_id.is_missing:
+                    name = get_tsnode_text(type_id)
+            else:
+                type_id = node.child_by_field_name('name')
+                if type_id is not None:
+                    name = get_tsnode_text(type_id)
+            #ignore if anonymous struct
+            if name == '':
+                continue;
+            
+            # Find structs documentation
+            if parent is not None and parent.type == 'type_definition':
+                if parent.prev_sibling is not None and parent.prev_sibling.type == 'comment':
+                    docs = get_tsnode_text(parent.prev_sibling)
+            else:
+                if node.prev_sibling is not None and node.prev_sibling.type == 'comment':
+                    docs = get_tsnode_text(node.prev_sibling)
+            docs = self.__clean_doxygen_comment_block(docs)
+            
+            # Find struct's fields
+            body = node.child_by_field_name('field_declaration_list')
+            if body is not None:
+                for child in body.named_children:
+                    if child.type == 'field_declaration':
+                        field_name_node = child.child_by_field_name('declarator')
+                        if field_name_node is not None and not field_name_node.is_missing:
+                            fields.append(Par.parse_param(get_tsnode_text(field_name_node).strip()))
+                            
+            structs.append(Struct(name, typ, fields, docs, file_=self.vlc_preprocessed, line=line))
+            
+            return structs
                 
     def parse_structs(self):
         """Parse header file for struct definitions.
