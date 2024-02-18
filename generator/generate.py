@@ -610,17 +610,17 @@ class Parser(object):
 
     def __init__(self, h_files, version=''):
         vlc_h = ''
-        libvlc_version_h = ''
+        self.libvlc_version_h = ''
         for h_file in h_files:
             basename = os.path.basename(h_file)
             if basename == 'vlc.h':
                 vlc_h = h_file
             if basename == 'libvlc_version.h':
-                libvlc_version_h = h_file
+                self.libvlc_version_h = h_file
 
         if vlc_h == '':
             raise Exception("Didn't found vlc.h amongst header files, but need it for preprocessing.")
-        if libvlc_version_h == '':
+        if self.libvlc_version_h == '':
             raise Exception("Didn't found libvlc_version.h amongst header files, but need it for finding libvlc version.")
 
         Language.build_library(
@@ -631,21 +631,21 @@ class Parser(object):
         tsp = TSParser()
         tsp.set_language(self.C_LANGUAGE)
 
-        vlc_preprocessed = self.preprocess(vlc_h)
-        with open(vlc_preprocessed, "rb") as file:
+        self.vlc_preprocessed = self.preprocess(vlc_h)
+        with open(self.vlc_preprocessed, "rb") as file:
             self.tstree = tsp.parse(file.read())
 
-        with open(libvlc_version_h, "rb") as file:
+        with open(self.libvlc_version_h, "rb") as file:
             self.libvlc_version_tstree = tsp.parse(file.read())
 
         self.enums_with_ts = self.parse_enums_with_ts()
         self.version_with_ts = version
         if not self.version_with_ts:
-            self.version_with_ts = self.parse_version_with_ts(libvlc_version_h)
+            self.version_with_ts = self.parse_version_with_ts(self.libvlc_version_h)
 
         self.version = version
         if not self.version:
-            self.version = self.parse_version(libvlc_version_h)
+            self.version = self.parse_version(self.libvlc_version_h)
 
         self.enums = []
         self.callbacks = []
@@ -865,7 +865,7 @@ class Parser(object):
                     vals.append(Val(vname, str(e), context=name))
 
             enums.append(Enum(name, typ, vals, docs,
-                       file_=self.h_file, line=line))
+                       file_=self.vlc_preprocessed, line=line))
 
         return enums
 
