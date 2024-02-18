@@ -639,6 +639,10 @@ class Parser(object):
             self.libvlc_version_tstree = tsp.parse(file.read())
 
         self.enums_with_ts = self.parse_enums_with_ts()
+        self.version_with_ts = version
+        if not self.version_with_ts:
+            self.version_with_ts = self.parse_version_with_ts(libvlc_version_h)
+
         self.version = version
         if not self.version:
             self.version = self.parse_version(libvlc_version_h)
@@ -1037,6 +1041,51 @@ class Parser(object):
         f.close()
         if v:
             version = '.'.join(m for _, m in sorted(v))
+
+        # Version was not found in include files themselves. Try other
+        # approaches.
+        if version is None:
+            # Try to get version information from git describe
+            git_dir = Path(libvlc_version_h).absolute().parents[2].joinpath('.git')
+            if git_dir.is_dir():
+                # We are in a git tree. Let's get the version information
+                # from there if we can call git
+                try:
+                    version = subprocess.check_output(["git", "--git-dir=%s" % git_dir.as_posix(), "describe"]).strip().decode('utf-8')
+                except:
+                    pass
+
+        return version
+
+    def parse_version_with_ts(self, libvlc_version_h):
+        """Get the libvlc version from the C header files:
+           LIBVLC_VERSION_MAJOR, _MINOR, _REVISION, _EXTRA
+        """
+        macro_query = self.C_LANGUAGE.query('(preproc_def) @macro')
+        macros = macro_query.captures(self.libvlc_version_tstree.root_node)
+
+        version = None
+        version_numbers = {
+            "LIBVLC_VERSION_MAJOR": -1,
+            "LIBVLC_VERSION_MINOR": -1,
+            "LIBVLC_VERSION_REVISION": -1,
+            "LIBVLC_VERSION_EXTRA": -1,
+        }
+        for macro, _ in macros:
+            name = get_tsnode_text(macro.child_by_field_name("name"))
+            if name in version_numbers:
+                version_numbers[name] = int(
+                    get_tsnode_text(macro.child_by_field_name("value"))[1:-1]
+                )
+
+        if (
+            version_numbers["LIBVLC_VERSION_MAJOR"] >= 0
+            and version_numbers["LIBVLC_VERSION_MINOR"] >= 0
+            and version_numbers["LIBVLC_VERSION_REVISION"] >= 0
+        ):
+            version = f"{version_numbers['LIBVLC_VERSION_MAJOR']}.{version_numbers['LIBVLC_VERSION_MINOR']}.{version_numbers['LIBVLC_VERSION_REVISION']}"
+            if version_numbers["LIBVLC_VERSION_EXTRA"] > 0:
+                version += f".{version_numbers['LIBVLC_VERSION_EXTRA']}"
 
         # Version was not found in include files themselves. Try other
         # approaches.
