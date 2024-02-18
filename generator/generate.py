@@ -800,7 +800,6 @@ class Parser(object):
 
                 if parent.prev_sibling is not None and parent.prev_sibling.type == 'comment':
                     docs = get_tsnode_text(parent.prev_sibling)
-                    docs = self.__clean_doxygen_comment_block(docs)
             else: # the case where the enum is a regular one
                 type_id = node.child_by_field_name('name')
                 if type_id is not None:
@@ -808,6 +807,7 @@ class Parser(object):
 
                 if node.prev_sibling is not None and node.prev_sibling.type == 'comment':
                     docs = get_tsnode_text(node.prev_sibling)
+            docs = self.__clean_doxygen_comment_block(docs)
 
             # find enum's values
             body = node.child_by_field_name('body')
