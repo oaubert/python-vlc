@@ -897,7 +897,8 @@ class Parser(object):
             yield Enum(name, typ, vals, docs,
                        file_=self.h_file, line=line)
 
-    def parse_structs(self):
+
+    def parse_structs_with_ts(sefl):
         """Parse header file for struct definitions.
 
         @return: yield a Struct instance for each struct.
@@ -934,19 +935,24 @@ class Parser(object):
 
                 # yield a Struct instance
                 yield Struct(name, 'struct', fields, docs, file_=self.h_file, line=node.start_point[1])
-        
-        # for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile(r'^\}(\s*\S+)?\s*;$')):
-        #     fields = [ Par.parse_param(t.strip()) for t in decllist_re.split(body) if t.strip() and not '%s()' % name in t ]
-        #     fields = [ f for f in fields if f is not None ]
+                
+    def parse_structs(self):
+        """Parse header file for struct definitions.
 
-        #     name = name.strip()
-        #     if not name:  # anonymous?
-        #         name = 'FIXME_undefined_name'
+        @return: yield a Struct instance for each struct.
+        """
+        for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile(r'^\}(\s*\S+)?\s*;$')):
+            fields = [ Par.parse_param(t.strip()) for t in decllist_re.split(body) if t.strip() and not '%s()' % name in t ]
+            fields = [ f for f in fields if f is not None ]
 
-        #     # more doc string cleanup
-        #     docs = endot(docs).capitalize()
-        #     yield Struct(name, typ, fields, docs,
-        #                  file_=self.h_file, line=line)
+            name = name.strip()
+            if not name:  # anonymous?
+                name = 'FIXME_undefined_name'
+
+            # more doc string cleanup
+            docs = endot(docs).capitalize()
+            yield Struct(name, typ, fields, docs,
+                         file_=self.h_file, line=line)
 
     def parse_funcs(self):
         """Parse header file for public function definitions.
