@@ -696,6 +696,9 @@ class Parser(object):
         See https://www.doxygen.nl/manual/docblocks.html#cppblock for all the ways
         to mark a comment block.
         """
+        if docs == '':
+            return ''
+
         if not docs.startswith('/**'):
             raise Exception('Expected a Doxygen block comment in Javadoc style, with /** at the beginning.')
 
