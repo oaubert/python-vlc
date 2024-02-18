@@ -773,17 +773,13 @@ class Parser(object):
                        file_=self.h_file, line=line)
 
     def parse_enums_with_ts(self):
-        # TODO:
-        # 1) Do we want to match anonymous enums?
-        # 2) In case of an enum typedef, do we keep the enum id or the typedef id as name?
-
         enum_query = self.C_LANGUAGE.query('(enum_specifier) @enum')
         enum_captures = enum_query.captures(self.tstree.root_node)
 
         enums = []
-        for node, node_type in enum_captures:
+        for node, _ in enum_captures:
             parent = node.parent
-            name = 'libvlc_enum_t' # default if anonymous enum
+            name = ''
             typ = 'enum'
             docs = ''
             vals = []
@@ -792,19 +788,24 @@ class Parser(object):
             e = -1
             locs = {}
 
-            # the case where the enum is part of a typedef
+            # find enum's name
             if parent is not None and parent.type == 'type_definition':
                 type_id = parent.child_by_field_name('declarator')
                 if type_id is not None and not type_id.is_missing:
                     name = get_tsnode_text(type_id)
-
-                if parent.prev_sibling is not None and parent.prev_sibling.type == 'comment':
-                    docs = get_tsnode_text(parent.prev_sibling)
-            else: # the case where the enum is a regular one
+            else:
                 type_id = node.child_by_field_name('name')
                 if type_id is not None:
                     name = get_tsnode_text(type_id)
+            # ignore if anonymous enum
+            if name == '':
+                continue;
 
+            # find enum's docs
+            if parent is not None and parent.type == 'type_definition':
+                if parent.prev_sibling is not None and parent.prev_sibling.type == 'comment':
+                    docs = get_tsnode_text(parent.prev_sibling)
+            else:
                 if node.prev_sibling is not None and node.prev_sibling.type == 'comment':
                     docs = get_tsnode_text(node.prev_sibling)
             docs = self.__clean_doxygen_comment_block(docs)
