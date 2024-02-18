@@ -660,12 +660,20 @@ class Parser(object):
             self.callbacks.extend(self.parse_callbacks())
             self.funcs.extend(self.parse_funcs())
 
+        # # =====================================================================
+        # # Compare outputs for enums
+        # # =====================================================================
         # self.enums.sort(key=lambda enum: enum.name)
         # for enum in self.enums:
         #     enum.dump()
         # self.enums_with_ts.sort(key=lambda enum: enum.name)
         # for enum in self.enums_with_ts:
         #     enum.dump()
+
+        # =====================================================================
+        # Compare outputs for version
+        # =====================================================================
+        # assert self.version == self.version_with_ts, f'Got version {self.version_with_ts} with Tree-sitter, but {self.version} with regular expressions.'
 
     def bindings_version(self):
         """Return the bindings version number.
