@@ -610,17 +610,17 @@ class Parser(object):
 
     def __init__(self, h_files, version=''):
         vlc_h = ''
-        libvlc_version_h = ''
+        self.libvlc_version_h = ''
         for h_file in h_files:
             basename = os.path.basename(h_file)
             if basename == 'vlc.h':
                 vlc_h = h_file
             if basename == 'libvlc_version.h':
-                libvlc_version_h = h_file
+                self.libvlc_version_h = h_file
 
         if vlc_h == '':
             raise Exception("Didn't found vlc.h amongst header files, but need it for preprocessing.")
-        if libvlc_version_h == '':
+        if self.libvlc_version_h == '':
             raise Exception("Didn't found libvlc_version.h amongst header files, but need it for finding libvlc version.")
 
         Language.build_library(
@@ -631,17 +631,21 @@ class Parser(object):
         tsp = TSParser()
         tsp.set_language(self.C_LANGUAGE)
 
-        vlc_preprocessed = self.preprocess(vlc_h)
-        with open(vlc_preprocessed, "rb") as file:
+        self.vlc_preprocessed = self.preprocess(vlc_h)
+        with open(self.vlc_preprocessed, "rb") as file:
             self.tstree = tsp.parse(file.read())
 
-        with open(libvlc_version_h, "rb") as file:
+        with open(self.libvlc_version_h, "rb") as file:
             self.libvlc_version_tstree = tsp.parse(file.read())
 
         self.enums_with_ts = self.parse_enums_with_ts()
+        self.version_with_ts = version
+        if not self.version_with_ts:
+            self.version_with_ts = self.parse_version_with_ts(self.libvlc_version_h)
+
         self.version = version
         if not self.version:
-            self.version = self.parse_version(libvlc_version_h)
+            self.version = self.parse_version(self.libvlc_version_h)
 
         self.enums = []
         self.callbacks = []
@@ -656,12 +660,20 @@ class Parser(object):
             self.callbacks.extend(self.parse_callbacks())
             self.funcs.extend(self.parse_funcs())
 
+        # # =====================================================================
+        # # Compare outputs for enums
+        # # =====================================================================
         # self.enums.sort(key=lambda enum: enum.name)
         # for enum in self.enums:
         #     enum.dump()
         # self.enums_with_ts.sort(key=lambda enum: enum.name)
         # for enum in self.enums_with_ts:
         #     enum.dump()
+
+        # =====================================================================
+        # Compare outputs for version
+        # =====================================================================
+        # assert self.version == self.version_with_ts, f'Got version {self.version_with_ts} with Tree-sitter, but {self.version} with regular expressions.'
 
     def bindings_version(self):
         """Return the bindings version number.
@@ -692,6 +704,9 @@ class Parser(object):
         See https://www.doxygen.nl/manual/docblocks.html#cppblock for all the ways
         to mark a comment block.
         """
+        if docs == '':
+            return ''
+
         if not docs.startswith('/**'):
             raise Exception('Expected a Doxygen block comment in Javadoc style, with /** at the beginning.')
 
@@ -769,17 +784,13 @@ class Parser(object):
                        file_=self.h_file, line=line)
 
     def parse_enums_with_ts(self):
-        # TODO:
-        # 1) Do we want to match anonymous enums?
-        # 2) In case of an enum typedef, do we keep the enum id or the typedef id as name?
-
         enum_query = self.C_LANGUAGE.query('(enum_specifier) @enum')
         enum_captures = enum_query.captures(self.tstree.root_node)
 
         enums = []
-        for node, node_type in enum_captures:
+        for node, _ in enum_captures:
             parent = node.parent
-            name = 'libvlc_enum_t' # default if anonymous enum
+            name = ''
             typ = 'enum'
             docs = ''
             vals = []
@@ -788,22 +799,27 @@ class Parser(object):
             e = -1
             locs = {}
 
-            # the case where the enum is part of a typedef
+            # find enum's name
             if parent is not None and parent.type == 'type_definition':
                 type_id = parent.child_by_field_name('declarator')
                 if type_id is not None and not type_id.is_missing:
                     name = get_tsnode_text(type_id)
-
-                if parent.prev_sibling is not None and parent.prev_sibling.type == 'comment':
-                    docs = get_tsnode_text(parent.prev_sibling)
-                    docs = self.__clean_doxygen_comment_block(docs)
-            else: # the case where the enum is a regular one
+            else:
                 type_id = node.child_by_field_name('name')
                 if type_id is not None:
                     name = get_tsnode_text(type_id)
+            # ignore if anonymous enum
+            if name == '':
+                continue;
 
+            # find enum's docs
+            if parent is not None and parent.type == 'type_definition':
+                if parent.prev_sibling is not None and parent.prev_sibling.type == 'comment':
+                    docs = get_tsnode_text(parent.prev_sibling)
+            else:
                 if node.prev_sibling is not None and node.prev_sibling.type == 'comment':
                     docs = get_tsnode_text(node.prev_sibling)
+            docs = self.__clean_doxygen_comment_block(docs)
 
             # find enum's values
             body = node.child_by_field_name('body')
@@ -849,7 +865,7 @@ class Parser(object):
                     vals.append(Val(vname, str(e), context=name))
 
             enums.append(Enum(name, typ, vals, docs,
-                       file_=self.h_file, line=line))
+                       file_=self.vlc_preprocessed, line=line))
 
         return enums
 
@@ -1076,6 +1092,51 @@ class Parser(object):
         f.close()
         if v:
             version = '.'.join(m for _, m in sorted(v))
+
+        # Version was not found in include files themselves. Try other
+        # approaches.
+        if version is None:
+            # Try to get version information from git describe
+            git_dir = Path(libvlc_version_h).absolute().parents[2].joinpath('.git')
+            if git_dir.is_dir():
+                # We are in a git tree. Let's get the version information
+                # from there if we can call git
+                try:
+                    version = subprocess.check_output(["git", "--git-dir=%s" % git_dir.as_posix(), "describe"]).strip().decode('utf-8')
+                except:
+                    pass
+
+        return version
+
+    def parse_version_with_ts(self, libvlc_version_h):
+        """Get the libvlc version from the C header files:
+           LIBVLC_VERSION_MAJOR, _MINOR, _REVISION, _EXTRA
+        """
+        macro_query = self.C_LANGUAGE.query('(preproc_def) @macro')
+        macros = macro_query.captures(self.libvlc_version_tstree.root_node)
+
+        version = None
+        version_numbers = {
+            "LIBVLC_VERSION_MAJOR": -1,
+            "LIBVLC_VERSION_MINOR": -1,
+            "LIBVLC_VERSION_REVISION": -1,
+            "LIBVLC_VERSION_EXTRA": -1,
+        }
+        for macro, _ in macros:
+            name = get_tsnode_text(macro.child_by_field_name("name"))
+            if name in version_numbers:
+                version_numbers[name] = int(
+                    get_tsnode_text(macro.child_by_field_name("value"))[1:-1]
+                )
+
+        if (
+            version_numbers["LIBVLC_VERSION_MAJOR"] >= 0
+            and version_numbers["LIBVLC_VERSION_MINOR"] >= 0
+            and version_numbers["LIBVLC_VERSION_REVISION"] >= 0
+        ):
+            version = f"{version_numbers['LIBVLC_VERSION_MAJOR']}.{version_numbers['LIBVLC_VERSION_MINOR']}.{version_numbers['LIBVLC_VERSION_REVISION']}"
+            if version_numbers["LIBVLC_VERSION_EXTRA"] > 0:
+                version += f".{version_numbers['LIBVLC_VERSION_EXTRA']}"
 
         # Version was not found in include files themselves. Try other
         # approaches.
