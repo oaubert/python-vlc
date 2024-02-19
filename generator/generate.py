@@ -1026,26 +1026,25 @@ class Parser(object):
 
         @return: yield a Func instance for each function, unless blacklisted.
         """
-        # get parameters (type and name, maybe in docs if not in signature)
-        # if only param is void, pars = []
-        # ignore if deprecated or blacklisted
-        func_query = self.C_LANGUAGE.query(
-            "(declaration declarator: (function_declarator)) @func"
+        decl_query = self.C_LANGUAGE.query(
+            "(declaration) @decl"
         )
-        func_captures = func_query.captures(self.tstree.root_node)
+        decl_captures = decl_query.captures(self.tstree.root_node)
+        func_query = self.C_LANGUAGE.query(
+            "(function_declarator) @func_decl"
+        )
+        func_captures = []
+        for decl_node, _ in decl_captures:
+            func_decl_captures = func_query.captures(decl_node)
+            if len(func_decl_captures) == 1:
+                func_captures.append((decl_node, func_decl_captures[0][0]))
 
         funcs = []
-        for declaration_node, _ in func_captures:
-            func_declaration_node = declaration_node.child_by_field_name("declarator")
-            if func_declaration_node is None:
+        for decl_node, func_decl_node in func_captures:
+            func_id_node = func_decl_node.child_by_field_name("declarator")
+            if func_decl_node is None:
                 raise Exception(
-                    "declaration_node should have a declarator child. Wrong query? Wrong field name for child?"
-                )
-
-            func_id_node = func_declaration_node.child_by_field_name("declarator")
-            if func_declaration_node is None:
-                raise Exception(
-                    "func_declaration_node should have a declarator child. Wrong query? Wrong field name for child?"
+                    "func_decl_node should have a declarator child. Wrong query? Wrong field name for child?"
                 )
             name = get_tsnode_text(func_id_node)
 
@@ -1055,7 +1054,7 @@ class Parser(object):
             if not name.startswith("libvlc_"):
                 continue
 
-            func_return_type_node = declaration_node.child_by_field_name("type")
+            func_return_type_node = decl_node.child_by_field_name("type")
             if func_return_type_node is None:
                 raise Exception(
                     "declaration_node should have a type child. Wrong query? Wrong field name for child?"
@@ -1069,9 +1068,9 @@ class Parser(object):
 
             deprecated = False
             in_api = False
-            attributes = get_children_by_type(declaration_node, "attribute_specifier")
+            attributes = get_children_by_type(decl_node, "attribute_specifier")
             ms_declspecs = get_children_by_type(
-                declaration_node, "ms_declspec_modifier"
+                decl_node, "ms_declspec_modifier"
             )
             for a in attributes + ms_declspecs:
                 a_txt = get_tsnode_text(a)
@@ -1082,21 +1081,22 @@ class Parser(object):
                     or a_txt == "__declspec(dllexport)"
                 ):
                     in_api = True
-            if deprecated or not in_api:
+                     
+            if not in_api:
                 continue
 
             # add one because starts from zero by default
-            line = declaration_node.start_point[0] + 1
+            line = decl_node.start_point[0] + 1
 
             docs = ""
             if (
-                declaration_node.prev_sibling is not None
-                and declaration_node.prev_sibling.type == "comment"
+                decl_node.prev_sibling is not None
+                and decl_node.prev_sibling.type == "comment"
             ):
-                docs = get_tsnode_text(declaration_node.prev_sibling)
+                docs = get_tsnode_text(decl_node.prev_sibling)
             docs = self.__clean_doxygen_comment_block(docs)
 
-            params_nodes = func_declaration_node.child_by_field_name("parameters")
+            params_nodes = func_decl_node.child_by_field_name("parameters")
             if params_nodes is None:
                 raise Exception(
                     "func_declaration_node should have a parameters child. Wrong query? Wrong field name for child?"
