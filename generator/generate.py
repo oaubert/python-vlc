@@ -559,7 +559,7 @@ class Par(object):
             assert('const' not in param_raw)
 
             # normalize spaces
-            param_raw = re.sub('\s+', ' ', param_raw)
+            param_raw = re.sub(r'\s+', ' ', param_raw)
 
             split_value = param_raw.split(' ')
             if len(split_value) > 1:
