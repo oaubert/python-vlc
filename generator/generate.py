@@ -250,6 +250,9 @@ def get_tsnode_sexp(tsnode):
 def get_tsnode_text(tsnode, encoding ="utf-8"):
     return tsnode.text.decode(encoding)
 
+def get_children_by_type(tsnode, type):
+    return list(filter(lambda child: child.type == type, tsnode.named_children))
+
 class _Source(object):
     """Base class for elements parsed from source.
     """
@@ -640,6 +643,7 @@ class Parser(object):
 
         self.enums_with_ts = self.parse_enums_with_ts()
         self.structs_with_ts = self.parse_structs_with_ts()
+        self.funcs_with_ts = self.parse_funcs_with_ts()
         self.version_with_ts = version
         if not self.version_with_ts:
             self.version_with_ts = self.parse_version_with_ts(self.libvlc_version_h)
@@ -671,19 +675,29 @@ class Parser(object):
         # for enum in self.enums_with_ts:
         #     enum.dump()
         
-        # =====================================================================
-        # Compare outputs for structs
-        # =====================================================================
-        self.structs.sort(key=lambda struct: struct.name)
-        for struct in self.structs:
-            struct.dump()
-        self.structs_with_ts.sort(key=lambda struct: struct.name)
-        for struct in self.structs_with_ts:
-            struct.dump()
+        # # =====================================================================
+        # # Compare outputs for structs
+        # # =====================================================================
+        # self.structs.sort(key=lambda struct: struct.name)
+        # for struct in self.structs:
+        #     struct.dump()
+        # self.structs_with_ts.sort(key=lambda struct: struct.name)
+        # for struct in self.structs_with_ts:
+        #     struct.dump()
 
-        # =====================================================================
-        # Compare outputs for version
-        # =====================================================================
+        # # =====================================================================
+        # # Compare outputs for funcs
+        # # =====================================================================
+        # self.funcs.sort(key=lambda func: func.name)
+        # for func in self.funcs:
+        #     func.dump()
+        # self.funcs_with_ts.sort(key=lambda func: func.name)
+        # for func in self.funcs_with_ts:
+        #     func.dump()
+
+        # # =====================================================================
+        # # Compare outputs for version
+        # # =====================================================================
         # assert self.version == self.version_with_ts, f'Got version {self.version_with_ts} with Tree-sitter, but {self.version} with regular expressions.'
 
     def bindings_version(self):
@@ -715,11 +729,8 @@ class Parser(object):
         See https://www.doxygen.nl/manual/docblocks.html#cppblock for all the ways
         to mark a comment block.
         """
-        if docs == '':
-            return ''
-
         if not docs.startswith('/**'):
-            raise Exception('Expected a Doxygen block comment in Javadoc style, with /** at the beginning.')
+            return ''
 
         lines = docs.split('\n')
         i = 0
@@ -954,9 +965,12 @@ class Parser(object):
                 type_id = node.child_by_field_name('name')
                 if type_id is not None:
                     name = get_tsnode_text(type_id)
-            #ignore if anonymous struct
+            # ignore if anonymous struct
             if name == '':
                 continue;
+            # ignore if not a struct from libvlc
+            if not name.startswith("libvlc_"):
+                continue
             
             # Find structs documentation
             if parent is not None and parent.type == 'type_definition':
@@ -968,17 +982,16 @@ class Parser(object):
             docs = self.__clean_doxygen_comment_block(docs)
             
             # Find struct's fields
-            body = node.child_by_field_name('field_declaration_list')
+            body = node.child_by_field_name('body')
             if body is not None:
-                for child in body.named_children:
-                    if child.type == 'field_declaration':
-                        field_name_node = child.child_by_field_name('declarator')
-                        if field_name_node is not None and not field_name_node.is_missing:
-                            fields.append(Par.parse_param(get_tsnode_text(field_name_node).strip()))
+                for decl in get_children_by_type(body, 'field_declaration'):
+                    field_name_node = decl.child_by_field_name('declarator')
+                    if field_name_node is not None:
+                        fields.append(Par.parse_param(get_tsnode_text(field_name_node).strip()))
                             
             structs.append(Struct(name, typ, fields, docs, file_=self.vlc_preprocessed, line=line))
             
-            return structs
+        return structs
                 
     def parse_structs(self):
         """Parse header file for struct definitions.
@@ -1032,6 +1045,105 @@ class Parser(object):
 
             yield Func(f.name, f.type, pars, docs,
                        file_=self.h_file, line=line)
+
+    def parse_funcs_with_ts(self):
+        """Parse header file for public function definitions.
+
+        @return: yield a Func instance for each function, unless blacklisted.
+        """
+        # get parameters (type and name, maybe in docs if not in signature)
+        # if only param is void, pars = []
+        # ignore if deprecated or blacklisted
+        func_query = self.C_LANGUAGE.query(
+            "(declaration declarator: (function_declarator)) @func"
+        )
+        func_captures = func_query.captures(self.tstree.root_node)
+
+        funcs = []
+        for declaration_node, _ in func_captures:
+            func_declaration_node = declaration_node.child_by_field_name("declarator")
+            if func_declaration_node is None:
+                raise Exception(
+                    "declaration_node should have a declarator child. Wrong query? Wrong field name for child?"
+                )
+
+            func_id_node = func_declaration_node.child_by_field_name("declarator")
+            if func_declaration_node is None:
+                raise Exception(
+                    "func_declaration_node should have a declarator child. Wrong query? Wrong field name for child?"
+                )
+            name = get_tsnode_text(func_id_node)
+
+            # Make the assumption that every function of interest starts with 'libvlc_'.
+            # Because the code parsed is the output of vlc.h's preprocessing, some signatures
+            # come from external libraries and are not part of libvlc's API.
+            if not name.startswith("libvlc_"):
+                continue
+
+            func_return_type_node = declaration_node.child_by_field_name("type")
+            if func_return_type_node is None:
+                raise Exception(
+                    "declaration_node should have a type child. Wrong query? Wrong field name for child?"
+                )
+            return_type = get_tsnode_text(func_return_type_node)
+
+            # Ignore if in blacklist
+            if name in _blacklist:
+                _blacklist[name] = return_type
+                continue
+
+            deprecated = False
+            in_api = False
+            attributes = get_children_by_type(declaration_node, "attribute_specifier")
+            ms_declspecs = get_children_by_type(
+                declaration_node, "ms_declspec_modifier"
+            )
+            for a in attributes + ms_declspecs:
+                a_txt = get_tsnode_text(a)
+                if a_txt == "__attribute__((deprecated))":
+                    deprecated = True
+                if (
+                    a_txt == '__attribute__((visibility("default")))'
+                    or a_txt == "__declspec(dllexport)"
+                ):
+                    in_api = True
+            if deprecated or not in_api:
+                continue
+
+            # add one because starts from zero by default
+            line = declaration_node.start_point[0] + 1
+
+            docs = ""
+            if (
+                declaration_node.prev_sibling is not None
+                and declaration_node.prev_sibling.type == "comment"
+            ):
+                docs = get_tsnode_text(declaration_node.prev_sibling)
+            docs = self.__clean_doxygen_comment_block(docs)
+
+            params_nodes = func_declaration_node.child_by_field_name("parameters")
+            if params_nodes is None:
+                raise Exception(
+                    "func_declaration_node should have a parameters child. Wrong query? Wrong field name for child?"
+                )
+            params_decls = get_children_by_type(params_nodes, "parameter_declaration")
+            params = [
+                Par.parse_param(param_raw)
+                for param_raw in list(map(lambda p: get_tsnode_text(p), params_decls))
+            ]
+
+            funcs.append(
+                Func(
+                    name,
+                    return_type,
+                    params,
+                    docs,
+                    file_=self.vlc_preprocessed,
+                    line=line,
+                )
+            )
+
+        return funcs
 
     def parse_typedefs(self):
         """Parse header file for typedef definitions.
