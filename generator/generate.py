@@ -1106,6 +1106,8 @@ class Parser(object):
                 Par.parse_param(param_raw)
                 for param_raw in list(map(lambda p: get_tsnode_text(p), params_decls))
             ]
+            if len(params) == 1 and params[0] is not None and params[0].type == "void":
+                params = []
 
             funcs.append(
                 Func(
