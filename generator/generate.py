@@ -665,40 +665,12 @@ class Parser(object):
             self.callbacks.extend(self.parse_callbacks())
             self.funcs.extend(self.parse_funcs())
 
-        # # =====================================================================
-        # # Compare outputs for enums
-        # # =====================================================================
-        # self.enums.sort(key=lambda enum: enum.name)
-        # for enum in self.enums:
-        #     enum.dump()
-        # self.enums_with_ts.sort(key=lambda enum: enum.name)
-        # for enum in self.enums_with_ts:
-        #     enum.dump()
-        
-        # # =====================================================================
-        # # Compare outputs for structs
-        # # =====================================================================
-        # self.structs.sort(key=lambda struct: struct.name)
-        # for struct in self.structs:
-        #     struct.dump()
-        # self.structs_with_ts.sort(key=lambda struct: struct.name)
-        # for struct in self.structs_with_ts:
-        #     struct.dump()
-
-        # # =====================================================================
-        # # Compare outputs for funcs
-        # # =====================================================================
-        # self.funcs.sort(key=lambda func: func.name)
-        # for func in self.funcs:
-        #     func.dump()
-        # self.funcs_with_ts.sort(key=lambda func: func.name)
-        # for func in self.funcs_with_ts:
-        #     func.dump()
-
-        # # =====================================================================
-        # # Compare outputs for version
-        # # =====================================================================
-        # assert self.version == self.version_with_ts, f'Got version {self.version_with_ts} with Tree-sitter, but {self.version} with regular expressions.'
+        # self.dump("enums")
+        # self.dump("enums_with_ts")
+        # self.dump("structs")
+        # self.dump("structs_with_ts")
+        # self.dump("funcs")
+        # self.dump("funcs_with_ts")
 
     def bindings_version(self):
         """Return the bindings version number.
@@ -763,9 +735,12 @@ class Parser(object):
         return cleaned_docs
 
     def dump(self, attr):
-        sys.stderr.write('%s==== %s ==== %s\n' % (_NL_, attr, self.version))
-        for a in getattr(self, attr, ()):
+        sys.stderr.write('==== %s ==== %s\n' % (attr, self.version))
+        xs = getattr(self, attr)
+        xs.sort(key=lambda x: x.name)
+        for a in xs:
             a.dump()
+        sys.stderr.write(_NL_)
 
     def preprocess(self, vlc_h):
         if os.path.basename(vlc_h) != 'vlc.h':
