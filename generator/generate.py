@@ -639,6 +639,7 @@ class Parser(object):
             self.libvlc_version_tstree = tsp.parse(file.read())
 
         self.enums_with_ts = self.parse_enums_with_ts()
+        self.structs_with_ts = self.parse_structs_with_ts()
         self.version_with_ts = version
         if not self.version_with_ts:
             self.version_with_ts = self.parse_version_with_ts(self.libvlc_version_h)
@@ -669,6 +670,16 @@ class Parser(object):
         # self.enums_with_ts.sort(key=lambda enum: enum.name)
         # for enum in self.enums_with_ts:
         #     enum.dump()
+        
+        # =====================================================================
+        # Compare outputs for structs
+        # =====================================================================
+        self.structs.sort(key=lambda struct: struct.name)
+        for struct in self.structs:
+            struct.dump()
+        self.structs_with_ts.sort(key=lambda struct: struct.name)
+        for struct in self.structs_with_ts:
+            struct.dump()
 
         # =====================================================================
         # Compare outputs for version
