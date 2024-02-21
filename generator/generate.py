@@ -865,6 +865,11 @@ class Parser(object):
             # ignore if anonymous enum
             if name == '':
                 continue;
+            # Make the assumption that every enum of interest starts with 'libvlc_'.
+            # Because the code parsed is the output of vlc.h's preprocessing, some signatures
+            # come from external libraries and are not part of libvlc's API.
+            if not name.startswith("libvlc_"):
+                continue
 
             # find enum's docs
             if parent is not None and parent.type == 'type_definition':
