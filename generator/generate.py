@@ -573,6 +573,63 @@ class Par(object):
 
         return Par(param_name.strip(), param_type.strip(), param_constness)
 
+    @classmethod
+    def parse_param_with_ts(cls, tsnode):
+        """Creates a Par instance with the name, type and constness of a
+        parameter declaration or field declaration.
+
+        @param tsnode: An instance of TSNode of type parameter_declaration or field_declaration.
+        @return: A Par instance.
+        """
+        accepted_node_types = ["parameter_declaration", "field_declaration"]
+        if tsnode.type not in accepted_node_types:
+            accepted_node_types_list = " or ".join(accepted_node_types)
+            raise Exception(f"tsnode should have type {accepted_node_types_list}, but got {tsnode.type}.")
+
+        t = ""
+        constness = []
+        name = ""
+
+        type_node = tsnode.child_by_field_name("type")
+        if type_node is None:
+            raise Exception(
+                f"Unexpectedly failed to find a child node of name 'type' for node {tsnode}"
+            )
+        t = get_tsnode_text(type_node)
+        if (
+            type_node.prev_sibling is not None
+            and type_node.prev_sibling.type == "type_qualifier"
+        ):
+            t = get_tsnode_text(type_node.prev_sibling) + " " + t
+            constness.append(True)
+        elif (
+            type_node.next_sibling is not None
+            and type_node.next_sibling.type == "type_qualifier"
+        ):
+            t = t + " " + get_tsnode_text(type_node.next_sibling)
+            constness.append(True)
+        else:
+            constness.append(False)
+
+        decl_node = tsnode.child_by_field_name("declarator")
+        while decl_node is not None and decl_node.type == "pointer_declarator":
+            t += " *"
+            constness.append(False)
+            type_qualifiers = get_children_by_type(decl_node, "type_qualifier")
+            if len(type_qualifiers) > 0:
+                type_qualifier_text = get_tsnode_text(type_qualifiers[0])
+                t = t + " " + type_qualifier_text
+                if type_qualifier_text == "const":
+                    constness[-1] = True
+            decl_node = decl_node.child_by_field_name("declarator")
+
+        # Assumes that the first non-pointer declaration is the declaration
+        # for the identifier/field_identifier, or is None.
+        if decl_node is not None:
+            name = get_tsnode_text(decl_node)
+
+        return Par(name, t, constness)
+
 class Val(object):
     """Enum name and value.
     """
@@ -1111,8 +1168,8 @@ class Parser(object):
                 )
             params_decls = get_children_by_type(params_nodes, "parameter_declaration")
             params = [
-                Par.parse_param(param_raw)
-                for param_raw in list(map(lambda p: get_tsnode_text(p), params_decls))
+                Par.parse_param_with_ts(param_decl)
+                for param_decl in params_decls
             ]
             if len(params) == 1 and params[0] is not None and params[0].type == "void":
                 params = []
