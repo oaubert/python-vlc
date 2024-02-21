@@ -672,10 +672,10 @@ class Parser(object):
         vlc_h = ''
         self.libvlc_version_h = ''
         for h_file in h_files:
-            basename = os.path.basename(h_file)
-            if basename == 'vlc.h':
+            p = Path(h_file)
+            if p.name == 'vlc.h':
                 vlc_h = h_file
-            if basename == 'libvlc_version.h':
+            if p.name == 'libvlc_version.h':
                 self.libvlc_version_h = h_file
 
         if vlc_h == '':
@@ -800,14 +800,15 @@ class Parser(object):
         sys.stderr.write(_NL_)
 
     def preprocess(self, vlc_h):
-        if os.path.basename(vlc_h) != 'vlc.h':
+        if Path(vlc_h).name != 'vlc.h':
             raise Exception(f'Except input file to be (and end with) vlc.h, but got {vlc_h}.')
 
-        if not (os.path.exists(PREPROCESSEDDIR) and os.path.isdir(PREPROCESSEDDIR)):
-            os.mkdir(PREPROCESSEDDIR)
+        preprocessed_dir_p = Path(PREPROCESSEDDIR)
+        if not (preprocessed_dir_p.exists() and preprocessed_dir_p.is_dir()):
+            preprocessed_dir_p.mkdir(parents=True)
 
         preprocessed_file = f'{PREPROCESSEDDIR}/vlc.preprocessed'
-        if not os.path.exists(preprocessed_file):
+        if not Path(preprocessed_file).exists():
             # call C preprocessor on vlc.h
             completed_process = subprocess.run([
                 'gcc',
