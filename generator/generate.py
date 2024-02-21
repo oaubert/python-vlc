@@ -1054,12 +1054,20 @@ class Parser(object):
             if not name.startswith("libvlc_"):
                 continue
 
-            func_return_type_node = decl_node.child_by_field_name("type")
-            if func_return_type_node is None:
+            func_type_node = decl_node.child_by_field_name("type")
+            if func_type_node is None:
                 raise Exception(
                     "declaration_node should have a type child. Wrong query? Wrong field name for child?"
                 )
-            return_type = get_tsnode_text(func_return_type_node)
+            return_type = get_tsnode_text(func_type_node)
+            if func_type_node.prev_sibling is not None and func_type_node.prev_sibling.type == "type_qualifier":
+                return_type = get_tsnode_text(func_type_node.prev_sibling) + " " + return_type
+            if func_type_node.next_sibling is not None and func_type_node.next_sibling.type == "type_qualifier":
+                return_type = return_type + " " + get_tsnode_text(func_type_node.next_sibling)
+            decl = decl_node.child_by_field_name("declarator")
+            while decl is not None and decl.type == "pointer_declarator":
+                return_type += "*"
+                decl = decl.child_by_field_name("declarator")
 
             # Ignore if in blacklist
             if name in _blacklist:
