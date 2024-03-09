@@ -579,19 +579,19 @@ class Par(object):
         @return: A Par instance.
         """
         accepted_node_types = ["parameter_declaration", "field_declaration"]
-        if tsnode.type not in accepted_node_types:
-            accepted_node_types_list = " or ".join(accepted_node_types)
-            raise Exception(f"tsnode should have type {accepted_node_types_list}, but got {tsnode.type}.")
+        accepted_node_types_list = " or ".join(accepted_node_types)
+        assert (
+            tsnode in accepted_node_types
+        ), f"Expected `tsnode` to have type {accepted_node_types_list}, but got {tsnode.type}."
 
         t = ""
         constness = []
         name = ""
 
         type_node = tsnode.child_by_field_name("type")
-        if type_node is None:
-            raise Exception(
-                f"Unexpectedly failed to find a child node of name 'type' for node {tsnode}"
-            )
+        assert (
+            type_node is not None
+        ), f"Expected `tsnode` to have a child of name _type_. Typo? Wrong assumption about `tsnode`?"
         t = get_tsnode_text(type_node)
         if (
             type_node.prev_sibling is not None
@@ -881,7 +881,7 @@ class Parser(object):
             func_type_node = typedef_node.child_by_field_name("type")
             assert (
                 func_type_node is not None
-            ), "Expected `typedef_node` to have a _type_ child. Wrong query? Wrong field name for child?"
+            ), "Expected `typedef_node` to have a child of name _type_. Wrong query? Wrong field name for child?"
             return_type = get_tsnode_text(func_type_node)
             if (
                 func_type_node.prev_sibling is not None
@@ -921,7 +921,7 @@ class Parser(object):
             params_nodes = func_decl_node.child_by_field_name("parameters")
             assert (
                 params_nodes is not None
-            ), "Expected `func_decl_node` to have a _parameters_ child. Wrong query? Wrong field name for child?"
+            ), "Expected `func_decl_node` to have a child of name _parameters_. Wrong query? Wrong field name for child?"
             params_decls = get_children_by_type(params_nodes, "parameter_declaration")
             params = [
                 Par.parse_param_with_ts(param_decl) for param_decl in params_decls
@@ -986,16 +986,18 @@ class Parser(object):
             docs = self.__clean_doxygen_comment_block(docs)
 
             # find enum's values
-            body = node.child_by_field_name('body')
-            if body is None:
-                raise Exception('There should always be a body for enum_specifier node. Otherwise we are parsingmalformed C code.')
+            body = node.child_by_field_name("body")
+            assert (
+                body is not None
+            ), "Expected `node` to have a child of name _body_. `node` is not of type _enum_specifier_? Parsing malformed C code?"
             for child in body.named_children:
                 if child.type != 'enumerator':
                     continue
 
-                vname_node = child.child_by_field_name('name')
-                if vname_node is None:
-                    raise Exception('There should always be a name for enumerator node. Otherwise we are parsingmalformed C code.')
+                vname_node = child.child_by_field_name("name")
+                assert (
+                    vname_node is not None
+                ), "Expected `child` to have a child of name _name_. `child` is not of type _enumerator_? Parsing malformed C code?"
                 vname = get_tsnode_text(vname_node)
 
                 vvalue_node = child.child_by_field_name('value')
@@ -1209,10 +1211,9 @@ class Parser(object):
         funcs = []
         for decl_node, func_decl_node in func_captures:
             func_id_node = func_decl_node.child_by_field_name("declarator")
-            if func_decl_node is None:
-                raise Exception(
-                    "func_decl_node should have a declarator child. Wrong query? Wrong field name for child?"
-                )
+            assert (
+                func_id_node is not None
+            ), "Expected `func_decl_node` to have a child of name _declarator_. Wrong query? Typo for child field name?"
             name = get_tsnode_text(func_id_node)
 
             # Make the assumption that every function of interest starts with 'libvlc_'.
@@ -1222,10 +1223,9 @@ class Parser(object):
                 continue
 
             func_type_node = decl_node.child_by_field_name("type")
-            if func_type_node is None:
-                raise Exception(
-                    "declaration_node should have a type child. Wrong query? Wrong field name for child?"
-                )
+            assert (
+                func_type_node is not None
+            ), "Expected `decl_node` to have a child of name _type_. Wrong query? Typo for child field name?"
             return_type = get_tsnode_text(func_type_node)
             if func_type_node.prev_sibling is not None and func_type_node.prev_sibling.type == "type_qualifier":
                 return_type = get_tsnode_text(func_type_node.prev_sibling) + " " + return_type
@@ -1272,10 +1272,9 @@ class Parser(object):
             docs = self.__clean_doxygen_comment_block(docs)
 
             params_nodes = func_decl_node.child_by_field_name("parameters")
-            if params_nodes is None:
-                raise Exception(
-                    "func_declaration_node should have a parameters child. Wrong query? Wrong field name for child?"
-                )
+            assert (
+                params_nodes is not None
+            ), "Expected `func_decl_node` to have a child of name _parameters_. Wrong query? Typo for child field name?"
             params_decls = get_children_by_type(params_nodes, "parameter_declaration")
             params = [
                 Par.parse_param_with_ts(param_decl)
