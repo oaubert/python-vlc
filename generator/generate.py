@@ -489,11 +489,8 @@ class Par(object):
         if self.name in out:
             f = Flag.Out  # @param [OUT]
         elif not self.constness[0]:
-            f = {'int*':      Flag.Out,
-                 'unsigned*': Flag.Out,
-                 'unsigned char*': Flag.Out,
-                 'libvlc_media_track_info_t**': Flag.Out,
-                }.get(self.type, Flag.In)  # default
+            t_re = re.compile(r"(int *\*|unsigned *\*|unsigned char *\*|libvlc_media_track_info_t *\* *\*)")
+            f = Flag.Out if t_re.match(self.type) else Flag.In
         else:
             f = Flag.In
 
@@ -701,6 +698,7 @@ class Parser(object):
         self.enums_with_ts = self.parse_enums_with_ts()
         self.structs_with_ts = self.parse_structs_with_ts()
         self.funcs_with_ts = self.parse_funcs_with_ts()
+        self.callbacks_with_ts = self.parse_callbacks_with_ts()
         self.version_with_ts = version
         if not self.version_with_ts:
             self.version_with_ts = self.parse_version_with_ts(self.libvlc_version_h)
@@ -728,6 +726,8 @@ class Parser(object):
         # self.dump("structs_with_ts")
         # self.dump("funcs")
         # self.dump("funcs_with_ts")
+        # self.dump("callbacks")
+        # self.dump("callbacks_with_ts")
 
     def bindings_version(self):
         """Return the bindings version number.
@@ -837,6 +837,110 @@ class Parser(object):
 
             yield Func(name, type_.replace(' ', ''), pars, docs,
                        file_=self.h_file, line=line)
+
+    def parse_callbacks_with_ts(self):
+        """Parse header file for callback signature definitions.
+
+        @return: yield a Func instance for each callback signature, unless blacklisted.
+        """
+        typedef_query = self.C_LANGUAGE.query("(type_definition) @typedef")
+        typedef_captures = typedef_query.captures(self.tstree.root_node)
+        func_query = self.C_LANGUAGE.query("(function_declarator) @func_decl")
+        func_captures = []
+        for typedef_node, _ in typedef_captures:
+            func_decl_captures = func_query.captures(typedef_node)
+            if len(func_decl_captures) == 1:
+                func_captures.append((typedef_node, func_decl_captures[0][0]))
+
+        funcs = []
+        func_id_query = self.C_LANGUAGE.query(
+            """
+(function_declarator
+    declarator: (parenthesized_declarator
+                    (pointer_declarator
+                        declarator: (type_identifier) @func_id)))
+"""
+        )
+        for typedef_node, func_decl_node in func_captures:
+            func_id_capture = func_id_query.captures(typedef_node)
+            assert (
+                len(func_id_capture) == 1
+            ), "Expected the query to capture one and only one node."
+            func_id_node, _ = func_id_capture[0]
+            assert (
+                func_id_node is not None
+            ), "Expected `func_id_node` to not be None. Maybe `typedef_node` doesn't have the structure assumed in `func_id_query`?"
+            name = get_tsnode_text(func_id_node)
+
+            # Make the assumption that every function of interest starts with 'libvlc_'.
+            # Because the code parsed is the output of vlc.h's preprocessing, some signatures
+            # come from external libraries and are not part of libvlc's API.
+            if not name.startswith("libvlc_"):
+                continue
+
+            func_type_node = typedef_node.child_by_field_name("type")
+            assert (
+                func_type_node is not None
+            ), "Expected `typedef_node` to have a _type_ child. Wrong query? Wrong field name for child?"
+            return_type = get_tsnode_text(func_type_node)
+            if (
+                func_type_node.prev_sibling is not None
+                and func_type_node.prev_sibling.type == "type_qualifier"
+            ):
+                return_type = (
+                    get_tsnode_text(func_type_node.prev_sibling) + " " + return_type
+                )
+            if (
+                func_type_node.next_sibling is not None
+                and func_type_node.next_sibling.type == "type_qualifier"
+            ):
+                return_type = (
+                    return_type + " " + get_tsnode_text(func_type_node.next_sibling)
+                )
+            decl = typedef_node.child_by_field_name("declarator")
+            while decl is not None and decl.type == "pointer_declarator":
+                return_type += "*"
+                decl = decl.child_by_field_name("declarator")
+
+            # Ignore if in blacklist
+            if name in _blacklist:
+                _blacklist[name] = return_type
+                continue
+
+            # add one because starts from zero by default
+            line = typedef_node.start_point[0] + 1
+
+            docs = ""
+            if (
+                typedef_node.prev_sibling is not None
+                and typedef_node.prev_sibling.type == "comment"
+            ):
+                docs = get_tsnode_text(typedef_node.prev_sibling)
+            docs = self.__clean_doxygen_comment_block(docs)
+
+            params_nodes = func_decl_node.child_by_field_name("parameters")
+            assert (
+                params_nodes is not None
+            ), "Expected `func_decl_node` to have a _parameters_ child. Wrong query? Wrong field name for child?"
+            params_decls = get_children_by_type(params_nodes, "parameter_declaration")
+            params = [
+                Par.parse_param_with_ts(param_decl) for param_decl in params_decls
+            ]
+            if len(params) == 1 and params[0] is not None and params[0].type == "void":
+                params = []
+
+            funcs.append(
+                Func(
+                    name,
+                    return_type,
+                    params,
+                    docs,
+                    file_=self.vlc_preprocessed,
+                    line=line,
+                )
+            )
+
+        return funcs
 
     def parse_enums_with_ts(self):
         enum_query = self.C_LANGUAGE.query('(enum_specifier) @enum')
