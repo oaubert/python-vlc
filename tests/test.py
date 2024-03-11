@@ -496,7 +496,7 @@ multiple lines""",
                 ),
                 Func(
                     "libvlc_pointer_as_return_type",
-                    "char *",
+                    "char*",
                     [
                         Par("a", "int", [False]),
                         Par("b", "float", [False]),
@@ -505,7 +505,7 @@ multiple lines""",
                 ),
                 Func(
                     "libvlc_pointer_as_return_type_with_qualifier",
-                    "const char *",
+                    "char*",
                     [
                         Par("a", "int", [False]),
                         Par("b", "float", [False]),
@@ -514,30 +514,30 @@ multiple lines""",
                 ),
                 Func(
                     "libvlc_pointers_and_qualifiers_everywhere",
-                    "const char *",
+                    "char*",
                     [
-                        Par("c1", "const char *", [True, False]),
-                        Par("c2", "const char *", [True, False]),
+                        Par("c1", "char*", [True, False]),
+                        Par("c2", "char*", [True, False]),
                     ],
                     "",
                 ),
                 Func(
                     "libvlc_multiple_pointers",
-                    "const char * *",
+                    "char**",
                     [
-                        Par("c1", "char * *", [False, False, False]),
-                        Par("c2", "char * * *", [False, False, False, False]),
+                        Par("c1", "char**", [False, False, False]),
+                        Par("c2", "char***", [False, False, False, False]),
                     ],
                     "",
                 ),
                 Func(
                     "libvlc_multiple_pointers_and_qualifiers",
-                    "const char * const *",
+                    "char**",
                     [
-                        Par("c1", "const char * * const", [True, False, True]),
+                        Par("c1", "char**", [True, False, True]),
                         Par(
                             "c2",
-                            "char * const * const * const",
+                            "char***",
                             [False, True, True, True],
                         ),
                     ],

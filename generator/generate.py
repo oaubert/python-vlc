@@ -645,26 +645,23 @@ class Par(object):
         if (
             type_node.prev_sibling is not None
             and type_node.prev_sibling.type == "type_qualifier"
-        ):
-            t = get_tsnode_text(type_node.prev_sibling) + " " + t
-            constness.append(True)
-        elif (
+            and get_tsnode_text(type_node.prev_sibling) == "const"
+        ) or (
             type_node.next_sibling is not None
             and type_node.next_sibling.type == "type_qualifier"
+            and get_tsnode_text(type_node.next_sibling) == "const"
         ):
-            t = t + " " + get_tsnode_text(type_node.next_sibling)
             constness.append(True)
         else:
             constness.append(False)
 
         decl_node = tsnode.child_by_field_name("declarator")
         while decl_node is not None and decl_node.type == "pointer_declarator":
-            t += " *"
+            t += "*"
             constness.append(False)
             type_qualifiers = get_children_by_type(decl_node, "type_qualifier")
             if len(type_qualifiers) > 0:
                 type_qualifier_text = get_tsnode_text(type_qualifiers[0])
-                t = t + " " + type_qualifier_text
                 if type_qualifier_text == "const":
                     constness[-1] = True
             decl_node = decl_node.child_by_field_name("declarator")
