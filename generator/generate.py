@@ -666,6 +666,9 @@ class Par(object):
                     constness[-1] = True
             decl_node = decl_node.child_by_field_name("declarator")
 
+        # remove the struct keyword, this information is currently not used
+        t = t.replace('struct ', '').strip()
+
         # Assumes that the first non-pointer declaration is the declaration
         # for the identifier/field_identifier, or is None.
         if decl_node is not None:
