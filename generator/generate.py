@@ -595,7 +595,7 @@ class Par(object):
         @param tsnode: An instance of TSNode of type parameter_declaration or field_declaration.
         @return: A Par instance.
         """
-        accepted_node_types = ["parameter_declaration", "field_declaration"]
+        accepted_node_types = ["parameter_declaration", "field_declaration", "declaration"]
         accepted_node_types_list = " or ".join(accepted_node_types)
         assert (
             tsnode.type in accepted_node_types
@@ -1222,19 +1222,7 @@ class Parser(object):
             if not name.startswith("libvlc_"):
                 continue
 
-            func_type_node = decl_node.child_by_field_name("type")
-            assert (
-                func_type_node is not None
-            ), "Expected `decl_node` to have a child of name _type_. Wrong query? Typo for child field name?"
-            return_type = get_tsnode_text(func_type_node)
-            if func_type_node.prev_sibling is not None and func_type_node.prev_sibling.type == "type_qualifier":
-                return_type = get_tsnode_text(func_type_node.prev_sibling) + " " + return_type
-            if func_type_node.next_sibling is not None and func_type_node.next_sibling.type == "type_qualifier":
-                return_type = return_type + " " + get_tsnode_text(func_type_node.next_sibling)
-            decl = decl_node.child_by_field_name("declarator")
-            while decl is not None and decl.type == "pointer_declarator":
-                return_type += "*"
-                decl = decl.child_by_field_name("declarator")
+            return_type = Par.parse_param_with_ts(decl_node).type
 
             # Ignore if in blacklist
             if name in _blacklist:
