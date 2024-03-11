@@ -581,7 +581,7 @@ class Par(object):
         accepted_node_types = ["parameter_declaration", "field_declaration"]
         accepted_node_types_list = " or ".join(accepted_node_types)
         assert (
-            tsnode in accepted_node_types
+            tsnode.type in accepted_node_types
         ), f"Expected `tsnode` to have type {accepted_node_types_list}, but got {tsnode.type}."
 
         t = ""
@@ -1111,7 +1111,7 @@ class Parser(object):
                     name = get_tsnode_text(type_id)
             # ignore if anonymous struct
             if name == '':
-                continue;
+                continue
             # ignore if not a struct from libvlc
             if not name.startswith("libvlc_"):
                 continue
@@ -1128,10 +1128,14 @@ class Parser(object):
             # Find struct's fields
             body = node.child_by_field_name('body')
             if body is not None:
-                for decl in get_children_by_type(body, 'field_declaration'):
-                    field_name_node = decl.child_by_field_name('declarator')
-                    if field_name_node is not None:
-                        fields.append(Par.parse_param(get_tsnode_text(field_name_node).strip()))
+                fields = [
+                    Par.parse_param_with_ts(decl)
+                    for decl in get_children_by_type(body, 'field_declaration')
+                ]
+                
+            # Ignore empty structs
+            if len(fields) == 0:
+                continue
                             
             structs.append(Struct(name, typ, fields, docs, file_=self.vlc_preprocessed, line=line))
             
