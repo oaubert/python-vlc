@@ -28,7 +28,7 @@
 
 import logging
 
-from generator.generate import Enum, Parser, Val
+from generator.generate import Enum, Func, Par, Parser, Val
 logger = logging.getLogger(__name__)
 
 import ctypes
@@ -470,6 +470,83 @@ multiple lines""",
 
             p = self.get_parser("./tests/test_parser_inputs/enums.h")
             self.assertListEqual(p.enums_with_ts, expected_enums)
+
+        def test_parse_funcs(self):
+            expected_funcs = [
+                Func("libvlc_simple", "void", [], ""),
+                Func("libvlc_simple_with_void", "void", [], ""),
+                Func("libvlc_attribute_on_the_previous_line", "void", [], ""),
+                Func(
+                    "libvlc_with_docs",
+                    "void",
+                    [],
+                    """Some Doxygen
+documentation
+that spans
+multiple lines""",
+                ),
+                Func(
+                    "libvlc_simple_types",
+                    "char",
+                    [
+                        Par("a", "int", [False]),
+                        Par("b", "float", [False]),
+                    ],
+                    "",
+                ),
+                Func(
+                    "libvlc_pointer_as_return_type",
+                    "char *",
+                    [
+                        Par("a", "int", [False]),
+                        Par("b", "float", [False]),
+                    ],
+                    "",
+                ),
+                Func(
+                    "libvlc_pointer_as_return_type_with_qualifier",
+                    "const char *",
+                    [
+                        Par("a", "int", [False]),
+                        Par("b", "float", [False]),
+                    ],
+                    "",
+                ),
+                Func(
+                    "libvlc_pointers_and_qualifiers_everywhere",
+                    "const char *",
+                    [
+                        Par("c1", "const char *", [True, False]),
+                        Par("c2", "const char *", [True, False]),
+                    ],
+                    "",
+                ),
+                Func(
+                    "libvlc_multiple_pointers",
+                    "const char * *",
+                    [
+                        Par("c1", "char * *", [False, False, False]),
+                        Par("c2", "char * * *", [False, False, False, False]),
+                    ],
+                    "",
+                ),
+                Func(
+                    "libvlc_multiple_pointers_and_qualifiers",
+                    "const char * const *",
+                    [
+                        Par("c1", "const char * * const", [True, False, True]),
+                        Par(
+                            "c2",
+                            "char * const * const * const",
+                            [False, True, True, True],
+                        ),
+                    ],
+                    "",
+                ),
+            ]
+
+            p = self.get_parser("./tests/test_parser_inputs/funcs.h")
+            self.assertListEqual(p.funcs_with_ts, expected_funcs)
 
 if __name__ == '__main__':
     logging.basicConfig()

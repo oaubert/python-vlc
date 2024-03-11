@@ -370,6 +370,29 @@ class Func(_Source):
         if _debug:
            _Source.__init__(self, **kwds)
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Func):
+            return False
+
+        res = self.name == other.name
+        res &= self.type == other.type
+        res &= self.docs == other.docs
+        res &= sorted(self.pars, key=lambda x: x.name) == sorted(
+            other.pars, key=lambda x: x.name
+        )
+        if not res:
+            print("self")
+            print(self)
+            print("other")
+            print(other)
+        return res
+
+    def __repr__(self) -> str:
+        res = format("%s (%s): %s" % (self.name, self.type, self.source))
+        for p in self.pars:
+            res += "\n\t" + str(p)
+        return res
+
     def args(self, first=0):
         """Return the parameter names, excluding output parameters.
            Ctypes returns all output parameter values as part of
@@ -479,6 +502,15 @@ class Par(object):
         self.name = name
         self.type = type  # C type
         self.constness = constness
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Par):
+            return False
+
+        res = self.name == other.name
+        res &= self.type == other.type
+        res &= self.constness == other.constness
+        return res
 
     def __repr__(self):
         return "%s (%s) %s" % (self.name, self.type, self.constness)
