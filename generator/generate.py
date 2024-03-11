@@ -291,7 +291,7 @@ class Enum(_Source):
     def __repr__(self) -> str:
         res = format("%s (%s): %s" % (self.name, self.type, self.source))
         for v in self.vals:
-            res += "\n\t" + str(v)
+            res += "\n" + _INDENT_ + str(v)
         res += "\n"
         return res
 
@@ -390,7 +390,7 @@ class Func(_Source):
     def __repr__(self) -> str:
         res = format("%s (%s): %s" % (self.name, self.type, self.source))
         for p in self.pars:
-            res += "\n\t" + str(p)
+            res += "\n" + _INDENT_ + str(p)
         return res
 
     def args(self, first=0):
