@@ -27,6 +27,8 @@
 """
 
 import logging
+
+from generator.generate import Enum, Parser, Val
 logger = logging.getLogger(__name__)
 
 import ctypes
@@ -320,6 +322,154 @@ if generate is not None:
                 self.assertEqual(expected_name, param.name)
                 self.assertListEqual(expected_constness, param.constness)
 
+    class TestParser(unittest.TestCase):
+        def get_parser(self, code_file: Path | str) -> Parser:
+            return Parser(
+                [],
+                code_file,
+                "./tests/test_parser_inputs/libvlc_version.h",
+            )
+
+        def test_parse_enums(self):
+            expected_enums = [
+                Enum(
+                    "libvlc_enum_no_values_specified",
+                    "enum",
+                    [
+                        Val("G", "0"),
+                        Val("H", "1"),
+                        Val("I", "2"),
+                    ],
+                    "",
+                ),
+                Enum(
+                    "libvlc_enum_all_values_specified",
+                    "enum",
+                    [
+                        Val("J", "2"),
+                        Val("K", "4"),
+                        Val("L", "6"),
+                    ],
+                    "",
+                ),
+                Enum(
+                    "libvlc_enum_values_specified_or_not",
+                    "enum",
+                    [
+                        Val("M", "5"),
+                        Val("N", "6"),
+                        Val("O", "8"),
+                        Val("P", "9"),
+                    ],
+                    "",
+                ),
+                Enum(
+                    "libvlc_enum_with_docs",
+                    "enum",
+                    [
+                        Val("Q", "5"),
+                        Val("R", "6"),
+                        Val("S", "8"),
+                        Val("T", "9"),
+                    ],
+                    """Some Doxygen
+documentation
+that spans
+multiple lines""",
+                ),
+                Enum(
+                    "libvlc_enum_with_hex_values",
+                    "enum",
+                    [
+                        Val("U", "0x1"),
+                        Val("V", "0xf"),
+                    ],
+                    "",
+                ),
+                Enum(
+                    "libvlc_enum_with_bit_shifted_values",
+                    "enum",
+                    [
+                        Val("W", "7471104"),
+                        Val("X", "6750208"),
+                    ],
+                    "",
+                ),
+                Enum(
+                    "libvlc_enum_no_values_specified_t",
+                    "enum",
+                    [
+                        Val("GG", "0"),
+                        Val("HH", "1"),
+                        Val("II", "2"),
+                    ],
+                    "",
+                ),
+                Enum(
+                    "libvlc_enum_all_values_specified_t",
+                    "enum",
+                    [
+                        Val("JJ", "2"),
+                        Val("KK", "4"),
+                        Val("LL", "6"),
+                    ],
+                    "",
+                ),
+                Enum(
+                    "libvlc_enum_values_specified_or_not_t",
+                    "enum",
+                    [
+                        Val("MM", "5"),
+                        Val("NN", "6"),
+                        Val("OO", "8"),
+                        Val("PP", "9"),
+                    ],
+                    "",
+                ),
+                Enum(
+                    "libvlc_enum_with_docs_t",
+                    "enum",
+                    [
+                        Val("QQ", "5"),
+                        Val("RR", "6"),
+                        Val("SS", "8"),
+                        Val("TT", "9"),
+                    ],
+                    """Some Doxygen
+documentation
+that spans
+multiple lines""",
+                ),
+                Enum(
+                    "libvlc_enum_with_hex_values_t",
+                    "enum",
+                    [
+                        Val("UU", "0x1"),
+                        Val("VV", "0xf"),
+                    ],
+                    "",
+                ),
+                Enum(
+                    "libvlc_enum_with_bit_shifted_values_t",
+                    "enum",
+                    [
+                        Val("WW", "7471104"),
+                        Val("XX", "6750208"),
+                    ],
+                    "",
+                ),
+                Enum(
+                    "libvlc_enum_t",
+                    "enum",
+                    [
+                        Val("ZZ", "0"),
+                    ],
+                    "",
+                ),
+            ]
+
+            p = self.get_parser("./tests/test_parser_inputs/enums.h")
+            self.assertListEqual(p.enums_with_ts, expected_enums)
 
 if __name__ == '__main__':
     logging.basicConfig()

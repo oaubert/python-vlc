@@ -276,6 +276,25 @@ class Enum(_Source):
         if _debug:
            _Source.__init__(self, **kwds)
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Enum):
+            return False
+
+        res = self.name == other.name
+        res &= self.type == other.type
+        res &= self.docs == other.docs
+        res &= sorted(self.vals, key=lambda v: v.name) == sorted(
+            other.vals, key=lambda v: v.name
+        )
+        return res
+
+    def __repr__(self) -> str:
+        res = format("%s (%s): %s" % (self.name, self.type, self.source))
+        for v in self.vals:
+            res += "\n\t" + str(v)
+        res += "\n"
+        return res
+
     def check(self):
         """Perform some consistency checks.
         """
@@ -285,9 +304,7 @@ class Enum(_Source):
             errorf('expected enum type: %s %s', self.type, self.name)
 
     def dump(self):  # for debug
-        sys.stderr.write('%s (%s): %s\n' % (self.name, self.type, self.source))
-        for v in self.vals:
-            v.dump()
+        sys.stderr.write(str(self))
 
     def epydocs(self):
         """Return epydoc string.
@@ -652,8 +669,20 @@ class Val(object):
         self.name = n
         self.value = value
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Val):
+            return False
+
+        res = self.enum == other.enum
+        res &= self.name == other.name
+        res &= self.value == other.value
+        return res
+
+    def __repr__(self) -> str:
+        return "%s = %s" % (self.name, self.value)
+
     def dump(self):  # for debug
-        sys.stderr.write('%s%s = %s\n' % (_INDENT_, self.name, self.value))
+        return str(self) + "\n"
 
 class Overrides(NamedTuple):
     codes: dict
