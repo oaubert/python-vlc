@@ -665,20 +665,13 @@ class Parser(object):
     """
     h_file = ''
 
-    def __init__(self, h_files, version=''):
-        vlc_h = ''
-        self.libvlc_version_h = ''
-        for h_file in h_files:
-            p = Path(h_file)
-            if p.name == 'vlc.h':
-                vlc_h = h_file
-            if p.name == 'libvlc_version.h':
-                self.libvlc_version_h = h_file
-
-        if vlc_h == '':
-            raise Exception("Didn't found vlc.h amongst header files, but need it for preprocessing.")
-        if self.libvlc_version_h == '':
-            raise Exception("Didn't found libvlc_version.h amongst header files, but need it for finding libvlc version.")
+    def __init__(self, h_files, code_file: Path | str, version_file: Path | str, version=''):
+        if isinstance(code_file, str):
+            code_file = Path(code_file)
+        if isinstance(version_file, str):
+            version_file = Path(version_file)
+        self.code_file = code_file
+        self.version_file = version_file
 
         Language.build_library(
             "build/c.so",
@@ -688,12 +681,10 @@ class Parser(object):
         tsp = TSParser()
         tsp.set_language(self.C_LANGUAGE)
 
-        self.vlc_preprocessed = self.preprocess(vlc_h)
-        with open(self.vlc_preprocessed, "rb") as file:
-            self.tstree = tsp.parse(file.read())
-
-        with open(self.libvlc_version_h, "rb") as file:
-            self.libvlc_version_tstree = tsp.parse(file.read())
+        with open(self.code_file, "rb") as file:
+            self.code_tstree = tsp.parse(file.read())
+        with open(self.version_file, "rb") as file:
+            self.version_tstree = tsp.parse(file.read())
 
         self.enums_with_ts = self.parse_enums_with_ts()
         self.structs_with_ts = self.parse_structs_with_ts()
@@ -701,11 +692,11 @@ class Parser(object):
         self.callbacks_with_ts = self.parse_callbacks_with_ts()
         self.version_with_ts = version
         if not self.version_with_ts:
-            self.version_with_ts = self.parse_version_with_ts(self.libvlc_version_h)
+            self.version_with_ts = self.parse_version_with_ts()
 
         self.version = version
         if not self.version:
-            self.version = self.parse_version(self.libvlc_version_h)
+            self.version = self.parse_version(self.version_file.absolute())
 
         self.enums = []
         self.callbacks = []
@@ -799,30 +790,6 @@ class Parser(object):
             a.dump()
         sys.stderr.write(_NL_)
 
-    def preprocess(self, vlc_h):
-        if Path(vlc_h).name != 'vlc.h':
-            raise Exception(f'Except input file to be (and end with) vlc.h, but got {vlc_h}.')
-
-        preprocessed_dir_p = Path(PREPROCESSEDDIR)
-        if not (preprocessed_dir_p.exists() and preprocessed_dir_p.is_dir()):
-            preprocessed_dir_p.mkdir(parents=True)
-
-        preprocessed_file = f'{PREPROCESSEDDIR}/vlc.preprocessed'
-        if not Path(preprocessed_file).exists():
-            # call C preprocessor on vlc.h
-            completed_process = subprocess.run([
-                'gcc',
-                '-E',
-                '-P',
-                '-C',
-                vlc_h,
-                '-o',
-                preprocessed_file,
-            ])
-            completed_process.check_returncode()
-
-        return preprocessed_file
-
     def parse_callbacks(self):
         """Parse header file for callback signature definitions.
 
@@ -844,7 +811,7 @@ class Parser(object):
         @return: yield a Func instance for each callback signature, unless blacklisted.
         """
         typedef_query = self.C_LANGUAGE.query("(type_definition) @typedef")
-        typedef_captures = typedef_query.captures(self.tstree.root_node)
+        typedef_captures = typedef_query.captures(self.code_tstree.root_node)
         func_query = self.C_LANGUAGE.query("(function_declarator) @func_decl")
         func_captures = []
         for typedef_node, _ in typedef_captures:
@@ -935,7 +902,7 @@ class Parser(object):
                     return_type,
                     params,
                     docs,
-                    file_=self.vlc_preprocessed,
+                    file_=self.code_file,
                     line=line,
                 )
             )
@@ -944,7 +911,7 @@ class Parser(object):
 
     def parse_enums_with_ts(self):
         enum_query = self.C_LANGUAGE.query('(enum_specifier) @enum')
-        enum_captures = enum_query.captures(self.tstree.root_node)
+        enum_captures = enum_query.captures(self.code_tstree.root_node)
 
         enums = []
         for node, _ in enum_captures:
@@ -1031,7 +998,7 @@ class Parser(object):
                     vals.append(Val(vname, str(e), context=name))
 
             enums.append(Enum(name, typ, vals, docs,
-                       file_=self.vlc_preprocessed, line=line))
+                       file_=self.code_file.absolute(), line=line))
 
         return enums
 
@@ -1087,7 +1054,7 @@ class Parser(object):
         """
         
         struct_query = self.C_LANGUAGE.query('(struct_specifier) @struct')
-        struct_captures = struct_query.captures(self.tstree.root_node)
+        struct_captures = struct_query.captures(self.code_tstree.root_node)
         
         structs = []
         for node,_ in struct_captures:
@@ -1137,7 +1104,7 @@ class Parser(object):
             if len(fields) == 0:
                 continue
                             
-            structs.append(Struct(name, typ, fields, docs, file_=self.vlc_preprocessed, line=line))
+            structs.append(Struct(name, typ, fields, docs, file_=self.code_file.absolute(), line=line))
             
         return structs
                 
@@ -1202,7 +1169,7 @@ class Parser(object):
         decl_query = self.C_LANGUAGE.query(
             "(declaration) @decl"
         )
-        decl_captures = decl_query.captures(self.tstree.root_node)
+        decl_captures = decl_query.captures(self.code_tstree.root_node)
         func_query = self.C_LANGUAGE.query(
             "(function_declarator) @func_decl"
         )
@@ -1293,7 +1260,7 @@ class Parser(object):
                     return_type,
                     params,
                     docs,
-                    file_=self.vlc_preprocessed,
+                    file_=self.code_file.absolute(),
                     line=line,
                 )
             )
@@ -1403,12 +1370,12 @@ class Parser(object):
 
         return version
 
-    def parse_version_with_ts(self, libvlc_version_h):
+    def parse_version_with_ts(self):
         """Get the libvlc version from the C header files:
            LIBVLC_VERSION_MAJOR, _MINOR, _REVISION, _EXTRA
         """
         macro_query = self.C_LANGUAGE.query('(preproc_def) @macro')
-        macros = macro_query.captures(self.libvlc_version_tstree.root_node)
+        macros = macro_query.captures(self.version_tstree.root_node)
 
         version = None
         version_numbers = {
@@ -1437,7 +1404,7 @@ class Parser(object):
         # approaches.
         if version is None:
             # Try to get version information from git describe
-            git_dir = Path(libvlc_version_h).absolute().parents[2].joinpath('.git')
+            git_dir = self.version_file.absolute().parents[2].joinpath('.git')
             if git_dir.is_dir():
                 # We are in a git tree. Let's get the version information
                 # from there if we can call git
@@ -2206,12 +2173,33 @@ public enum %s
         self.generate_libvlc()
 
 
-def process(output, h_files):
-    """Generate Python bindings.
-    """
-    p = Parser(h_files)
-    g = PythonGenerator(p)
-    g.save(output)
+def preprocess(vlc_h: Path) -> Path:
+    if vlc_h.name != "vlc.h":
+        raise Exception(
+            f"Except input file to be (and end with) vlc.h, but got {vlc_h.absolute()}."
+        )
+
+    preprocessed_dir = Path(PREPROCESSEDDIR)
+    if not (preprocessed_dir.exists() and preprocessed_dir.is_dir()):
+        preprocessed_dir.mkdir(parents=True)
+
+    preprocessed_file = Path(f"{PREPROCESSEDDIR}/vlc.preprocessed")
+    if not preprocessed_file.exists():
+        # call C preprocessor on vlc.h
+        completed_process = subprocess.run(
+            [
+                "gcc",
+                "-E",
+                "-P",
+                "-C",
+                vlc_h,
+                "-o",
+                preprocessed_file.absolute(),
+            ]
+        )
+        completed_process.check_returncode()
+
+    return preprocessed_file
 
 
 def prepare_package(output):
@@ -2314,11 +2302,29 @@ Parse VLC include files and generate bindings code for Python or Java.""")
         import glob
         args = glob.glob(p)
 
-    p = Parser(args, opts.version)
+    vlc_h = ""
+    libvlc_version_h = ""
+    for h_file in args:
+        p = Path(h_file)
+        if p.name == "vlc.h":
+            vlc_h = h_file
+        if p.name == "libvlc_version.h":
+            libvlc_version_h = h_file
+    if vlc_h == "":
+        raise Exception(
+            "Didn't found vlc.h amongst header files, but need it for preprocessing."
+        )
+    if libvlc_version_h == "":
+        raise Exception(
+            "Didn't found libvlc_version.h amongst header files, but need it for finding libvlc version."
+        )
+    vlc_h = Path(vlc_h)
+    libvlc_version_h = Path(libvlc_version_h)
+    vlc_preprocessed = preprocess(vlc_h)
+    p = Parser(args, vlc_preprocessed, libvlc_version_h, opts.version)
     if opts.debug:
         for t in ('structs', 'enums', 'funcs', 'callbacks'):
             p.dump(t)
-
     if opts.java:
         g = JavaGenerator(p)
     else:
