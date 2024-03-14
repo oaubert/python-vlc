@@ -28,7 +28,7 @@
 
 import logging
 
-from generator.generate import Enum, Func, Par, Parser, Val
+from generator.generate import Enum, Func, Struct, Par, Parser, Val
 logger = logging.getLogger(__name__)
 
 import ctypes
@@ -470,6 +470,121 @@ multiple lines""",
 
             p = self.get_parser("./tests/test_parser_inputs/enums.h")
             self.assertListEqual(p.enums_with_ts, expected_enums)
+            
+        def test_parse_structs(self):
+            expected_structs = [
+                Struct(
+                    "libvlc_struct_no_values_specified",
+                    "struct",
+                    [
+                        Par("a", "int",[False]),
+                        Par("b", "char",[False]),
+                        Par("c", "double",[False]),
+                    ],
+                    "",
+                ),
+                Struct(
+                    "libvlc_struct_all_values_specified",
+                    "struct",
+                    [
+                        Par("a", "int",[False]),
+                        Par("b", "char",[False]),
+                        Par("c", "double",[False]),
+                    ],
+                    "",
+                ),
+                Struct(
+                    "libvlc_struct_with_docs",
+                    "struct",
+                    [
+                        Par("a", "int",[False]),
+                        Par("b", "char",[False]),
+                        Par("c", "double",[False]),
+                    ],
+                    """Some Doxygen
+documentation
+that spans
+multiple lines""",
+                ),
+                Struct(
+                    "libvlc_struct_with_const",
+                    "struct",
+                    [
+                        Par("x", "char",[True]),
+                    ],
+                    "",
+                ),
+                Struct(
+                    "libvlc_struct_pointers",
+                    "struct",
+                    [
+                        Par("x", "int*",[True,False]),
+                        Par("y", "double*",[False,True]),
+                    ],
+                    "",
+                ),
+                Struct(
+                    "libvlc_struct_no_values_specified_t",
+                    "struct",
+                    [
+                        Par("a", "int",[False]),
+                        Par("b", "char",[False]),
+                        Par("c", "double",[False]),
+                    ],
+                    "",
+                ),
+                Struct(
+                    "libvlc_struct_all_values_specified_t",
+                    "struct",
+                    [
+                        Par("a", "int",[False]),
+                        Par("b", "char",[False]),
+                        Par("c", "double",[False]),
+                    ],
+                    "",
+                ),
+                Struct(
+                    "libvlc_struct_with_docs_t",
+                    "struct",
+                    [
+                        Par("a", "int",[False]),
+                        Par("b", "char",[False]),
+                        Par("c", "double",[False]),
+                    ],
+                     """Some Doxygen
+documentation
+that spans
+multiple lines""",
+                ),
+                Struct(
+                    "libvlc_struct_t",
+                    "struct",
+                    [
+                        Par("x", "char",[False]),
+                    ],
+                    "",
+                ),
+                Struct(
+                    "libvlc_struct_with_const_t",
+                    "struct",
+                    [
+                        Par("x", "char",[True]),
+                    ],
+                    "",
+                ),
+                Struct(
+                    "libvlc_struct_pointers_t",
+                    "struct",
+                    [
+                        Par("x", "int*",[True,False]),
+                        Par("y", "double*",[False,True]),
+                    ],
+                    "",
+                ),
+            ]
+
+            p = self.get_parser("./tests/test_parser_inputs/structs.h")
+            self.assertListEqual(p.structs_with_ts, expected_structs)
 
         def test_parse_funcs(self):
             expected_funcs = [

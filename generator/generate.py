@@ -324,6 +324,25 @@ class Struct(_Source):
         self.fields = fields  # list/tuple of Par instances
         if _debug:
            _Source.__init__(self, **kwds)
+           
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Struct):
+            return False
+
+        res = self.name == other.name
+        res &= self.type == other.type
+        res &= self.docs == other.docs
+        res &= sorted(self.fields, key=lambda p: p.name) == sorted(
+            other.fields, key=lambda p: p.name
+        )
+        return res
+    
+    def __repr__(self) -> str:
+        res = format('STRUCT %s (%s): %s' % (self.name, self.type, self.source))
+        for p in self.fields:
+            res += "\n" + _INDENT_ + str(p)
+        res += "\n"
+        return res
 
     def check(self):
         """Perform some consistency checks.
