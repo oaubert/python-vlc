@@ -327,7 +327,7 @@ if generate is not None:
             return Parser(
                 [],
                 code_file,
-                "./tests/test_parser_inputs/libvlc_version.h",
+                "./tests/test_parser_inputs/libvlc_version_without_extra.h",
             )
 
         def test_parse_enums(self):
@@ -740,6 +740,25 @@ multiple lines""",
 
             p = self.get_parser("./tests/test_parser_inputs/callbacks.h")
             self.assertListEqual(p.callbacks_with_ts, expected_callbacks)
+
+        def test_parse_version(self):
+            p = Parser(
+                [],
+                # Can use any valid path, it doesn't matter
+                "./tests/test_parser_inputs/libvlc_version_without_extra.h",
+                # There it matters
+                "./tests/test_parser_inputs/libvlc_version_without_extra.h"
+            )
+            self.assertEqual(p.version, "3.0.16")
+
+            p = Parser(
+                [],
+                # Can use any valid path, it doesn't matter
+                "./tests/test_parser_inputs/libvlc_version_with_extra.h",
+                # There it matters
+                "./tests/test_parser_inputs/libvlc_version_with_extra.h"
+            )
+            self.assertEqual(p.version, "4.2.14.3")
 
 if __name__ == '__main__':
     logging.basicConfig()
