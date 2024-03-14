@@ -663,6 +663,84 @@ multiple lines""",
             p = self.get_parser("./tests/test_parser_inputs/funcs.h")
             self.assertListEqual(p.funcs_with_ts, expected_funcs)
 
+        def test_parse_callbacks(self):
+            expected_callbacks = [
+                Func("libvlc_simple_cb", "void", [], ""),
+                Func("libvlc_simple_with_void_cb", "void", [], ""),
+                Func(
+                    "libvlc_simple_with_void_pointers_cb",
+                    "void*",
+                    [
+                        Par("p", "void*", [False, False]),
+                    ],
+                    "",
+                ),
+                Func(
+                    "libvlc_simple_types_cb",
+                    "char",
+                    [
+                        Par("a", "int", [False]),
+                        Par("b", "float", [False]),
+                    ],
+                    "",
+                ),
+                Func(
+                    "libvlc_with_docs_cb",
+                    "char",
+                    [
+                        Par("a", "int", [False]),
+                        Par("b", "float", [False]),
+                    ],
+                    """Some Doxygen
+documentation
+that spans
+multiple lines""",
+                ),
+                Func(
+                    "libvlc_one_pointer_cb",
+                    "char*",
+                    [
+                        Par("c1", "char*", [False, False]),
+                        Par("c2", "char*", [False, False]),
+                        Par("c3", "char*", [False, False]),
+                    ],
+                    "",
+                ),
+                Func(
+                    "libvlc_one_pointer_and_const_cb",
+                    "char*",
+                    [
+                        Par("c1", "char*", [True, False]),
+                        Par("c2", "char*", [False, False]),
+                        Par("c3", "char*", [False, False]),
+                    ],
+                    "",
+                ),
+                Func(
+                    "libvlc_multiple_pointers_cb",
+                    "char**",
+                    [
+                        Par("c1", "char**", [False, False, False]),
+                        Par("c2", "char***", [False, False, False, False]),
+                        Par("c3", "char****", [False, False, False, False, False]),
+                    ],
+                    "",
+                ),
+                Func(
+                    "libvlc_multiple_pointers_with_const_cb",
+                    "char**",
+                    [
+                        Par("c1", "char**", [True, True, False]),
+                        Par("c2", "char***", [False, True, True, True]),
+                        Par("c3", "char****", [False, True, False, True, False]),
+                    ],
+                    "",
+                ),
+            ]
+
+            p = self.get_parser("./tests/test_parser_inputs/callbacks.h")
+            self.assertListEqual(p.callbacks_with_ts, expected_callbacks)
+
 if __name__ == '__main__':
     logging.basicConfig()
     unittest.main()
