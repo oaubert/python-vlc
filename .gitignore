@@ -43,6 +43,7 @@ nosetests.xml
 vendor
 
 # Virtual environment
+.venv
 venv
 
 # pyenv version
