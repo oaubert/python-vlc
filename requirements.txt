@@ -5,6 +5,7 @@ mccabe==0.7.0
 platformdirs==4.1.0
 pyflakes==3.2.0
 pylint==3.0.3
+setuptools==69.1.1
 tomli==2.0.1
 tomlkit==0.12.3
 tree-sitter==0.20.4
