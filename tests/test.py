@@ -237,12 +237,6 @@ class TestVLCAPI(unittest.TestCase):
 if generate is not None:
     # Test internal generator only in python3
     class TestREs(unittest.TestCase):
-        def test_api_re_comment(self):
-            self.assertIsNone(generate.api_re.match('/* Avoid unhelpful warnings from libvlc with our deprecated APIs */'))
-
-        def test_api_re_match(self):
-            self.assertIsNotNone(generate.api_re.match('LIBVLC_API void libvlc_clearerr (void);'))
-
         def test_at_param_re(self):
             match = generate.at_param_re.match('@param p_mi media player')
             self.assertEqual(match.group(1, 2), ('@param p_mi', ' media player'))
@@ -260,72 +254,9 @@ if generate is not None:
                     '\n    def __new__(cls, *args):\n\n   def get_instance(self):\n\n    def add_media(self, mrl):\n\n'),
                 ['__new__', 'get_instance', 'add_media'])
 
-        def test_enum_pair_re_1(self):
-            self.assertEqual(generate.enum_pair_re.split('LIBVLC_WARNING=3'), ['LIBVLC_WARNING', '3'])
-
-        def test_enum_pair_re_2(self):
-            self.assertEqual(
-                generate.enum_pair_re.split('libvlc_AudioChannel_Left    =  3'), ['libvlc_AudioChannel_Left', '3'])
-
-        def test_forward_re(self):
-            match = generate.forward_re.match('VLC_FORWARD_DECLARE_OBJECT(libvlc_media_list_t *) libvlc_media_subitems')
-            self.assertEqual(match.groups(), ('libvlc_media_list_t *', ' libvlc_media_subitems'))
-
-    class TestPar(unittest.TestCase):
-        def test_invalid(self):
-            INVALID_TESTS = [
-                # function pointers
-                "int(*name)()",
-                "int *(*name)()",
-                "void *(*name)(const char * buffer)",
-                "void(*name)(const char *, int)",
-                "void(*)(const char *, int)",
-            ]
-
-            for test_instance in INVALID_TESTS:
-                self.assertIsNone(generate.Par.parse_param(test_instance))
-
-        def test_valid(self):
-            VALID_TESTS = [
-                # named param
-                ('int integer_value', ('int', 'integer_value', [False])),
-                ('float decimal_value', ('float', 'decimal_value', [False])),
-
-                # anonymous param
-                ('float', ('float', '', [False])),
-
-                # pointer
-                ('int *pointer_to_integer', ('int*', 'pointer_to_integer', [False, False])),
-                ('const unsigned char * pointer_to_character', ('unsigned char*', 'pointer_to_character', [True, False])),
-                ('const unsigned char * const pointer_to_character', ('unsigned char*', 'pointer_to_character', [True, True])),
-
-                # pointer-to-pointers
-                ('int * const * ptr_to_constptr_to_int',    ('int**', 'ptr_to_constptr_to_int', [False, True, False])),
-                ('int *const * ptr_to_constptr_to_int',     ('int**', 'ptr_to_constptr_to_int', [False, True, False])),
-                ('int * const* ptr_to_constptr_to_int',     ('int**', 'ptr_to_constptr_to_int', [False, True, False])),
-                ('int* const* ptr_to_constptr_to_int',      ('int**', 'ptr_to_constptr_to_int', [False, True, False])),
-
-                ('const int * const * ptr_to_constptr_to_constint', ('int**', 'ptr_to_constptr_to_constint', [True, True, False])),
-                ('const int *const * ptr_to_constptr_to_constint',  ('int**', 'ptr_to_constptr_to_constint', [True, True, False])),
-                ('const int * const* ptr_to_constptr_to_constint',  ('int**', 'ptr_to_constptr_to_constint', [True, True, False])),
-                ('const int* const* ptr_to_constptr_to_constint',   ('int**', 'ptr_to_constptr_to_constint', [True, True, False])),
-
-                ('const int * * ptr_to_ptr_to_constint',    ('int**', 'ptr_to_ptr_to_constint', [True, False, False])),
-                ('const int ** ptr_to_ptr_to_constint',     ('int**', 'ptr_to_ptr_to_constint', [True, False, False])),
-                ('const int * *ptr_to_ptr_to_constint',     ('int**', 'ptr_to_ptr_to_constint', [True, False, False])),
-                ('const int* *ptr_to_ptr_to_constint',      ('int**', 'ptr_to_ptr_to_constint', [True, False, False])),
-            ]
-
-            for parse_raw, (expected_type, expected_name, expected_constness) in VALID_TESTS:
-                param = generate.Par.parse_param(parse_raw)
-                self.assertEqual(expected_type, param.type)
-                self.assertEqual(expected_name, param.name)
-                self.assertListEqual(expected_constness, param.constness)
-
     class TestParser(unittest.TestCase):
         def get_parser(self, code_file: Path | str) -> Parser:
             return Parser(
-                [],
                 code_file,
                 "./tests/test_parser_inputs/libvlc_version_without_extra.h",
             )
@@ -469,7 +400,7 @@ multiple lines""",
             ]
 
             p = self.get_parser("./tests/test_parser_inputs/enums.h")
-            self.assertListEqual(p.enums_with_ts, expected_enums)
+            self.assertListEqual(p.enums, expected_enums)
             
         def test_parse_structs(self):
             expected_structs = [
@@ -584,7 +515,7 @@ multiple lines""",
             ]
 
             p = self.get_parser("./tests/test_parser_inputs/structs.h")
-            self.assertListEqual(p.structs_with_ts, expected_structs)
+            self.assertListEqual(p.structs, expected_structs)
 
         def test_parse_funcs(self):
             expected_funcs = [
@@ -661,7 +592,7 @@ multiple lines""",
             ]
 
             p = self.get_parser("./tests/test_parser_inputs/funcs.h")
-            self.assertListEqual(p.funcs_with_ts, expected_funcs)
+            self.assertListEqual(p.funcs, expected_funcs)
 
         def test_parse_callbacks(self):
             expected_callbacks = [
@@ -739,11 +670,10 @@ multiple lines""",
             ]
 
             p = self.get_parser("./tests/test_parser_inputs/callbacks.h")
-            self.assertListEqual(p.callbacks_with_ts, expected_callbacks)
+            self.assertListEqual(p.callbacks, expected_callbacks)
 
         def test_parse_version(self):
             p = Parser(
-                [],
                 # Can use any valid path, it doesn't matter
                 "./tests/test_parser_inputs/libvlc_version_without_extra.h",
                 # There it matters
@@ -752,7 +682,6 @@ multiple lines""",
             self.assertEqual(p.version, "3.0.16")
 
             p = Parser(
-                [],
                 # Can use any valid path, it doesn't matter
                 "./tests/test_parser_inputs/libvlc_version_with_extra.h",
                 # There it matters

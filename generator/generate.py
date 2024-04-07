@@ -143,32 +143,12 @@ _GENERATED_ENUMS_ = '# GENERATED_ENUMS'
 _GENERATED_STRUCTS_ = '# GENERATED_STRUCTS'
 _GENERATED_CALLBACKS_ = '# GENERATED_CALLBACKS'
 
-# keywords in header files
-_VLC_FORWARD_     = 'VLC_FORWARD'
-_VLC_PUBLIC_API_  = 'LIBVLC_API'
-
 # Precompiled regexps
-api_re       = re.compile(r'(?:LIBVLC_DEPRECATED\s+)?' + _VLC_PUBLIC_API_ + r'\s+(\S+\s+.+?)\s*\(\s*(.+?)\s*\)')
 at_param_re  = re.compile(r'(@param\s+\S+)(.+)')
 bs_param_re  = re.compile(r'\\param\s+(\S+)')
 class_re     = re.compile(r'class\s+(\S+?)(?:\(\S+\))?:')
 def_re       = re.compile(r'^\s+def\s+(\w+)', re.MULTILINE)
-enum_type_re = re.compile(r'^(?:typedef\s+)?enum')
-enum_re      = re.compile(r'(?:typedef\s+)?(enum)\s*(\S+)\s*\{\s*(.+)\s*\}\s*(?:\S+)?;')
-enum_pair_re = re.compile(r'\s*=\s*')
-callback_type_re = re.compile(r'^typedef\s+\w+(\s*\*)?\s*\(\s*\*')
-callback_re  = re.compile(r'typedef\s+\*?(\w+\s*\*?)\s*\(\s*\*\s*(\w+)\s*\)\s*\((.+)\);')
-struct_type_re = re.compile(r'^typedef\s+struct\s*(\S+)?\s*\{?\s*$')
-struct_re    = re.compile(r'typedef\s+(struct)\s*(\S+)?\s*\{\s*(.+)\s*\}\s*(?:\S+)?\s*;')
-func_pointer_re = re.compile(r'(\(?[^\(]+)\s*\((\*\s*\S*)\)(\(.*\))') # (ret_type, *pointer_name, ([params]))
-typedef_re   = re.compile(r'^typedef\s+(?:struct\s+)?(\S+)\s+(\S+);')
-forward_re   = re.compile(r'.+\(\s*(.+?)\s*\)(\s*\S+)')
 libvlc_re    = re.compile(r'libvlc_[a-z_]+')
-decllist_re  = re.compile(r'\s*;\s*')
-paramlist_re = re.compile(r'\s*,\s*')
-version_re   = re.compile(r'vlc[\-]\d+[.]\d+[.]\d+.*')
-LIBVLC_V_re  = re.compile(r'\s*#\s*define\s+LIBVLC_VERSION_([A-Z]+)\s+\(*(\d+)\)*')
-define_re    = re.compile(r'^\s*#\s*define\s+\w+\s+.*?$')
 
 def endot(text):
     """Terminate string with a period.
@@ -568,78 +548,7 @@ class Par(object):
             return f, self.name, default  #PYCHOK expected
 
     @classmethod
-    def parse_param(cls, param_raw):
-        """Parse a C parameter expression.
-
-        It is used to parse the type/name of functions
-        and type/name of the function parameters.
-
-        @return: a Par instance.
-        """
-        param_raw = param_raw.strip()
-        if _VLC_FORWARD_ in param_raw:
-            m = forward_re.match(param_raw)
-            param_raw = m.group(1) + m.group(2)
-
-        # is this a function pointer?
-        if func_pointer_re.search(param_raw):
-            return None
-
-        # is this parameter a pointer?
-        split_pointer = param_raw.split('*')
-        if len(split_pointer) > 1:
-            param_type = split_pointer[0]
-            param_name = split_pointer[-1].split(' ')[-1]
-            param_deref_levels = len(split_pointer) - 1
-
-            # it is a pointer, so it should have at least 1 level of indirection
-            assert(param_deref_levels > 0)
-
-            # POINTER SEMANTIC
-            constness =     split_pointer[:-1]
-            constness +=    ['const' if len(split_pointer[-1].strip().split(' ')) > 1 else '']
-            param_constness = ['const' in deref_level for deref_level in constness]
-
-            # PARAM TYPE
-            param_type = split_pointer[0].replace('const ', '').strip()
-            # remove the struct keyword, this information is currently not used
-            param_type = param_type.replace('struct ', '').strip()
-
-            # add back the information of how many dereference levels there are
-            param_type += '*' * param_deref_levels
-
-            # ASSUMPTION
-            # just indirection level 0 and 1 can be const
-            for deref_level_constness in param_constness[2:]: assert(not deref_level_constness)
-        # ... or is it a simple variable?
-        else:
-            # WARNING: workaround for "union { struct {"
-            param_raw = param_raw.split('{')[-1]
-
-            # ASSUMPTIONs
-            # these allows to constrain param_raw to these options:
-            #  - named:     "type name" (e.g. "int param")
-            #  - anonymous: "type"      (e.g. "int")
-            assert('struct' not in param_raw)
-            assert('const' not in param_raw)
-
-            # normalize spaces
-            param_raw = re.sub(r'\s+', ' ', param_raw)
-
-            split_value = param_raw.split(' ')
-            if len(split_value) > 1:
-                param_name = split_value[-1]
-                param_type = ' '.join(split_value[:-1])
-            else:
-                param_type = split_value[0]
-                param_name = ''
-
-            param_constness = [False]
-
-        return Par(param_name.strip(), param_type.strip(), param_constness)
-
-    @classmethod
-    def parse_param_with_ts(cls, tsnode):
+    def parse_param(cls, tsnode):
         """Creates a Par instance with the name, type and constness of a
         parameter declaration or field declaration.
 
@@ -693,6 +602,14 @@ class Par(object):
         if decl_node is not None:
             name = get_tsnode_text(decl_node)
 
+        # FIXME: Ignore functions pointers in structs for now
+        if tsnode.type == "field_declaration" and name.startswith("(*"):
+            return None
+
+        # FIXME: Ignore unions in structs for now
+        if tsnode.type == "field_declaration" and t.startswith("union"):
+            return None
+         
         return Par(name, t, constness)
 
 class Val(object):
@@ -743,9 +660,7 @@ class Overrides(NamedTuple):
 class Parser(object):
     """Parser of C header files.
     """
-    h_file = ''
-
-    def __init__(self, h_files, code_file: Path | str, version_file: Path | str, version=''):
+    def __init__(self, code_file: Path | str, version_file: Path | str, version=''):
         if isinstance(code_file, str):
             code_file = Path(code_file)
         if isinstance(version_file, str):
@@ -766,39 +681,18 @@ class Parser(object):
         with open(self.version_file, "rb") as file:
             self.version_tstree = tsp.parse(file.read())
 
-        self.enums_with_ts = self.parse_enums_with_ts()
-        self.structs_with_ts = self.parse_structs_with_ts()
-        self.funcs_with_ts = self.parse_funcs_with_ts()
-        self.callbacks_with_ts = self.parse_callbacks_with_ts()
-        self.version_with_ts = version
-        if not self.version_with_ts:
-            self.version_with_ts = self.parse_version_with_ts()
-
+        self.enums = self.parse_enums()
+        self.structs = self.parse_structs()
+        self.funcs = self.parse_funcs()
+        self.callbacks = self.parse_callbacks()
         self.version = version
         if not self.version:
-            self.version = self.parse_version(self.version_file.absolute())
-
-        self.enums = []
-        self.callbacks = []
-        self.structs = []
-        self.funcs = []
-        self.typedefs = {}
-        for h in h_files:
-            self.h_file = h
-            self.typedefs.update(self.parse_typedefs())
-            self.structs.extend(self.parse_structs())
-            self.enums.extend(self.parse_enums())
-            self.callbacks.extend(self.parse_callbacks())
-            self.funcs.extend(self.parse_funcs())
+            self.version = self.parse_version()
 
         # self.dump("enums")
-        # self.dump("enums_with_ts")
         # self.dump("structs")
-        # self.dump("structs_with_ts")
         # self.dump("funcs")
-        # self.dump("funcs_with_ts")
         # self.dump("callbacks")
-        # self.dump("callbacks_with_ts")
 
     def bindings_version(self):
         """Return the bindings version number.
@@ -875,21 +769,6 @@ class Parser(object):
 
         @return: yield a Func instance for each callback signature, unless blacklisted.
         """
-        for type_, name, pars, docs, line in self.parse_groups(callback_type_re.match, callback_re.match, ');'):
-            if name in _blacklist:
-                _blacklist[name] = type_
-                continue
-
-            pars = [Par.parse_param(p) for p in paramlist_re.split(pars)]
-
-            yield Func(name, type_.replace(' ', ''), pars, docs,
-                       file_=self.h_file, line=line)
-
-    def parse_callbacks_with_ts(self):
-        """Parse header file for callback signature definitions.
-
-        @return: yield a Func instance for each callback signature, unless blacklisted.
-        """
         typedef_query = self.C_LANGUAGE.query("(type_definition) @typedef")
         typedef_captures = typedef_query.captures(self.code_tstree.root_node)
         func_query = self.C_LANGUAGE.query("(function_declarator) @func_decl")
@@ -925,7 +804,7 @@ class Parser(object):
             if not name.startswith("libvlc_"):
                 continue
 
-            return_type = Par.parse_param_with_ts(typedef_node).type
+            return_type = Par.parse_param(typedef_node).type
 
             # Ignore if in blacklist
             if name in _blacklist:
@@ -949,7 +828,7 @@ class Parser(object):
             ), "Expected `func_decl_node` to have a child of name _parameters_. Wrong query? Wrong field name for child?"
             params_decls = get_children_by_type(params_nodes, "parameter_declaration")
             params = [
-                Par.parse_param_with_ts(param_decl) for param_decl in params_decls
+                Par.parse_param(param_decl) for param_decl in params_decls
             ]
             if len(params) == 1 and params[0] is not None and params[0].type == "void":
                 params = []
@@ -967,7 +846,7 @@ class Parser(object):
 
         return funcs
 
-    def parse_enums_with_ts(self):
+    def parse_enums(self):
         enum_query = self.C_LANGUAGE.query('(enum_specifier) @enum')
         enum_captures = enum_query.captures(self.code_tstree.root_node)
 
@@ -1060,52 +939,7 @@ class Parser(object):
 
         return enums
 
-    def parse_enums(self):
-        """Parse header file for enum type definitions.
-
-        @return: yield an Enum instance for each enum.
-        """
-        for typ, name, enum, docs, line in self.parse_groups(enum_type_re.match, enum_re.match):
-            vals, locs, e = [], {}, -1  # enum value(s)
-            for t in paramlist_re.split(enum):
-                n = t.split('/*')[0].strip()
-                # Remove DEPRECATED flag for values
-                n = n.replace(' LIBVLC_DEPRECATED', '')
-                if '=' in n:  # has value
-                    n, v = enum_pair_re.split(n)
-                    # Bit-shifted characters cannot be directly evaluated in python
-                    m = re.search(r"'(.)'\s*(<<|>>)\s*(.+)", v.strip())
-                    if m:
-                        v = "%s %s %s" % (ord(m.group(1)), m.group(2), m.group(3))
-                    try:  # handle expressions
-                        e = eval(v, locs)
-                    except (SyntaxError, TypeError, ValueError):
-                        errorf('%s %s: %s', typ, name, t)
-                        raise
-                    locs[n] = e
-                    # preserve hex values
-                    if v[:2] in ('0x', '0X'):
-                        v = hex(e)
-                    else:
-                        v = str(e)
-                    vals.append(Val(n, v, context=name))
-                elif n:  # only name
-                    e += 1
-                    locs[n] = e
-                    vals.append(Val(n, str(e), context=name))
-
-            name = name.strip()
-            if not name:  # anonymous
-                name = 'libvlc_enum_t'
-
-            # more doc string cleanup
-            docs = endot(docs).capitalize()
-
-            yield Enum(name, typ, vals, docs,
-                       file_=self.h_file, line=line)
-
-
-    def parse_structs_with_ts(self):
+    def parse_structs(self):
         """Parse header file for struct definitions.
 
         @return: yield a Struct instance for each struct.
@@ -1154,10 +988,11 @@ class Parser(object):
             body = node.child_by_field_name('body')
             if body is not None:
                 fields = [
-                    Par.parse_param_with_ts(decl)
+                    Par.parse_param(decl)
                     for decl in get_children_by_type(body, 'field_declaration')
                 ]
-                
+                fields = [f for f in fields if f is not None]
+
             # Ignore empty structs
             if len(fields) == 0:
                 continue
@@ -1166,60 +1001,7 @@ class Parser(object):
             
         return structs
                 
-    def parse_structs(self):
-        """Parse header file for struct definitions.
-
-        @return: yield a Struct instance for each struct.
-        """
-        for typ, name, body, docs, line in self.parse_groups(struct_type_re.match, struct_re.match, re.compile(r'^\}(\s*\S+)?\s*;$')):
-            fields = [ Par.parse_param(t.strip()) for t in decllist_re.split(body) if t.strip() and not '%s()' % name in t ]
-            fields = [ f for f in fields if f is not None ]
-
-            name = name.strip()
-            if not name:  # anonymous?
-                name = 'FIXME_undefined_name'
-
-            # more doc string cleanup
-            docs = endot(docs).capitalize()
-            yield Struct(name, typ, fields, docs,
-                         file_=self.h_file, line=line)
-
     def parse_funcs(self):
-        """Parse header file for public function definitions.
-
-        @return: yield a Func instance for each function, unless blacklisted.
-        """
-        def match_t(t):
-            return _VLC_PUBLIC_API_ in t
-
-        for name, pars, docs, line in self.parse_groups(match_t, api_re.match, ');'):
-
-            f = Par.parse_param(name)
-            if f.name in _blacklist:
-                _blacklist[f.name] = f.type
-                continue
-
-            pars = [Par.parse_param(p) for p in paramlist_re.split(pars)]
-
-            if len(pars) == 1 and pars[0].type == 'void':
-                pars = []  # no parameters
-
-            elif any(p for p in pars if not p.name):  # list(...)
-                # no or missing parameter names, peek in doc string
-                n = bs_param_re.findall(docs)
-                if len(n) < len(pars):
-                    errorf('%d parameter(s) missing in function %s comment: %s',
-                            (len(pars) - len(n)), f.name, docs.replace(_NL_, ' ') or _NA_)
-                    n.extend('param%d' % i for i in range(len(n), len(pars)))  #PYCHOK false?
-                # FIXME: this assumes that the order of the parameters is
-                # the same in the parameter list and in the doc string
-                for i, p in enumerate(pars):
-                    p.name = n[i]
-
-            yield Func(f.name, f.type, pars, docs,
-                       file_=self.h_file, line=line)
-
-    def parse_funcs_with_ts(self):
         """Parse header file for public function definitions.
 
         @return: yield a Func instance for each function, unless blacklisted.
@@ -1251,7 +1033,7 @@ class Parser(object):
             if not name.startswith("libvlc_"):
                 continue
 
-            return_type = Par.parse_param_with_ts(decl_node).type
+            return_type = Par.parse_param(decl_node).type
 
             # Ignore if in blacklist
             if name in _blacklist:
@@ -1294,7 +1076,7 @@ class Parser(object):
             ), "Expected `func_decl_node` to have a child of name _parameters_. Wrong query? Typo for child field name?"
             params_decls = get_children_by_type(params_nodes, "parameter_declaration")
             params = [
-                Par.parse_param_with_ts(param_decl)
+                Par.parse_param(param_decl)
                 for param_decl in params_decls
             ]
             if len(params) == 1 and params[0] is not None and params[0].type == "void":
@@ -1313,110 +1095,7 @@ class Parser(object):
 
         return funcs
 
-    def parse_typedefs(self):
-        """Parse header file for typedef definitions.
-
-        @return: a dict instance with typedef matches
-        """
-        return dict( (new, original)
-            for original, new, docs, line in self.parse_groups(typedef_re.match, typedef_re.match) )
-
-    def parse_groups(self, match_t, match_re, ends=';'):
-        """Parse header file for matching lines, re and ends.
-
-        @return: yield a tuple of re groups extended with the
-        doc string and the line number in the header file.
-        """
-        a = []  # multi-lines
-        d = []  # doc lines
-        n = 0   # line number
-        s = False  # skip comments except doc
-
-        f = opener(self.h_file)
-        for t in f:
-            n += 1
-            if define_re.match(t):
-                continue
-            # collect doc lines
-            if t.startswith('/**'):
-                d =     [t[3:].rstrip()]
-            elif t.startswith(' * '):  # FIXME: keep empty lines
-                d.append(t[3:].rstrip())
-
-            else:  # parse line
-                t, m = t.strip(), None
-
-                if s or t.startswith('/*'):  # in comment
-                    s = not t.endswith('*/')
-                    m = match_re(t.split('/*', 1)[0])
-                elif a:  # accumulate multi-line
-                    if '/*' in t:
-                        s = not t.endswith('*/')
-                    t = t.split('/*', 1)[0].rstrip()  # //?
-                    a.append(t)
-                    if (t.endswith(ends) if isinstance(ends, basestring) else ends.match(t)):  # end
-                        t = ' '.join(a)
-                        m = match_re(t)
-                        a = []
-                elif match_t(t):
-                    if (t.endswith(ends) if isinstance(ends, basestring) else ends.match(t)):
-                        m = match_re(t)  # single line
-                    else:  # new multi-line
-                        a = [t]
-
-                if m:
-                    # clean up doc string
-                    d = _NL_.join(d).strip()
-                    if d.endswith('*/'):
-                        d = d[:-2].rstrip()
-
-                    if _debug:
-                        sys.stderr.write('%s==== source ==== %s:%d\n' % (_NL_, self.h_file, n))
-                        sys.stderr.write(t + "\n")
-                        sys.stderr.write('"""%s%s"""\n' % (d, _NL_))
-
-                    yield m.groups() + (d, n)
-                    d = []
-                elif typedef_re.match(t):
-                    # We have another typedef. Reset docstring.
-                    d = []
-        f.close()
-
-    def parse_version(self, libvlc_version_h):
-        """Get the libvlc version from the C header files:
-           LIBVLC_VERSION_MAJOR, _MINOR, _REVISION, _EXTRA
-        """
-        version = None
-
-        f, v = opener(libvlc_version_h), []
-        for t in f:
-            m = LIBVLC_V_re.match(t)
-            if m:
-                t, m = m.groups()
-                if t in ('MAJOR', 'MINOR', 'REVISION'):
-                    v.append((t, m))
-                elif t == 'EXTRA' and m not in ('0', ''):
-                    v.append((t[1:], m))
-        f.close()
-        if v:
-            version = '.'.join(m for _, m in sorted(v))
-
-        # Version was not found in include files themselves. Try other
-        # approaches.
-        if version is None:
-            # Try to get version information from git describe
-            git_dir = Path(libvlc_version_h).absolute().parents[2].joinpath('.git')
-            if git_dir.is_dir():
-                # We are in a git tree. Let's get the version information
-                # from there if we can call git
-                try:
-                    version = subprocess.check_output(["git", "--git-dir=%s" % git_dir.as_posix(), "describe"]).strip().decode('utf-8')
-                except:
-                    pass
-
-        return version
-
-    def parse_version_with_ts(self):
+    def parse_version(self):
         """Get the libvlc version from the C header files:
            LIBVLC_VERSION_MAJOR, _MINOR, _REVISION, _EXTRA
         """
@@ -1703,8 +1382,8 @@ class PythonGenerator(_Generator):
         'va_list':   'ctypes.c_void_p',
         'char*':     'ctypes.c_char_p',
         'unsigned char*':     'ctypes.c_char_p',
-        'bool':      'ctypes.c_bool',
-        'bool*':      'ctypes.POINTER(ctypes.c_bool)',
+        '_Bool':      'ctypes.c_bool',
+        '_Bool*':      'ctypes.POINTER(ctypes.c_bool)',
         'char**':    'ListPOINTER(ctypes.c_char_p)',
         'char***':    'ctypes.POINTER(ListPOINTER(ctypes.c_char_p))',
         'double':    'ctypes.c_double',
@@ -2367,7 +2046,7 @@ Parse VLC include files and generate bindings code for Python or Java.""")
     vlc_h = Path(vlc_h)
     libvlc_version_h = Path(libvlc_version_h)
     vlc_preprocessed = preprocess(vlc_h)
-    p = Parser(args, vlc_preprocessed, libvlc_version_h, opts.version)
+    p = Parser(vlc_preprocessed, libvlc_version_h, opts.version)
     if opts.debug:
         for t in ('structs', 'enums', 'funcs', 'callbacks'):
             p.dump(t)
