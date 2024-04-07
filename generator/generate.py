@@ -379,11 +379,6 @@ class Func(_Source):
         res &= sorted(self.pars, key=lambda x: x.name) == sorted(
             other.pars, key=lambda x: x.name
         )
-        if not res:
-            print("self")
-            print(self)
-            print("other")
-            print(other)
         return res
 
     def __repr__(self) -> str:
