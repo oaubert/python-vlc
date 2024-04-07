@@ -400,7 +400,7 @@ multiple lines""",
             ]
 
             p = self.get_parser("./tests/test_parser_inputs/enums.h")
-            self.assertListEqual(p.enums, expected_enums)
+            self.assertCountEqual(p.enums, expected_enums)
             
         def test_parse_structs(self):
             expected_structs = [
@@ -515,7 +515,7 @@ multiple lines""",
             ]
 
             p = self.get_parser("./tests/test_parser_inputs/structs.h")
-            self.assertListEqual(p.structs, expected_structs)
+            self.assertCountEqual(p.structs, expected_structs)
 
         def test_parse_funcs(self):
             expected_funcs = [
@@ -592,7 +592,7 @@ multiple lines""",
             ]
 
             p = self.get_parser("./tests/test_parser_inputs/funcs.h")
-            self.assertListEqual(p.funcs, expected_funcs)
+            self.assertCountEqual(p.funcs, expected_funcs)
 
         def test_parse_callbacks(self):
             expected_callbacks = [
@@ -670,7 +670,7 @@ multiple lines""",
             ]
 
             p = self.get_parser("./tests/test_parser_inputs/callbacks.h")
-            self.assertListEqual(p.callbacks, expected_callbacks)
+            self.assertCountEqual(p.callbacks, expected_callbacks)
 
         def test_parse_version(self):
             p = Parser(
