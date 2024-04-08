@@ -29,7 +29,7 @@ ifeq ($(TARGETS),)
 TARGETS=missing
 endif
 
-.PHONY: missing dev installed dist deb doc test_bindings2 test_bindings test_generator test2 test tests sdist publish format check clean
+.PHONY: missing dev installed dist deb doc test_bindings2 test_bindings test_generator test2 test tests sdist publish format rcheck check clean
 
 all: $(TARGETS)
 
@@ -87,6 +87,9 @@ publish: $(VERSIONED_NAME)
 
 format:
 	ruff format ./generator/generate.py ./tests
+
+rcheck:
+	ruff check ./generator/generate.py ./tests
 
 check: $(MODULE_NAME)
 	-pyflakes $<
