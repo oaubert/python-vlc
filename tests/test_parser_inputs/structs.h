@@ -41,109 +41,91 @@ struct libvlc_struct_pointers {
   double *const y;
 };
 
-// struct libvlc_struct_with_anonymous_nested_union {
-//   int a;
-//   union {
-//     char b;
-//     char c;
-//   };
-//   double d;
-// };
+struct libvlc_struct_with_anonymous_nested_union {
+  int a;
+  union {
+    char b;
+    char c;
+  };
+  double d;
+};
 
-// struct libvlc_struct_with_named_nested_union {
-//   int a;
-//   union {
-//     char b;
-//     char c;
-//   } u;
-//   double d;
-// };
+struct libvlc_struct_with_named_nested_union {
+  int a;
+  union {
+    char b;
+    char c;
+  } u;
+  double d;
+};
 
-// struct libvlc_struct_with_named2_nested_union {
-//   int a;
-//   union should_be_ignored {
-//     char b;
-//     char c;
-//   } u;
-//   double d;
-// };
+struct libvlc_struct_with_anonymous_nested_struct {
+  int a;
+  struct {
+    char b;
+    char c;
+  };
+  double d;
+};
 
-// struct libvlc_struct_with_anonymous_nested_struct {
-//   int a;
-//   struct {
-//     char b;
-//     char c;
-//   };
-//   double d;
-// };
+struct libvlc_struct_with_named_nested_struct {
+  int a;
+  struct {
+    char b;
+    char c;
+  } s;
+  double d;
+};
 
-// struct libvlc_struct_with_named_nested_struct {
-//   int a;
-//   struct {
-//     char b;
-//     char c;
-//   } s;
-//   double d;
-// };
+struct libvlc_struct_with_nested_anonymous_union_and_struct {
+  int a;
+  union {
+    char b;
+  };
+  struct {
+    char c;
+  };
+  double d;
+};
 
-// struct libvlc_struct_with_nested_named2_struct {
-//   int a;
-//   struct should_be_ignored {
-//     char b;
-//     char c;
-//   } s;
-//   double d;
-// };
+struct libvlc_struct_with_nested_named_union_and_struct {
+  int a;
+  union {
+    char b;
+  } u;
+  struct {
+    char c;
+  } s;
+  double d;
+};
 
-// struct libvlc_struct_with_nested_anonymous_union_and_struct {
-//   int a;
-//   union {
-//     char b;
-//   };
-//   struct {
-//     char c;
-//   };
-//   double d;
-// };
+struct libvlc_struct_with_nested_anonymous_union_and_nested_struct_inside {
+  int a;
+  union {
+    char b;
+    struct {
+      char c;
+    };
+    struct {
+      char d;
+    };
+  };
+  double e;
+};
 
-// struct libvlc_struct_with_nested_named_union_and_struct {
-//   int a;
-//   union {
-//     char b;
-//   } u;
-//   struct {
-//     char c;
-//   } s;
-//   double d;
-// };
-
-// struct libvlc_struct_with_nested_anonymous_union_and_nested_struct_inside {
-//   int a;
-//   union {
-//     char b;
-//     struct {
-//       char c;
-//     };
-//     struct {
-//       char d;
-//     };
-//   };
-//   double e;
-// };
-
-// struct libvlc_struct_with_nested_named_union_and_nested_struct_inside {
-//   int a;
-//   union {
-//     char b;
-//     struct {
-//       char c;
-//     } s1;
-//     struct {
-//       char d;
-//     } s2;
-//   } u;
-//   double e;
-// };
+struct libvlc_struct_with_nested_named_union_and_nested_struct_inside {
+  int a;
+  union {
+    char b;
+    struct {
+      char c;
+    } s1;
+    struct {
+      char d;
+    } s2;
+  } u;
+  double e;
+};
 
 // ============================================================================
 // Typedef structs
@@ -194,108 +176,90 @@ typedef struct libvlc_struct_pointers_t {
   double *const y;
 } libvlc_struct_pointers_t;
 
-// typedef struct libvlc_struct_with_anonymous_nested_union_t {
-//   int a;
-//   union {
-//     char b;
-//     char c;
-//   };
-//   double d;
-// } libvlc_struct_with_anonymous_nested_union_t;
+typedef struct libvlc_struct_with_anonymous_nested_union_t {
+  int a;
+  union {
+    char b;
+    char c;
+  };
+  double d;
+} libvlc_struct_with_anonymous_nested_union_t;
 
-// typedef struct libvlc_struct_with_named_nested_union_t {
-//   int a;
-//   union {
-//     char b;
-//     char c;
-//   } u;
-//   double d;
-// } libvlc_struct_with_named_nested_union_t;
+typedef struct libvlc_struct_with_named_nested_union_t {
+  int a;
+  union {
+    char b;
+    char c;
+  } u;
+  double d;
+} libvlc_struct_with_named_nested_union_t;
 
-// typedef struct libvlc_struct_with_named2_nested_union_t {
-//   int a;
-//   union should_be_ignored {
-//     char b;
-//     char c;
-//   } u;
-//   double d;
-// } libvlc_struct_with_named2_nested_union_t;
+typedef struct libvlc_struct_with_anonymous_nested_struct_t {
+  int a;
+  struct {
+    char b;
+    char c;
+  };
+  double d;
+} libvlc_struct_with_anonymous_nested_struct_t;
 
-// typedef struct libvlc_struct_with_anonymous_nested_struct_t {
-//   int a;
-//   struct {
-//     char b;
-//     char c;
-//   };
-//   double d;
-// } libvlc_struct_with_anonymous_nested_struct_t;
+typedef struct libvlc_struct_with_named_nested_struct_t {
+  int a;
+  struct {
+    char b;
+    char c;
+  } s;
+  double d;
+} libvlc_struct_with_named_nested_struct_t;
 
-// typedef struct libvlc_struct_with_named_nested_struct_t {
-//   int a;
-//   struct {
-//     char b;
-//     char c;
-//   } s;
-//   double d;
-// } libvlc_struct_with_named_nested_struct_t;
+typedef struct libvlc_struct_with_nested_anonymous_union_and_struct_t {
+  int a;
+  union {
+    char b;
+  };
+  struct {
+    char c;
+  };
+  double d;
+} libvlc_struct_with_nested_anonymous_union_and_struct_t;
 
-// typedef struct libvlc_struct_with_nested_named2_struct_t {
-//   int a;
-//   struct should_be_ignored {
-//     char b;
-//     char c;
-//   } s;
-//   double d;
-// } libvlc_struct_with_nested_named2_struct;
+typedef struct libvlc_struct_with_nested_named_union_and_struct_t {
+  int a;
+  union {
+    char b;
+  } u;
+  struct {
+    char c;
+  } s;
+  double d;
+} libvlc_struct_with_nested_named_union_and_struct_t;
 
-// typedef struct libvlc_struct_with_nested_anonymous_union_and_struct_t {
-//   int a;
-//   union {
-//     char b;
-//   };
-//   struct {
-//     char c;
-//   };
-//   double d;
-// } libvlc_struct_with_nested_anonymous_union_and_struct_t;
+typedef struct
+    libvlc_struct_with_nested_anonymous_union_and_nested_struct_inside_t {
+  int a;
+  union {
+    char b;
+    struct {
+      char c;
+    };
+    struct {
+      char d;
+    };
+  };
+  double e;
+} libvlc_struct_with_nested_anonymous_union_and_nested_struct_inside_t;
 
-// typedef struct libvlc_struct_with_nested_named_union_and_struct_t {
-//   int a;
-//   union {
-//     char b;
-//   } u;
-//   struct {
-//     char c;
-//   } s;
-//   double d;
-// } libvlc_struct_with_nested_named_union_and_struct_t;
-
-// typedef struct
-//     libvlc_struct_with_nested_anonymous_union_and_nested_struct_inside_t {
-//   int a;
-//   union {
-//     char b;
-//     struct {
-//       char c;
-//     };
-//     struct {
-//       char d;
-//     };
-//   };
-//   double e;
-// } libvlc_struct_with_nested_anonymous_union_and_nested_struct_inside_t;
-
-// typedef struct
-//     libvlc_struct_with_nested_named_union_and_nested_struct_inside_t {
-//   int a;
-//   union {
-//     char b;
-//     struct {
-//       char c;
-//     } s1;
-//     struct {
-//       char d;
-//     } s2;
-//   } u;
-//   double e;
-// } libvlc_struct_with_nested_named_union_and_nested_struct_inside_t;
+typedef struct
+    libvlc_struct_with_nested_named_union_and_nested_struct_inside_t {
+  int a;
+  union {
+    char b;
+    struct {
+      char c;
+    } s1;
+    struct {
+      char d;
+    } s2;
+  } u;
+  double e;
+} libvlc_struct_with_nested_named_union_and_nested_struct_inside_t;

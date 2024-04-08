@@ -29,6 +29,8 @@ ifeq ($(TARGETS),)
 TARGETS=missing
 endif
 
+.PHONY: missing dev installed dist deb doc test_bindings2 test_bindings test_generator test2 test tests sdist publish check clean
+
 all: $(TARGETS)
 
 missing:
@@ -59,21 +61,29 @@ $(VERSIONED_NAME): generator/generate.py generator/templates/header.py generator
 doc: $(VERSIONED_NAME)
 	-pydoctor --project-name=python-vlc --project-url=https://github.com/oaubert/python-vlc/ --make-html --verbose --html-output=doc $<
 
-test2: $(MODULE_NAME)
-	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python tests/test.py
-	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python tests/test.py
+test_bindings2: $(MODULE_NAME)
+	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python tests/test_bindings.py
+	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python tests/test_bindings.py
 
-test: $(MODULE_NAME)
-	PYTHONPATH=$(VERSIONED_PATH):${PROJECT_ROOT} python3 tests/test.py
-	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test.py
+test_bindings: $(MODULE_NAME)
+	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python3 tests/test_bindings.py
+	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test_bindings.py
+
+test_generator: $(MODULE_NAME)
+	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python3 tests/test_generator.py
+	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test_generator.py
+
+test2: test_bindings2
+
+test: test_bindings test_generator
+
+tests: test test2
 
 sdist: $(VERSIONED_NAME)
 	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist
 
 publish: $(VERSIONED_NAME)
 	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist && twine upload dist/*
-
-tests: test test2
 
 check: $(MODULE_NAME)
 	-pyflakes $<
