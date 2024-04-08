@@ -735,7 +735,7 @@ class Parser(object):
         for s in self.structs:
             s.check()
 
-    def __clean_doxygen_comment_block(self, docs):
+    def clean_doxygen_comment_block(self, docs):
         """This function assumes that the Doxygen comment block syntax used
         is the Javadoc style one, which consists of the block starting with /**.
         See https://www.doxygen.nl/manual/docblocks.html#cppblock for all the ways
@@ -883,7 +883,7 @@ declarator: (parenthesized_declarator
         docs = ""
         if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
             docs = get_tsnode_text(tsnode.prev_sibling)
-            docs = self.__clean_doxygen_comment_block(docs)
+            docs = self.clean_doxygen_comment_block(docs)
 
         params = func_decl.child_by_field_name("parameters")
         assert (
@@ -977,7 +977,7 @@ declarator: (parenthesized_declarator
                 and typedef_node.prev_sibling.type == "comment"
             ):
                 docs = get_tsnode_text(typedef_node.prev_sibling)
-            docs = self.__clean_doxygen_comment_block(docs)
+            docs = self.clean_doxygen_comment_block(docs)
 
             params_nodes = func_decl_node.child_by_field_name("parameters")
             assert (
@@ -1054,7 +1054,7 @@ declarator: (parenthesized_declarator
                     and node.prev_sibling.type == "comment"
                 ):
                     docs = get_tsnode_text(node.prev_sibling)
-            docs = self.__clean_doxygen_comment_block(docs)
+            docs = self.clean_doxygen_comment_block(docs)
 
             # find enum's values
             body = node.child_by_field_name("body")
@@ -1202,7 +1202,7 @@ declarator: (parenthesized_declarator
 
         docs = ""
         if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
-            docs = self.__clean_doxygen_comment_block(
+            docs = self.clean_doxygen_comment_block(
                 get_tsnode_text(tsnode.prev_sibling)
             )
 
@@ -1265,7 +1265,7 @@ declarator: (parenthesized_declarator
 
         docs = ""
         if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
-            docs = self.__clean_doxygen_comment_block(
+            docs = self.clean_doxygen_comment_block(
                 get_tsnode_text(tsnode.prev_sibling)
             )
 
@@ -1337,7 +1337,7 @@ declarator: (parenthesized_declarator
                     and node.prev_sibling.type == "comment"
                 ):
                     docs = get_tsnode_text(node.prev_sibling)
-            docs = self.__clean_doxygen_comment_block(docs)
+            docs = self.clean_doxygen_comment_block(docs)
 
             # Find struct's fields
             body = node.child_by_field_name("body")
@@ -1423,7 +1423,7 @@ declarator: (parenthesized_declarator
                 and decl_node.prev_sibling.type == "comment"
             ):
                 docs = get_tsnode_text(decl_node.prev_sibling)
-            docs = self.__clean_doxygen_comment_block(docs)
+            docs = self.clean_doxygen_comment_block(docs)
 
             params_nodes = func_decl_node.child_by_field_name("parameters")
             assert (
