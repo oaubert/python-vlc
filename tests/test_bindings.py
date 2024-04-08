@@ -26,6 +26,7 @@
 """Unittest module for testing the VLC bindings generated."""
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 import ctypes
@@ -33,9 +34,9 @@ import os
 import unittest
 
 try:
-    import urllib.parse as urllib # python3
+    import urllib.parse as urllib  # python3
 except ImportError:
-    import urllib # python2
+    import urllib  # python2
 
 try:
     from pathlib import Path
@@ -48,27 +49,28 @@ except ImportError:
     import generated.vlc as vlc
 
 
-SAMPLE = os.path.join(os.path.dirname(__file__), 'samples/sample.mp4')
-print ("Checking " + vlc.__file__)
+SAMPLE = os.path.join(os.path.dirname(__file__), "samples/sample.mp4")
+print("Checking " + vlc.__file__)
 
 
 class TestAuxMethods(unittest.TestCase):
     if Path is not None:
+
         def test_try_fspath_path_like_object(self):
-            test_object = Path('test', 'path')
+            test_object = Path("test", "path")
             result = vlc.try_fspath(test_object)
-            self.assertEqual(result, os.path.join('test', 'path'))
+            self.assertEqual(result, os.path.join("test", "path"))
 
     def test_try_fspath_str_object(self):
-        test_object = os.path.join('test', 'path')
+        test_object = os.path.join("test", "path")
         result = vlc.try_fspath(test_object)
-        self.assertEqual(result, os.path.join('test', 'path'))
+        self.assertEqual(result, os.path.join("test", "path"))
 
 
 class TestVLCAPI(unittest.TestCase):
-    #def setUp(self):
+    # def setUp(self):
     #    self.seq = range(10)
-    #self.assert_(element in self.seq)
+    # self.assert_(element in self.seq)
 
     # We check enum definitions against hardcoded values. In case of
     # failure, check that the reason is not a change in the .h
@@ -88,7 +90,8 @@ class TestVLCAPI(unittest.TestCase):
     def test_enum_marquee_int_option(self):
         self.assertEqual(vlc.VideoMarqueeOption.Size.value, 6)
 
-    if hasattr(vlc, 'AudioOutputDeviceTypes'):
+    if hasattr(vlc, "AudioOutputDeviceTypes"):
+
         def test_enum_output_device_type(self):
             self.assertEqual(vlc.AudioOutputDeviceTypes._2F2R.value, 4)
 
@@ -97,51 +100,51 @@ class TestVLCAPI(unittest.TestCase):
 
     # Basic libvlc tests
     def test_instance_creation(self):
-        i=vlc.Instance()
+        i = vlc.Instance()
         self.assertTrue(i)
 
     def test_libvlc_media(self):
-        mrl='/tmp/foo.avi'
-        i=vlc.Instance()
-        m=i.media_new(mrl)
-        self.assertEqual(m.get_mrl(), 'file://' + mrl)
+        mrl = "/tmp/foo.avi"
+        i = vlc.Instance()
+        m = i.media_new(mrl)
+        self.assertEqual(m.get_mrl(), "file://" + mrl)
 
     def test_wrapper_media(self):
-        mrl = '/tmp/foo.avi'
+        mrl = "/tmp/foo.avi"
         m = vlc.Media(mrl)
-        self.assertEqual(m.get_mrl(), 'file://' + mrl)
+        self.assertEqual(m.get_mrl(), "file://" + mrl)
 
     def test_wrapper_medialist(self):
-        mrl1 = '/tmp/foo.avi'
-        mrl2 = '/tmp/bar.avi'
-        l = vlc.MediaList( [mrl1, mrl2] )
-        self.assertEqual(l[1].get_mrl(), 'file://' + mrl2)
+        mrl1 = "/tmp/foo.avi"
+        mrl2 = "/tmp/bar.avi"
+        l = vlc.MediaList([mrl1, mrl2])
+        self.assertEqual(l[1].get_mrl(), "file://" + mrl2)
 
     def test_libvlc_player(self):
-        mrl='/tmp/foo.avi'
-        i=vlc.Instance()
-        p=i.media_player_new(mrl)
-        self.assertEqual(p.get_media().get_mrl(), 'file://' + mrl)
+        mrl = "/tmp/foo.avi"
+        i = vlc.Instance()
+        p = i.media_player_new(mrl)
+        self.assertEqual(p.get_media().get_mrl(), "file://" + mrl)
 
     def test_libvlc_none_object(self):
-        i=vlc.Instance()
-        p=i.media_player_new()
+        i = vlc.Instance()
+        p = i.media_player_new()
         p.set_media(None)
         self.assertEqual(p.get_media(), None)
 
     def test_libvlc_player_state(self):
-        mrl='/tmp/foo.avi'
-        i=vlc.Instance()
-        p=i.media_player_new(mrl)
+        mrl = "/tmp/foo.avi"
+        i = vlc.Instance()
+        p = i.media_player_new(mrl)
         self.assertEqual(p.get_state(), vlc.State.NothingSpecial)
 
     # Test that the VLC bindings can handle special characters in the filenames
     def test_libvlc_player_special_chars(self):
-        mrl = u'/tmp/Test 韓 Korean.mp4'
+        mrl = "/tmp/Test 韓 Korean.mp4"
         i = vlc.Instance()
         m = i.media_new(mrl)
-        url_encoded_mrl = urllib.quote(mrl.encode('utf-8'))
-        self.assertEqual(m.get_mrl(), 'file://' + url_encoded_mrl)
+        url_encoded_mrl = urllib.quote(mrl.encode("utf-8"))
+        self.assertEqual(m.get_mrl(), "file://" + url_encoded_mrl)
 
     def test_libvlc_video_new_viewpoint(self):
         vp = vlc.libvlc_video_new_viewpoint()
@@ -153,7 +156,6 @@ class TestVLCAPI(unittest.TestCase):
             self.assertEqual(vp.contents.f_yaw, 2)
 
     def no_test_callback(self):
-
         @vlc.CallbackDecorators.LogCb
         def log_handler(instance, log_level, ctx, fmt, va_list):
             try:
@@ -161,7 +163,7 @@ class TestVLCAPI(unittest.TestCase):
             except TypeError:
                 print("vlc.libvlc_log_get_context(ctx)")
 
-        instance = vlc.Instance('--vout dummy --aout dummy')
+        instance = vlc.Instance("--vout dummy --aout dummy")
         instance.log_set(log_handler, None)
         player = instance.media_player_new()
 
@@ -179,22 +181,22 @@ class TestVLCAPI(unittest.TestCase):
         # Audiotrack is the second one
         audiotrack = list(m.tracks_get())[1]
         if vlc.__version__ < "4":
-            self.assertEqual(audiotrack.original_fourcc, 0x6134706d)
+            self.assertEqual(audiotrack.original_fourcc, 0x6134706D)
         else:
-            self.assertEqual(audiotrack.i_original_fourcc, 0x6134706d)
+            self.assertEqual(audiotrack.i_original_fourcc, 0x6134706D)
         self.assertEqual(m.get_duration(), 5568)
 
     def test_meta_get(self):
         self.assertTrue(os.path.exists(SAMPLE))
         m = vlc.Media(SAMPLE)
         m.parse()
-        self.assertEqual(m.get_meta(vlc.Meta.Title), 'Title')
-        self.assertEqual(m.get_meta(vlc.Meta.Artist), 'Artist')
-        self.assertEqual(m.get_meta(vlc.Meta.Description), 'Comment')
-        self.assertEqual(m.get_meta(vlc.Meta.Album), 'Album')
-        self.assertEqual(m.get_meta(vlc.Meta.AlbumArtist), 'Album Artist')
-        self.assertEqual(m.get_meta(vlc.Meta.Date), '2013')
-        self.assertEqual(m.get_meta(vlc.Meta.Genre), 'Sample')
+        self.assertEqual(m.get_meta(vlc.Meta.Title), "Title")
+        self.assertEqual(m.get_meta(vlc.Meta.Artist), "Artist")
+        self.assertEqual(m.get_meta(vlc.Meta.Description), "Comment")
+        self.assertEqual(m.get_meta(vlc.Meta.Album), "Album")
+        self.assertEqual(m.get_meta(vlc.Meta.AlbumArtist), "Album Artist")
+        self.assertEqual(m.get_meta(vlc.Meta.Date), "2013")
+        self.assertEqual(m.get_meta(vlc.Meta.Genre), "Sample")
 
     def notest_log_get_context(self):
         """Semi-working test for log_get_context.
@@ -203,21 +205,30 @@ class TestVLCAPI(unittest.TestCase):
         messages. This should be fixed + a better test should be
         devised so that we do not clutter the terminal.
         """
-        libc = ctypes.cdll.LoadLibrary("libc.{}".format("so.6" if os.uname()[0] == 'Linux' else "dylib"))
+        libc = ctypes.cdll.LoadLibrary(
+            "libc.{}".format("so.6" if os.uname()[0] == "Linux" else "dylib")
+        )
+
         @vlc.CallbackDecorators.LogCb
         def log_handler(instance, log_level, ctx, fmt, va_list):
             bufferString = ctypes.create_string_buffer(4096)
             libc.vsprintf(bufferString, fmt, ctypes.cast(va_list, ctypes.c_void_p))
-            msg = bufferString.value.decode('utf-8')
+            msg = bufferString.value.decode("utf-8")
             module, _file, _line = vlc.libvlc_log_get_context(ctx)
-            module = module.decode('utf-8')
+            module = module.decode("utf-8")
             try:
-                logger.warn(u"log_level={log_level}, module={module}, msg={msg}".format(log_level=log_level, module=module, msg=msg))
+                logger.warn(
+                    "log_level={log_level}, module={module}, msg={msg}".format(
+                        log_level=log_level, module=module, msg=msg
+                    )
+                )
             except Exception as e:
                 logger.exception(e)
-                import pdb; pdb.set_trace()
+                import pdb
 
-        instance = vlc.Instance('--vout dummy --aout dummy')
+                pdb.set_trace()
+
+        instance = vlc.Instance("--vout dummy --aout dummy")
         instance.log_set(log_handler, None)
         player = instance.media_player_new()
         media = instance.media_new(SAMPLE)
@@ -225,6 +236,6 @@ class TestVLCAPI(unittest.TestCase):
         player.play()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig()
     unittest.main()

@@ -15,8 +15,10 @@ import gc
 i = vlc.Instance()
 p = vlc.MediaPlayer()
 
+
 def poschanged(foo):
     print("poschanged")
+
 
 for n in range(10):
     p.stop()
@@ -24,8 +26,8 @@ for n in range(10):
     em = p.event_manager()
     em.event_attach(vlc.EventType.MediaPlayerPositionChanged, poschanged)
     p.play()
-    time.sleep(.5)
+    time.sleep(0.5)
     p.pause()
     gc.collect()
     p.pause()
-    time.sleep(.5)
+    time.sleep(0.5)

@@ -29,7 +29,7 @@ ifeq ($(TARGETS),)
 TARGETS=missing
 endif
 
-.PHONY: missing dev installed dist deb doc test_bindings2 test_bindings test_generator test2 test tests sdist publish check clean
+.PHONY: missing dev installed dist deb doc test_bindings2 test_bindings test_generator test2 test tests sdist publish format check clean
 
 all: $(TARGETS)
 
@@ -84,6 +84,9 @@ sdist: $(VERSIONED_NAME)
 
 publish: $(VERSIONED_NAME)
 	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist && twine upload dist/*
+
+format:
+	ruff format ./generator/generate.py ./tests
 
 check: $(MODULE_NAME)
 	-pyflakes $<
