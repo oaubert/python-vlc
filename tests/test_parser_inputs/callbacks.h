@@ -23,10 +23,6 @@ typedef char** (*libvlc_multiple_pointers_cb)(char** c1, char*** c2, char**** c3
 
 typedef const char** (*libvlc_multiple_pointers_with_const_cb)(const char* const* c1, char* const* const* const c2, char* const** const* c3);
 
-// // TODO: Change parse_callbacks_with_ts to handle the following cases (function pointer as parameter and/or return type)
-//
-// // typedef void (*libvlc_function_pointer_as_param_cb)(void (*cb)());
-// //
-// // typedef void (*libvlc_complex_function_pointer_as_param_cb)(const char* (*cb)(char* const* const*));
-// //
-// // typedef bool (*libvlc_function_pointer_as_return_type_cb(int a, float b))(bool b, char c);
+typedef void (*libvlc_function_pointer_as_param_cb)(void (*cb)());
+
+typedef void (*libvlc_complex_function_pointer_as_param_cb)(const char* (*cb)(char* const* const*, int, double));
