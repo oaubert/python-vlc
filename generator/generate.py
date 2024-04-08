@@ -782,6 +782,127 @@ class Parser(object):
             a.dump()
         sys.stderr.write(_NL_)
 
+    def parse_type(self, tsnode: Node):
+        """
+        @param tsnode: A Node that is expected to have a direct
+        child named _type_ (otherwise the function will throw).
+        @return: A string representation of the type of `tsnode`,
+        a 'constness' list of the type, and the last non-pointer
+        declaration node encountered (in a tuple, in this order).
+        """
+        type_node = tsnode.child_by_field_name("type")
+        assert (
+            type_node is not None
+        ), "Expected `tsnode` to have a direct child named _type_."
+
+        constness = []
+        t = get_tsnode_text(type_node)
+        if (
+            type_node.prev_sibling is not None
+            and type_node.prev_sibling.type == "type_qualifier"
+            and get_tsnode_text(type_node.prev_sibling) == "const"
+        ) or (
+            type_node.next_sibling is not None
+            and type_node.next_sibling.type == "type_qualifier"
+            and get_tsnode_text(type_node.next_sibling) == "const"
+        ):
+            constness.append(True)
+        else:
+            constness.append(False)
+
+        decl_node = tsnode.child_by_field_name("declarator")
+        while decl_node is not None and decl_node.type in [
+            "pointer_declarator",
+            "abstract_pointer_declarator",
+        ]:
+            t += "*"
+            constness.append(False)
+            type_qualifiers = get_children_by_type(decl_node, "type_qualifier")
+            if len(type_qualifiers) > 0:
+                type_qualifier_text = get_tsnode_text(type_qualifiers[0])
+                if type_qualifier_text == "const":
+                    constness[-1] = True
+            decl_node = decl_node.child_by_field_name("declarator")
+
+        # remove the struct keyword, this information is currently not used
+        t = t.replace("struct ", "").strip()
+
+        return t, constness, decl_node
+
+    def parse_func_pointer(self, tsnode: Node):
+        """
+        @param tsnode: A Node that is expected to be a field_declaration
+        with a subtree matching:
+        (function_declarator
+            declarator: (parenthesized_declarator (pointer_declarator))
+            parameters: (parameter_list))
+        @return: A Func representing a function pointer if `tsnode`
+        matches the above query, or None otherwise.
+        """
+        query_func_p_str = """
+(function_declarator
+	declarator: (parenthesized_declarator (pointer_declarator))
+    parameters: (parameter_list)) @func
+"""
+        query_func_p = self.C_LANGUAGE.query(query_func_p_str)
+        func_caps = query_func_p.captures(tsnode)
+        if not (len(func_caps) >= 1):
+            return None
+        # Assumes the first capture is the function we are
+        # interested in, that is the one closest to the root of
+        # `tsnode`.
+        # Indeed, we can't enforce exactly one match because
+        # a function pointer can have another function pointer
+        # as parameter.
+        func_decl = func_caps[0][0]
+
+        query_func_id_str = """
+declarator: (parenthesized_declarator
+                (pointer_declarator
+                    declarator: (_) @func_id))
+        """
+        query_func_id = self.C_LANGUAGE.query(query_func_id_str)
+        func_id_caps = query_func_id.captures(func_decl)
+        assert (
+            len(func_id_caps) >= 1
+        ), "There should be at least one identifier if we are indeed parsing a function pointer."
+        # Assumes the first capture is the id of the function we are
+        # interested in, that is the one closest to the root of
+        # `tsnode`.
+        # We can't enforce exactly one match for the same reason we
+        # can't enforce exactly one match for the function
+        # pointer query.
+        name = get_tsnode_text(func_id_caps[0][0])
+
+        type_node = tsnode.child_by_field_name("type")
+        assert (
+            type_node is not None
+        ), "Expected `tsnode` to have a child of name _type_."
+        return_type, _, _ = self.parse_type(tsnode)
+
+        docs = ""
+        if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
+            docs = get_tsnode_text(tsnode.prev_sibling)
+            docs = self.__clean_doxygen_comment_block(docs)
+
+        params = func_decl.child_by_field_name("parameters")
+        assert (
+            params is not None
+        ), "Expected `func_decl` to have a child of name _parameters_."
+        params = get_children_by_type(params, "parameter_declaration")
+        params = [f for param in params for f in self.parse_param(param)]
+        if len(params) == 1 and isinstance(params[0], Par) and params[0].type == "void":
+            params = []
+
+        return Func(
+            name,
+            return_type,
+            params,
+            docs,
+            file_=self.code_file,
+            line=tsnode.start_point[0] + 1,
+        )
+
     def parse_callbacks(self):
         """Parse header file for callback signature definitions.
 
@@ -822,7 +943,11 @@ class Parser(object):
             if not name.startswith("libvlc_"):
                 continue
 
-            return_type = self.parse_param(typedef_node)[0].type
+            type_node = typedef_node.child_by_field_name("type")
+            assert (
+                type_node is not None
+            ), "Expected `typedef_node` to have a child of name _type_."
+            return_type, _, _ = self.parse_type(typedef_node)
 
             # Ignore if in blacklist
             if name in _blacklist:
@@ -967,8 +1092,8 @@ class Parser(object):
     def parse_param(self, tsnode: Node):
         """Returns a list of Par, Struct or Union.
 
-        When `tsnode` is a parameter_declaration, declaration or type_definition,
-        the list returned will only contain one element being an instance of Par.
+        When `tsnode` is a parameter_declaration, the list returned will only contain
+        one element being an instance of Par.
 
         When `tsnode` is a field_declaration, the element can be a Struct/Union
         as well.
@@ -976,24 +1101,17 @@ class Parser(object):
         the Struct/Union's fields will be returned instead of a list containing the
         Struct/Union.
 
-        @param tsnode: An instance of Node of type parameter_declaration, field_declaration,
-        declaration or type_definition.
+        @param tsnode: An instance of Node of type parameter_declaration or field_declaration.
         @return: A Par, Struct, Union or a list of these.
         """
         accepted_node_types = [
             "parameter_declaration",
             "field_declaration",
-            "declaration",
-            "type_definition",
         ]
         accepted_node_types_list = " or ".join(accepted_node_types)
         assert (
             tsnode.type in accepted_node_types
         ), f"Expected `tsnode` to have type {accepted_node_types_list}, but got {tsnode.type}."
-
-        t = ""
-        constness = []
-        name = ""
 
         type_node = tsnode.child_by_field_name("type")
         assert (
@@ -1012,42 +1130,17 @@ class Parser(object):
             else:
                 return [result]
 
-        t = get_tsnode_text(type_node)
-        if (
-            type_node.prev_sibling is not None
-            and type_node.prev_sibling.type == "type_qualifier"
-            and get_tsnode_text(type_node.prev_sibling) == "const"
-        ) or (
-            type_node.next_sibling is not None
-            and type_node.next_sibling.type == "type_qualifier"
-            and get_tsnode_text(type_node.next_sibling) == "const"
-        ):
-            constness.append(True)
-        else:
-            constness.append(False)
+        t, constness, decl_node = self.parse_type(tsnode)
 
-        decl_node = tsnode.child_by_field_name("declarator")
-        while decl_node is not None and decl_node.type == "pointer_declarator":
-            t += "*"
-            constness.append(False)
-            type_qualifiers = get_children_by_type(decl_node, "type_qualifier")
-            if len(type_qualifiers) > 0:
-                type_qualifier_text = get_tsnode_text(type_qualifiers[0])
-                if type_qualifier_text == "const":
-                    constness[-1] = True
-            decl_node = decl_node.child_by_field_name("declarator")
-
-        # remove the struct keyword, this information is currently not used
-        t = t.replace("struct ", "").strip()
-
-        # Assumes that the first non-pointer declaration is the declaration
-        # for the identifier/field_identifier, or is None.
+        name = ""
         if decl_node is not None:
-            name = get_tsnode_text(decl_node)
+            # Check if we are dealing with a function pointer.
+            if decl_node.type == "function_declarator":
+                return [self.parse_func_pointer(tsnode)]
 
-        # FIXME: Ignore functions pointers in structs for now
-        if tsnode.type == "field_declaration" and name.startswith("(*"):
-            return []
+            # Otherwise assume that the first non-pointer declaration is the declaration
+            # for the identifier/field_identifier, or is None.
+            name = get_tsnode_text(decl_node)
 
         return [Par(name, t, constness)]
 
@@ -1278,7 +1371,11 @@ class Parser(object):
             if not name.startswith("libvlc_"):
                 continue
 
-            return_type = self.parse_param(decl_node)[0].type
+            type_node = decl_node.child_by_field_name("type")
+            assert (
+                type_node is not None
+            ), "Expected `decl_node` to have a child of name _type_."
+            return_type, _, _ = self.parse_type(decl_node)
 
             # Ignore if in blacklist
             if name in _blacklist:
