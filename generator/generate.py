@@ -908,13 +908,24 @@ declarator: (parenthesized_declarator
 
         @return: yield a Func instance for each callback signature, unless blacklisted.
         """
-        typedef_query = self.C_LANGUAGE.query("(type_definition) @typedef")
+        typedef_query = self.C_LANGUAGE.query("""
+(type_definition declarator: [
+	(pointer_declarator)
+    (function_declarator)
+]) @typedef
+""")
         typedef_captures = typedef_query.captures(self.code_tstree.root_node)
         func_query = self.C_LANGUAGE.query("(function_declarator) @func_decl")
         func_captures = []
         for typedef_node, _ in typedef_captures:
             func_decl_captures = func_query.captures(typedef_node)
-            if len(func_decl_captures) == 1:
+            if len(func_decl_captures) >= 1:
+                # Assumes the first capture is the function we are
+                # interested in, that is the one closest to the root of
+                # `tsnode`.
+                # Indeed, we can't enforce exactly one match because
+                # a callback (aka. function pointer) can have another function
+                # pointer as parameter.
                 func_captures.append((typedef_node, func_decl_captures[0][0]))
 
         funcs = []
@@ -929,9 +940,15 @@ declarator: (parenthesized_declarator
         for typedef_node, func_decl_node in func_captures:
             func_id_capture = func_id_query.captures(typedef_node)
             assert (
-                len(func_id_capture) == 1
-            ), "Expected the query to capture one and only one node."
-            func_id_node, _ = func_id_capture[0]
+                len(func_id_capture) >= 1
+            ), "Expected the query to capture at least one node."
+            # Assumes the first capture is the id of the function we are
+            # interested in, that is the one closest to the root of
+            # `typedef_node`.
+            # We can't enforce exactly one match for the same reason we
+            # can't enforce exactly one match for the callback
+            # (aka. function pointer) query.
+            func_id_node = func_id_capture[0][0]
             assert (
                 func_id_node is not None
             ), "Expected `func_id_node` to not be None. Maybe `typedef_node` doesn't have the structure assumed in `func_id_query`?"
@@ -954,9 +971,6 @@ declarator: (parenthesized_declarator
                 _blacklist[name] = return_type
                 continue
 
-            # add one because starts from zero by default
-            line = typedef_node.start_point[0] + 1
-
             docs = ""
             if (
                 typedef_node.prev_sibling is not None
@@ -973,7 +987,11 @@ declarator: (parenthesized_declarator
             params = [
                 f for param_decl in params_decls for f in self.parse_param(param_decl)
             ]
-            if len(params) == 1 and params[0] is not None and params[0].type == "void":
+            if (
+                len(params) == 1
+                and isinstance(params[0], Par)
+                and params[0].type == "void"
+            ):
                 params = []
 
             funcs.append(
@@ -983,7 +1001,7 @@ declarator: (parenthesized_declarator
                     params,
                     docs,
                     file_=self.code_file,
-                    line=line,
+                    line=typedef_node.start_point[0] + 1,
                 )
             )
 
@@ -1354,7 +1372,7 @@ declarator: (parenthesized_declarator
         func_captures = []
         for decl_node, _ in decl_captures:
             func_decl_captures = func_query.captures(decl_node)
-            if len(func_decl_captures) == 1:
+            if len(func_decl_captures) >= 1:
                 func_captures.append((decl_node, func_decl_captures[0][0]))
 
         funcs = []
@@ -1399,9 +1417,6 @@ declarator: (parenthesized_declarator
             if not in_api:
                 continue
 
-            # add one because starts from zero by default
-            line = decl_node.start_point[0] + 1
-
             docs = ""
             if (
                 decl_node.prev_sibling is not None
@@ -1418,7 +1433,11 @@ declarator: (parenthesized_declarator
             params = [
                 f for param_decl in params_decls for f in self.parse_param(param_decl)
             ]
-            if len(params) == 1 and params[0].type == "void":
+            if (
+                len(params) == 1
+                and isinstance(params[0], Par)
+                and params[0].type == "void"
+            ):
                 params = []
 
             funcs.append(
@@ -1428,7 +1447,7 @@ declarator: (parenthesized_declarator
                     params,
                     docs,
                     file_=self.code_file.absolute(),
-                    line=line,
+                    line=decl_node.start_point[0] + 1,
                 )
             )
 
