@@ -127,6 +127,31 @@ struct libvlc_struct_with_nested_named_union_and_nested_struct_inside {
   double e;
 };
 
+struct libvlc_struct_with_callbacks {
+  /**
+   * Some docs for cb1.
+   */
+  void (*cb1)();
+  /**
+   * Some docs for cb2.
+   */
+  void (*cb2)();
+  /**
+   * Some docs for cb3.
+   */
+  void (*cb3)();
+};
+
+struct libvlc_struct_with_complex_callbacks {
+  char *(*cb1)(int a, double b);
+  char **(*cb2)(int a, double b);
+  char ***(*cb3)(int a, double b);
+};
+
+struct libvlc_struct_with_cb_taking_cb_as_argument {
+  char* (*cb)(int (*cb_param)(int a, double b, char c));
+};
+
 // ============================================================================
 // Typedef structs
 // ============================================================================
@@ -263,3 +288,29 @@ typedef struct
   } u;
   double e;
 } libvlc_struct_with_nested_named_union_and_nested_struct_inside_t;
+
+typedef struct libvlc_struct_with_callbacks_t {
+  /**
+   * Some docs for cb1.
+   */
+  void (*cb1)();
+  /**
+   * Some docs for cb2.
+   */
+  void (*cb2)();
+  /**
+   * Some docs for cb3.
+   */
+  void (*cb3)();
+} libvlc_struct_with_callbacks_t;
+
+typedef struct libvlc_struct_with_complex_callbacks_t {
+  char *(*cb1)(int a, double b);
+  char **(*cb2)(int a, double b);
+  char ***(*cb3)(int a, double b);
+} libvlc_struct_with_complex_callbacks_t;
+
+typedef struct libvlc_struct_with_cb_taking_cb_as_argument_t {
+  char* (*cb)(int (*cb_param)(int a, double b, char c));
+} libvlc_struct_with_cb_taking_cb_as_argument_t;
+

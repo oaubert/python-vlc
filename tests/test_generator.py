@@ -405,6 +405,74 @@ multiple lines""",
                 "",
             ),
             Struct(
+                "libvlc_struct_with_callbacks",
+                "struct",
+                [
+                    Func("cb1", "void", [], "Some docs for cb1."),
+                    Func("cb2", "void", [], "Some docs for cb2."),
+                    Func("cb3", "void", [], "Some docs for cb3."),
+                ],
+                "",
+            ),
+            Struct(
+                "libvlc_struct_with_complex_callbacks",
+                "struct",
+                [
+                    Func(
+                        "cb1",
+                        "char*",
+                        [
+                            Par("a", "int", [False]),
+                            Par("b", "double", [False]),
+                        ],
+                        "",
+                    ),
+                    Func(
+                        "cb2",
+                        "char**",
+                        [
+                            Par("a", "int", [False]),
+                            Par("b", "double", [False]),
+                        ],
+                        "",
+                    ),
+                    Func(
+                        "cb3",
+                        "char***",
+                        [
+                            Par("a", "int", [False]),
+                            Par("b", "double", [False]),
+                        ],
+                        "",
+                    ),
+                ],
+                "",
+            ),
+            Struct(
+                "libvlc_struct_with_cb_taking_cb_as_argument",
+                "struct",
+                [
+                    Func(
+                        "cb",
+                        "char*",
+                        [
+                            Func(
+                                "cb_param",
+                                "int",
+                                [
+                                    Par("a", "int", [False]),
+                                    Par("b", "double", [False]),
+                                    Par("c", "char", [False]),
+                                ],
+                                "",
+                            )
+                        ],
+                        "",
+                    )
+                ],
+                "",
+            ),
+            Struct(
                 "libvlc_struct_no_values_specified_t",
                 "struct",
                 [
@@ -596,6 +664,74 @@ multiple lines""",
                         "",
                     ),
                     Par("e", "double", [False]),
+                ],
+                "",
+            ),
+            Struct(
+                "libvlc_struct_with_callbacks_t",
+                "struct",
+                [
+                    Func("cb1", "void", [], "Some docs for cb1."),
+                    Func("cb2", "void", [], "Some docs for cb2."),
+                    Func("cb3", "void", [], "Some docs for cb3."),
+                ],
+                "",
+            ),
+            Struct(
+                "libvlc_struct_with_complex_callbacks_t",
+                "struct",
+                [
+                    Func(
+                        "cb1",
+                        "char*",
+                        [
+                            Par("a", "int", [False]),
+                            Par("b", "double", [False]),
+                        ],
+                        "",
+                    ),
+                    Func(
+                        "cb2",
+                        "char**",
+                        [
+                            Par("a", "int", [False]),
+                            Par("b", "double", [False]),
+                        ],
+                        "",
+                    ),
+                    Func(
+                        "cb3",
+                        "char***",
+                        [
+                            Par("a", "int", [False]),
+                            Par("b", "double", [False]),
+                        ],
+                        "",
+                    ),
+                ],
+                "",
+            ),
+            Struct(
+                "libvlc_struct_with_cb_taking_cb_as_argument_t",
+                "struct",
+                [
+                    Func(
+                        "cb",
+                        "char*",
+                        [
+                            Func(
+                                "cb_param",
+                                "int",
+                                [
+                                    Par("a", "int", [False]),
+                                    Par("b", "double", [False]),
+                                    Par("c", "char", [False]),
+                                ],
+                                "",
+                            )
+                        ],
+                        "",
+                    )
                 ],
                 "",
             ),
