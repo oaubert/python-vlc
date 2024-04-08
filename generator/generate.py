@@ -283,7 +283,7 @@ class Enum(_Source):
         if self.type != 'enum':
             errorf('expected enum type: %s %s', self.type, self.name)
 
-    def dump(self):  # for debug
+    def dump(self):
         sys.stderr.write(str(self))
 
     def epydocs(self):
@@ -332,15 +332,67 @@ class Struct(_Source):
         if self.type != 'struct':
             errorf('expected struct type: %s %s', self.type, self.name)
 
-    def dump(self):  # for debug
-        sys.stderr.write('STRUCT %s (%s): %s\n' % (self.name, self.type, self.source))
-        for v in self.fields:
-            v.dump()
+    def dump(self, indent_lvl=0):
+        for _ in range(indent_lvl):
+            sys.stderr.write(_INDENT_)
+        sys.stderr.write("STRUCT %s (%s): %s\n" % (self.name, self.type, self.source))
+        for field in self.fields:
+            field.dump(indent_lvl + 1)
 
     def epydocs(self):
         """Return epydoc string.
         """
         return self.docs.replace('@see', 'See').replace('\\see', 'See')
+
+class Union(_Source):
+    """Union type."""
+
+    type = "union"
+
+    def __init__(self, name, type="union", fields=(), docs="", **kwds):
+        if type != self.type:
+            raise TypeError("expected union type: %s %s" % (type, name))
+        self.docs = docs
+        self.name = name
+        self.fields = fields
+        if _debug:
+            _Source.__init__(self, **kwds)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Union):
+            return False
+
+        res = self.name == other.name
+        res &= self.type == other.type
+        res &= self.docs == other.docs
+        res &= sorted(self.fields, key=lambda p: p.name) == sorted(
+            other.fields, key=lambda p: p.name
+        )
+        return res
+
+    def __repr__(self) -> str:
+        res = format("UNION %s (%s): %s" % (self.name, self.type, self.source))
+        for p in self.fields:
+            res += "\n" + _INDENT_ + str(p)
+        res += "\n"
+        return res
+
+    def check(self):
+        """Perform some consistency checks."""
+        if self.type != "union":
+            errorf("expected union type: %s %s", self.type, self.name)
+
+    def dump(self, indent_lvl=0):
+        for _ in range(indent_lvl):
+            sys.stderr.write(_INDENT_)
+        sys.stderr.write("UNION %s (%s): %s\n" % (self.name, self.type, self.source))
+        for field in self.fields:
+            field.dump(indent_lvl + 1)
+
+    def epydocs(self):
+        """Return epydoc string."""
+        return self.docs.replace("@see", "See").replace("\\see", "See")
+
 
 class Flag(object):
     """Enum-like, ctypes parameter direction flag constants.
@@ -414,10 +466,12 @@ class Func(_Source):
                 self.dump()
                 sys.stderr.write(self.docs + "\n")
 
-    def dump(self):  # for debug
-        sys.stderr.write('%s (%s): %s\n' %  (self.name, self.type, self.source))
+    def dump(self, indent_lvl=0):
+        for _ in range(indent_lvl):
+            sys.stderr.write(_INDENT_)
+        sys.stderr.write("%s (%s): %s\n" % (self.name, self.type, self.source))
         for p in self.pars:
-            p.dump(self.out)
+            p.dump(indent_lvl + 1, self.out)
 
     def epydocs(self, first=0, indent=0):
         """Return epydoc doc string with/out first parameter.
@@ -509,16 +563,20 @@ class Par(object):
     def __repr__(self):
         return "%s (%s) %s" % (self.name, self.type, self.constness)
 
-    def dump(self, out=()):  # for debug
+    def dump(self, indent_lvl=0, out=()):
+        for _ in range(indent_lvl):
+            sys.stderr.write(_INDENT_)
+
         if self.name in out:
             t = _OUT_  # @param [OUT]
         else:
-            t = {Flag.In:     '',  # default
-                 Flag.Out:    'Out',
-                 Flag.InOut:  'InOut',
-                 Flag.InZero: 'InZero',
-                }.get(self.flags()[0], 'FIXME_Flag')
-        sys.stderr.write('%s%s %s\n' % (_INDENT_, str(self), t))
+            t = {
+                Flag.In: "",  # default
+                Flag.Out: "Out",
+                Flag.InOut: "InOut",
+                Flag.InZero: "InZero",
+            }.get(self.flags()[0], "FIXME_Flag")
+        sys.stderr.write("%s %s\n" % (str(self), t))
 
     # Parameter passing flags for types.  This shouldn't
     # be hardcoded this way, but works all right for now.
@@ -541,71 +599,6 @@ class Par(object):
             return f,  # 1-tuple
         else:  # see ctypes 15.16.2.4 Function prototypes
             return f, self.name, default  #PYCHOK expected
-
-    @classmethod
-    def parse_param(cls, tsnode):
-        """Creates a Par instance with the name, type and constness of a
-        parameter declaration or field declaration.
-
-        @param tsnode: An instance of TSNode of type parameter_declaration or field_declaration.
-        @return: A Par instance.
-        """
-        accepted_node_types = ["parameter_declaration", "field_declaration", "declaration", "type_definition"]
-        accepted_node_types_list = " or ".join(accepted_node_types)
-        assert (
-            tsnode.type in accepted_node_types
-        ), f"Expected `tsnode` to have type {accepted_node_types_list}, but got {tsnode.type}."
-
-        t = ""
-        constness = []
-        name = ""
-
-        type_node = tsnode.child_by_field_name("type")
-        assert (
-            type_node is not None
-        ), f"Expected `tsnode` to have a child of name _type_. Typo? Wrong assumption about `tsnode`?"
-        t = get_tsnode_text(type_node)
-        if (
-            type_node.prev_sibling is not None
-            and type_node.prev_sibling.type == "type_qualifier"
-            and get_tsnode_text(type_node.prev_sibling) == "const"
-        ) or (
-            type_node.next_sibling is not None
-            and type_node.next_sibling.type == "type_qualifier"
-            and get_tsnode_text(type_node.next_sibling) == "const"
-        ):
-            constness.append(True)
-        else:
-            constness.append(False)
-
-        decl_node = tsnode.child_by_field_name("declarator")
-        while decl_node is not None and decl_node.type == "pointer_declarator":
-            t += "*"
-            constness.append(False)
-            type_qualifiers = get_children_by_type(decl_node, "type_qualifier")
-            if len(type_qualifiers) > 0:
-                type_qualifier_text = get_tsnode_text(type_qualifiers[0])
-                if type_qualifier_text == "const":
-                    constness[-1] = True
-            decl_node = decl_node.child_by_field_name("declarator")
-
-        # remove the struct keyword, this information is currently not used
-        t = t.replace('struct ', '').strip()
-
-        # Assumes that the first non-pointer declaration is the declaration
-        # for the identifier/field_identifier, or is None.
-        if decl_node is not None:
-            name = get_tsnode_text(decl_node)
-
-        # FIXME: Ignore functions pointers in structs for now
-        if tsnode.type == "field_declaration" and name.startswith("(*"):
-            return None
-
-        # FIXME: Ignore unions in structs for now
-        if tsnode.type == "field_declaration" and t.startswith("union"):
-            return None
-         
-        return Par(name, t, constness)
 
 class Val(object):
     """Enum name and value.
@@ -799,7 +792,7 @@ class Parser(object):
             if not name.startswith("libvlc_"):
                 continue
 
-            return_type = Par.parse_param(typedef_node).type
+            return_type = self.parse_param(typedef_node)[0].type
 
             # Ignore if in blacklist
             if name in _blacklist:
@@ -823,7 +816,9 @@ class Parser(object):
             ), "Expected `func_decl_node` to have a child of name _parameters_. Wrong query? Wrong field name for child?"
             params_decls = get_children_by_type(params_nodes, "parameter_declaration")
             params = [
-                Par.parse_param(param_decl) for param_decl in params_decls
+                f
+                for param_decl in params_decls
+                for f in self.parse_param(param_decl)
             ]
             if len(params) == 1 and params[0] is not None and params[0].type == "void":
                 params = []
@@ -934,6 +929,214 @@ class Parser(object):
 
         return enums
 
+    def parse_param(self, tsnode: Node):
+        """Returns a list of Par, Struct or Union.
+
+        When `tsnode` is a parameter_declaration, declaration or type_definition,
+        the list returned will only contain one element being an instance of Par.
+
+        When `tsnode` is a field_declaration, the element can be a Struct/Union
+        as well.
+        Furthermore, if it happens to be an anonymous Struct/Union, a list containing
+        the Struct/Union's fields will be returned instead of a list containing the
+        Struct/Union.
+
+        @param tsnode: An instance of Node of type parameter_declaration, field_declaration,
+        declaration or type_definition.
+        @return: A Par, Struct, Union or a list of these.
+        """
+        accepted_node_types = ["parameter_declaration", "field_declaration", "declaration", "type_definition"]
+        accepted_node_types_list = " or ".join(accepted_node_types)
+        assert (
+            tsnode.type in accepted_node_types
+        ), f"Expected `tsnode` to have type {accepted_node_types_list}, but got {tsnode.type}."
+
+        t = ""
+        constness = []
+        name = ""
+
+        type_node = tsnode.child_by_field_name("type")
+        assert (
+            type_node is not None
+        ), f"Expected `tsnode` to have a child of name _type_. Typo? Wrong assumption about `tsnode`?"
+
+        result = None
+        if type_node.type == "struct_specifier":
+            result = self.parse_nested_struct(tsnode)
+        elif type_node.type == "union_specifier":
+            result = self.parse_nested_union(tsnode)
+        if result is not None:
+            # if anonymous struct/union, return the fields directly
+            if len(result.name) == 0:
+                return result.fields
+            else:
+                return [result]
+
+        t = get_tsnode_text(type_node)
+        if (
+            type_node.prev_sibling is not None
+            and type_node.prev_sibling.type == "type_qualifier"
+            and get_tsnode_text(type_node.prev_sibling) == "const"
+        ) or (
+            type_node.next_sibling is not None
+            and type_node.next_sibling.type == "type_qualifier"
+            and get_tsnode_text(type_node.next_sibling) == "const"
+        ):
+            constness.append(True)
+        else:
+            constness.append(False)
+
+        decl_node = tsnode.child_by_field_name("declarator")
+        while decl_node is not None and decl_node.type == "pointer_declarator":
+            t += "*"
+            constness.append(False)
+            type_qualifiers = get_children_by_type(decl_node, "type_qualifier")
+            if len(type_qualifiers) > 0:
+                type_qualifier_text = get_tsnode_text(type_qualifiers[0])
+                if type_qualifier_text == "const":
+                    constness[-1] = True
+            decl_node = decl_node.child_by_field_name("declarator")
+
+        # remove the struct keyword, this information is currently not used
+        t = t.replace('struct ', '').strip()
+
+        # Assumes that the first non-pointer declaration is the declaration
+        # for the identifier/field_identifier, or is None.
+        if decl_node is not None:
+            name = get_tsnode_text(decl_node)
+
+        # FIXME: Ignore functions pointers in structs for now
+        if tsnode.type == "field_declaration" and name.startswith("(*"):
+            return []
+
+        return [Par(name, t, constness)]
+
+    def parse_nested_struct(self, tsnode: Node):
+        """Returns a Struct representing a nested structure if `tsnode`
+        has the right structure, or None otherwise.
+
+        @param tsnode: An instance of Node that is expected to match:
+        (field_declaration
+            type:
+                (struct_specifier body: (field_declaration_list)))
+        @return: A Struct if `tsnode` matches the above query, or
+        None otherwise.
+        """
+        query_str = """
+(field_declaration
+	type:
+        (struct_specifier body: (field_declaration_list))) @field
+"""
+        query_nested_struct_or_union = self.C_LANGUAGE.query(query_str)
+        caps = query_nested_struct_or_union.captures(tsnode)
+
+        # We don't want to match subtrees, we only want to match `tsnode`.
+        # Unfortunately, there is no way to do this given the current Tree sitter API,
+        # so we assume that the first match of type field_declaration is `tsnode`.
+        if not (len(caps) != 0 and caps[0][0].type == "field_declaration"):
+            return None
+
+        assert (
+            caps[0][0].id == tsnode.id
+        ), "Assumed that the first capture was `tsnode`, but it is not the case."
+
+        type_node = tsnode.child_by_field_name("type")
+        assert (
+            type_node is not None
+        ), "Child _type_ should exist if `tsnode` matched the query."
+        body = type_node.child_by_field_name("body")
+        assert (
+            body is not None
+        ), "Child _body_ should exist if `tsnode` matched the query."
+
+        docs = ""
+        if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
+            docs = self.__clean_doxygen_comment_block(
+                get_tsnode_text(tsnode.prev_sibling)
+            )
+
+        declarator = tsnode.child_by_field_name("declarator")
+        name = "" if declarator is None else get_tsnode_text(declarator)
+
+        fields = [
+            f
+            for decl in get_children_by_type(body, "field_declaration")
+            for f in self.parse_param(decl)
+        ]
+        fields = [f for f in fields if f is not None]
+
+        return Struct(
+            name,
+            "struct",
+            fields,
+            docs,
+            file_=self.code_file.absolute(),
+            line=tsnode.start_point[0] + 1,
+        )
+
+    def parse_nested_union(self, tsnode: Node):
+        """Returns a Union representing a nested union if `tsnode`
+        has the right structure, or None otherwise.
+
+        @param tsnode: An instance of Node that is expected to match:
+        (field_declaration
+            type:
+                (union_specifier body: (field_declaration_list)))
+        @return: A Union if `tsnode` matches the above query, or
+        None otherwise.
+        """
+        query_str = """
+(field_declaration
+	type:
+        (union_specifier body: (field_declaration_list))) @field
+"""
+        query_nested_struct_or_union = self.C_LANGUAGE.query(query_str)
+        caps = query_nested_struct_or_union.captures(tsnode)
+
+        # We don't want to match subtrees, we only want to match `tsnode`.
+        # Unfortunately, there is no way to do this given the current Tree sitter API,
+        # so we assume that the first match of type field_declaration is `tsnode`.
+        if not (len(caps) != 0 and caps[0][0].type == "field_declaration"):
+            return None
+
+        assert (
+            caps[0][0].id == tsnode.id
+        ), "Assumed that the first capture was `tsnode`, but it is not the case."
+
+        type_node = tsnode.child_by_field_name("type")
+        assert (
+            type_node is not None
+        ), "Child _type_ should exist if `tsnode` matched the query."
+        body = type_node.child_by_field_name("body")
+        assert (
+            body is not None
+        ), "Child _body_ should exist if `tsnode` matched the query."
+
+        docs = ""
+        if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
+            docs = self.__clean_doxygen_comment_block(
+                get_tsnode_text(tsnode.prev_sibling)
+            )
+
+        declarator = tsnode.child_by_field_name("declarator")
+        name = "" if declarator is None else get_tsnode_text(declarator)
+
+        fields = [
+            f
+            for decl in get_children_by_type(body, "field_declaration")
+            for f in self.parse_param(decl)
+        ]
+        fields = [f for f in fields if f is not None]
+
+        return Union(
+            name,
+            "union",
+            fields,
+            docs,
+            file_=self.code_file.absolute(),
+            line=tsnode.start_point[0] + 1,
+        )
+
     def parse_structs(self):
         """Parse header file for struct definitions.
 
@@ -983,8 +1186,9 @@ class Parser(object):
             body = node.child_by_field_name('body')
             if body is not None:
                 fields = [
-                    Par.parse_param(decl)
+                    f
                     for decl in get_children_by_type(body, 'field_declaration')
+                    for f in self.parse_param(decl)
                 ]
                 fields = [f for f in fields if f is not None]
 
@@ -1028,7 +1232,7 @@ class Parser(object):
             if not name.startswith("libvlc_"):
                 continue
 
-            return_type = Par.parse_param(decl_node).type
+            return_type = self.parse_param(decl_node)[0].type
 
             # Ignore if in blacklist
             if name in _blacklist:
@@ -1071,10 +1275,11 @@ class Parser(object):
             ), "Expected `func_decl_node` to have a child of name _parameters_. Wrong query? Typo for child field name?"
             params_decls = get_children_by_type(params_nodes, "parameter_declaration")
             params = [
-                Par.parse_param(param_decl)
+                f
                 for param_decl in params_decls
+                for f in self.parse_param(param_decl)
             ]
-            if len(params) == 1 and params[0] is not None and params[0].type == "void":
+            if len(params) == 1 and params[0].type == "void":
                 params = []
 
             funcs.append(
