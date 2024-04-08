@@ -68,7 +68,7 @@ import shutil
 import subprocess
 import sys
 import time
-from tree_sitter import Language, Parser as TSParser, Node, Tree
+from tree_sitter import Language, Parser as TSParser, Node
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATEDIR = os.path.join(BASEDIR, "templates")
@@ -998,7 +998,7 @@ class Parser(object):
         type_node = tsnode.child_by_field_name("type")
         assert (
             type_node is not None
-        ), f"Expected `tsnode` to have a child of name _type_. Typo? Wrong assumption about `tsnode`?"
+        ), "Expected `tsnode` to have a child of name _type_. Typo? Wrong assumption about `tsnode`?"
 
         result = None
         if type_node.type == "struct_specifier":
@@ -1285,14 +1285,14 @@ class Parser(object):
                 _blacklist[name] = return_type
                 continue
 
-            deprecated = False
+            _deprecated = False
             in_api = False
             attributes = get_children_by_type(decl_node, "attribute_specifier")
             ms_declspecs = get_children_by_type(decl_node, "ms_declspec_modifier")
             for a in attributes + ms_declspecs:
                 a_txt = get_tsnode_text(a)
                 if a_txt == "__attribute__((deprecated))":
-                    deprecated = True
+                    _deprecated = True
                 if (
                     a_txt == '__attribute__((visibility("default")))'
                     or a_txt == "__declspec(dllexport)"
@@ -1931,7 +1931,7 @@ class _Enum(ctypes.c_uint):
                 )  # """ emacs-mode is confused...
 
                 c = self.overrides.codes.get(cls, "")
-                if not "def __new__" in c:
+                if "def __new__" not in c:
                     self.output("""
     def __new__(cls, ptr=_internal_guard):
         '''(INTERNAL) ctypes wrapper constructor.
