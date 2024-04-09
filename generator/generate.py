@@ -679,7 +679,14 @@ class Overrides(NamedTuple):
 class Parser(object):
     """Parser of C header files."""
 
-    def __init__(self, code_file: Path | str, version_file: Path | str, version=""):
+    def __init__(
+        self,
+        code_file: Path | str,
+        version_file: Path | str,
+        version: str = "",
+        with_extra: bool = True,
+    ):
+        self.with_extra = with_extra
         if isinstance(code_file, str):
             code_file = Path(code_file)
         if isinstance(version_file, str):
@@ -890,7 +897,9 @@ declarator: (parenthesized_declarator
             params is not None
         ), "Expected `func_decl` to have a child of name _parameters_."
         params = get_children_by_type(params, "parameter_declaration")
-        params = [f for param in params for f in self.parse_param(param)]
+        params = [
+            p for param in params for p in self.parse_param(param) if p is not None
+        ]
         if len(params) == 1 and isinstance(params[0], Par) and params[0].type == "void":
             params = []
 
@@ -985,7 +994,10 @@ declarator: (parenthesized_declarator
             ), "Expected `func_decl_node` to have a child of name _parameters_. Wrong query? Wrong field name for child?"
             params_decls = get_children_by_type(params_nodes, "parameter_declaration")
             params = [
-                f for param_decl in params_decls for f in self.parse_param(param_decl)
+                p
+                for param_decl in params_decls
+                for p in self.parse_param(param_decl)
+                if p is not None
             ]
             if (
                 len(params) == 1
@@ -1142,11 +1154,14 @@ declarator: (parenthesized_declarator
         elif type_node.type == "union_specifier":
             result = self.parse_nested_union(tsnode)
         if result is not None:
-            # if anonymous struct/union, return the fields directly
-            if len(result.name) == 0:
-                return result.fields
+            if self.with_extra:
+                # if anonymous struct/union, return the fields directly
+                if len(result.name) == 0:
+                    return result.fields
+                else:
+                    return [result]
             else:
-                return [result]
+                return [None]
 
         t, constness, decl_node = self.parse_type(tsnode)
 
@@ -1154,7 +1169,10 @@ declarator: (parenthesized_declarator
         if decl_node is not None:
             # Check if we are dealing with a function pointer.
             if decl_node.type == "function_declarator":
-                return [self.parse_func_pointer(tsnode)]
+                if self.with_extra:
+                    return [self.parse_func_pointer(tsnode)]
+                else:
+                    return [None]
 
             # Otherwise assume that the first non-pointer declaration is the declaration
             # for the identifier/field_identifier, or is None.
@@ -1213,8 +1231,8 @@ declarator: (parenthesized_declarator
             f
             for decl in get_children_by_type(body, "field_declaration")
             for f in self.parse_param(decl)
+            if f is not None
         ]
-        fields = [f for f in fields if f is not None]
 
         return Struct(
             name,
@@ -1276,8 +1294,8 @@ declarator: (parenthesized_declarator
             f
             for decl in get_children_by_type(body, "field_declaration")
             for f in self.parse_param(decl)
+            if f is not None
         ]
-        fields = [f for f in fields if f is not None]
 
         return Union(
             name,
@@ -1346,8 +1364,8 @@ declarator: (parenthesized_declarator
                     f
                     for decl in get_children_by_type(body, "field_declaration")
                     for f in self.parse_param(decl)
+                    if f is not None
                 ]
-                fields = [f for f in fields if f is not None]
 
             # Ignore empty structs
             if len(fields) == 0:
@@ -1431,7 +1449,10 @@ declarator: (parenthesized_declarator
             ), "Expected `func_decl_node` to have a child of name _parameters_. Wrong query? Typo for child field name?"
             params_decls = get_children_by_type(params_nodes, "parameter_declaration")
             params = [
-                f for param_decl in params_decls for f in self.parse_param(param_decl)
+                p
+                for param_decl in params_decls
+                for p in self.parse_param(param_decl)
+                if p is not None
             ]
             if (
                 len(params) == 1
@@ -2476,7 +2497,7 @@ Parse VLC include files and generate bindings code for Python or Java."""
     vlc_h = Path(vlc_h)
     libvlc_version_h = Path(libvlc_version_h)
     vlc_preprocessed = preprocess(vlc_h)
-    p = Parser(vlc_preprocessed, libvlc_version_h, opts.version)
+    p = Parser(vlc_preprocessed, libvlc_version_h, opts.version, False)
     if opts.debug:
         for t in ("structs", "enums", "funcs", "callbacks"):
             p.dump(t)
