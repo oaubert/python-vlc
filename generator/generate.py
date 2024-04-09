@@ -1120,10 +1120,10 @@ declarator: (parenthesized_declarator
         return enums
 
     def parse_param(self, tsnode: Node):
-        """Returns a list of Par, Struct or Union.
+        """Returns a list of Par, Struct, Union and/or None.
 
         When `tsnode` is a parameter_declaration, the list returned will only contain
-        one element being an instance of Par.
+        one element being an instance of Par or Func.
 
         When `tsnode` is a field_declaration, the element can be a Struct/Union
         as well.
@@ -1131,8 +1131,12 @@ declarator: (parenthesized_declarator
         the Struct/Union's fields will be returned instead of a list containing the
         Struct/Union.
 
-        @param tsnode: An instance of Node of type parameter_declaration or field_declaration.
-        @return: A Par, Struct, Union or a list of these.
+        None can be part of the list only when the Parser option `with_extra` is False.
+        In this case, nested structs/unions and function pointers as parameter/field are
+        ignored, meaning None is returned instead.
+
+        @param tsnode: A Node of type parameter_declaration or field_declaration.
+        @return: A list of Par, Struct, Union and/or None
         """
         accepted_node_types = [
             "parameter_declaration",
