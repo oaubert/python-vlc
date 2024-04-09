@@ -789,6 +789,18 @@ class Parser(object):
             a.dump()
         sys.stderr.write(_NL_)
 
+    def parse_doxygen_comment(self, tsnode: Node):
+        """
+        @param tsnode: A Node for which to get the associated Doxygen doc
+        comment.
+        @return: A string containing the comment if it exists, None otherwise.
+        """
+        if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
+            docs = get_tsnode_text(tsnode.prev_sibling)
+            docs = self.clean_doxygen_comment_block(docs)
+            return docs
+        return None
+
     def parse_type(self, tsnode: Node):
         """
         @param tsnode: A Node that is expected to have a direct
@@ -887,10 +899,9 @@ declarator: (parenthesized_declarator
         ), "Expected `tsnode` to have a child of name _type_."
         return_type, _, _ = self.parse_type(tsnode)
 
-        docs = ""
-        if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
-            docs = get_tsnode_text(tsnode.prev_sibling)
-            docs = self.clean_doxygen_comment_block(docs)
+        docs = self.parse_doxygen_comment(tsnode)
+        if docs is None:
+            docs = ""
 
         params = func_decl.child_by_field_name("parameters")
         assert (
@@ -980,13 +991,9 @@ declarator: (parenthesized_declarator
                 _blacklist[name] = return_type
                 continue
 
-            docs = ""
-            if (
-                typedef_node.prev_sibling is not None
-                and typedef_node.prev_sibling.type == "comment"
-            ):
-                docs = get_tsnode_text(typedef_node.prev_sibling)
-            docs = self.clean_doxygen_comment_block(docs)
+            docs = self.parse_doxygen_comment(typedef_node)
+            if docs is None:
+                docs = ""
 
             params_nodes = func_decl_node.child_by_field_name("parameters")
             assert (
@@ -1055,18 +1062,11 @@ declarator: (parenthesized_declarator
 
             # find enum's docs
             if parent is not None and parent.type == "type_definition":
-                if (
-                    parent.prev_sibling is not None
-                    and parent.prev_sibling.type == "comment"
-                ):
-                    docs = get_tsnode_text(parent.prev_sibling)
+                docs = self.parse_doxygen_comment(parent)
             else:
-                if (
-                    node.prev_sibling is not None
-                    and node.prev_sibling.type == "comment"
-                ):
-                    docs = get_tsnode_text(node.prev_sibling)
-            docs = self.clean_doxygen_comment_block(docs)
+                docs = self.parse_doxygen_comment(node)
+            if docs is None:
+                docs = ""
 
             # find enum's values
             body = node.child_by_field_name("body")
@@ -1218,11 +1218,9 @@ declarator: (parenthesized_declarator
             body is not None
         ), "Child _body_ should exist if `tsnode` matched the query."
 
-        docs = ""
-        if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
-            docs = self.clean_doxygen_comment_block(
-                get_tsnode_text(tsnode.prev_sibling)
-            )
+        docs = self.parse_doxygen_comment(tsnode)
+        if docs is None:
+            docs = ""
 
         declarator = tsnode.child_by_field_name("declarator")
         name = "" if declarator is None else get_tsnode_text(declarator)
@@ -1281,11 +1279,9 @@ declarator: (parenthesized_declarator
             body is not None
         ), "Child _body_ should exist if `tsnode` matched the query."
 
-        docs = ""
-        if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
-            docs = self.clean_doxygen_comment_block(
-                get_tsnode_text(tsnode.prev_sibling)
-            )
+        docs = self.parse_doxygen_comment(tsnode)
+        if docs is None:
+            docs = ""
 
         declarator = tsnode.child_by_field_name("declarator")
         name = "" if declarator is None else get_tsnode_text(declarator)
@@ -1344,18 +1340,11 @@ declarator: (parenthesized_declarator
 
             # Find structs documentation
             if parent is not None and parent.type == "type_definition":
-                if (
-                    parent.prev_sibling is not None
-                    and parent.prev_sibling.type == "comment"
-                ):
-                    docs = get_tsnode_text(parent.prev_sibling)
+                docs = self.parse_doxygen_comment(parent)
             else:
-                if (
-                    node.prev_sibling is not None
-                    and node.prev_sibling.type == "comment"
-                ):
-                    docs = get_tsnode_text(node.prev_sibling)
-            docs = self.clean_doxygen_comment_block(docs)
+                docs = self.parse_doxygen_comment(node)
+            if docs is None:
+                docs = ""
 
             # Find struct's fields
             body = node.child_by_field_name("body")
@@ -1435,13 +1424,9 @@ declarator: (parenthesized_declarator
             if not in_api:
                 continue
 
-            docs = ""
-            if (
-                decl_node.prev_sibling is not None
-                and decl_node.prev_sibling.type == "comment"
-            ):
-                docs = get_tsnode_text(decl_node.prev_sibling)
-            docs = self.clean_doxygen_comment_block(docs)
+            docs = self.parse_doxygen_comment(decl_node)
+            if docs is None:
+                docs = ""
 
             params_nodes = func_decl_node.child_by_field_name("parameters")
             assert (
