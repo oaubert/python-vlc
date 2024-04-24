@@ -149,6 +149,11 @@ _GENERATED_ENUMS_ = "# GENERATED_ENUMS"
 _GENERATED_STRUCTS_ = "# GENERATED_STRUCTS"
 _GENERATED_CALLBACKS_ = "# GENERATED_CALLBACKS"
 
+# attributes
+_ATTR_DEPRECATED_ = "__attribute__((deprecated))"
+_ATTR_VISIBILITY_DEFAULT_ = '__attribute__((visibility("default")))'
+_ATTR_DLL_EXPORT_ = "__declspec(dllexport)"
+
 # Precompiled regexps
 at_param_re = re.compile(r"(@param\s+\S+)(.+)")
 bs_param_re = re.compile(r"\\param\s+(\S+)")
@@ -282,6 +287,14 @@ def clean_doxygen_comment_block(docs):
     cleaned_docs = "\n".join(cleaned_docs)
 
     return cleaned_docs
+
+
+def is_deprecated_attr(s: str):
+    return s == _ATTR_DEPRECATED_
+
+
+def is_public_attr(s: str):
+    return s in [_ATTR_VISIBILITY_DEFAULT_, _ATTR_DLL_EXPORT_]
 
 
 class _Source(object):
@@ -1420,12 +1433,9 @@ declarator: (parenthesized_declarator
             ms_declspecs = get_children_by_type(decl_node, "ms_declspec_modifier")
             for a in attributes + ms_declspecs:
                 a_txt = get_tsnode_text(a)
-                if a_txt == "__attribute__((deprecated))":
+                if is_deprecated_attr(a_txt):
                     _deprecated = True
-                if (
-                    a_txt == '__attribute__((visibility("default")))'
-                    or a_txt == "__declspec(dllexport)"
-                ):
+                if is_public_attr(a_txt):
                     in_api = True
 
             if not in_api:
