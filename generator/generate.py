@@ -2314,20 +2314,19 @@ def preprocess(vlc_h: Path) -> Path:
         preprocessed_dir.mkdir(parents=True)
 
     preprocessed_file = Path(f"{PREPROCESSEDDIR}/vlc.preprocessed")
-    if not preprocessed_file.exists():
-        # call C preprocessor on vlc.h
-        completed_process = subprocess.run(
-            [
-                "gcc",
-                "-E",
-                "-P",
-                "-C",
-                vlc_h,
-                "-o",
-                preprocessed_file.absolute(),
-            ]
-        )
-        completed_process.check_returncode()
+    # call C preprocessor on vlc.h
+    completed_process = subprocess.run(
+        [
+            "gcc",
+            "-E",
+            "-P",
+            "-C",
+            vlc_h,
+            "-o",
+            preprocessed_file.absolute(),
+        ]
+    )
+    completed_process.check_returncode()
 
     return preprocessed_file
 
