@@ -39,6 +39,7 @@ from generator.generate import (
     Val,
     at_param_re,
     class_re,
+    clean_doxygen_comment_block,
     def_re,
 )
 
@@ -973,6 +974,88 @@ multiple lines""",
             "./tests/test_parser_inputs/libvlc_version_with_extra.h",
         )
         self.assertEqual(p.version, "4.2.14.3")
+
+
+class TestUtilities(unittest.TestCase):
+    def test_clean_doxygen_comment_block(self):
+        test_cases = [
+            # non javadoc style comments should be ignored
+            ("// regular comment", ""),
+            (
+                """/* multiline
+comment
+ */""",
+                "",
+            ),
+            # Then valid javadoc style comments...
+            (
+                "/** single line doxygen comment */",
+                "single line doxygen comment",
+            ),
+            (
+                "/**single line comment with trailing spaces           */",
+                "single line comment with trailing spaces",
+            ),
+            (
+                """/**
+ * extra spaces everywhere           
+ *
+         */""",
+                "extra spaces everywhere",
+            ),
+            (
+                """/** multiline
+ * doxygen
+ * comment
+ */""",
+                """multiline
+doxygen
+comment""",
+            ),
+            (
+                """/** preserve
+ *
+ * blank lines
+ *
+ * in between
+ */""",
+                """preserve
+
+blank lines
+
+in between""",
+            ),
+            # real world comments (coming from liblvc)
+            (
+                r"""/**
+ * Start playing (if there is any item in the playlist).
+ *
+ * Additionnal playlist item options can be specified for addition to the
+ * item before it is played.
+ *
+ * \param p_instance the playlist instance
+ * \param i_id the item to play. If this is a negative number, the next
+ *        item will be selected. Otherwise, the item with the given ID will be
+ *        played
+ * \param i_options the number of options to add to the item
+ * \param ppsz_options the options to add to the item
+ */""",
+                r"""Start playing (if there is any item in the playlist).
+
+Additionnal playlist item options can be specified for addition to the
+item before it is played.
+
+\param p_instance the playlist instance
+\param i_id the item to play. If this is a negative number, the next
+item will be selected. Otherwise, the item with the given ID will be
+played
+\param i_options the number of options to add to the item
+\param ppsz_options the options to add to the item""",
+            ),
+        ]
+
+        for input, expected_output in test_cases:
+            self.assertEqual(clean_doxygen_comment_block(input), expected_output)
 
 
 if __name__ == "__main__":
