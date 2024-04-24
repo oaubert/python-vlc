@@ -30,26 +30,26 @@
  */
 
 #ifndef LIBVLC_VERSION_H
-# define LIBVLC_VERSION_H 1
+#define LIBVLC_VERSION_H 1
 
 /** LibVLC major version number */
-# define LIBVLC_VERSION_MAJOR    (4)
+#define LIBVLC_VERSION_MAJOR (4)
 
 /** LibVLC minor version number */
-# define LIBVLC_VERSION_MINOR    (2)
+#define LIBVLC_VERSION_MINOR (2)
 
 /** LibVLC revision */
-# define LIBVLC_VERSION_REVISION (14)
+#define LIBVLC_VERSION_REVISION (14)
 
-# define LIBVLC_VERSION_EXTRA    (3)
+#define LIBVLC_VERSION_EXTRA (3)
 
 /** Makes a single integer from a LibVLC version numbers */
-# define LIBVLC_VERSION(maj,min,rev,extra) \
-         ((maj << 24) | (min << 16) | (rev << 8) | (extra))
+#define LIBVLC_VERSION(maj, min, rev, extra)                                   \
+  ((maj << 24) | (min << 16) | (rev << 8) | (extra))
 
 /** LibVLC full version as a single integer (for comparison) */
-# define LIBVLC_VERSION_INT \
-         LIBVLC_VERSION(LIBVLC_VERSION_MAJOR, LIBVLC_VERSION_MINOR, \
-                        LIBVLC_VERSION_REVISION, LIBVLC_VERSION_EXTRA)
+#define LIBVLC_VERSION_INT                                                     \
+  LIBVLC_VERSION(LIBVLC_VERSION_MAJOR, LIBVLC_VERSION_MINOR,                   \
+                 LIBVLC_VERSION_REVISION, LIBVLC_VERSION_EXTRA)
 
 #endif

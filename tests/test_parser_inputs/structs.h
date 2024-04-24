@@ -149,7 +149,7 @@ struct libvlc_struct_with_complex_callbacks {
 };
 
 struct libvlc_struct_with_cb_taking_cb_as_argument {
-  char* (*cb)(int (*cb_param)(int a, double b, char c));
+  char *(*cb)(int (*cb_param)(int a, double b, char c));
 };
 
 // ============================================================================
@@ -311,6 +311,5 @@ typedef struct libvlc_struct_with_complex_callbacks_t {
 } libvlc_struct_with_complex_callbacks_t;
 
 typedef struct libvlc_struct_with_cb_taking_cb_as_argument_t {
-  char* (*cb)(int (*cb_param)(int a, double b, char c));
+  char *(*cb)(int (*cb_param)(int a, double b, char c));
 } libvlc_struct_with_cb_taking_cb_as_argument_t;
-
