@@ -1073,9 +1073,9 @@ declarator: (parenthesized_declarator
 
             # find enum's values
             body = node.child_by_field_name("body")
-            assert (
-                body is not None
-            ), "Expected `node` to have a child of name _body_. `node` is not of type _enum_specifier_? Parsing malformed C code?"
+            if body is None:
+                # we are dealing with an empty typedef enum
+                continue
             for child in body.named_children:
                 if child.type != "enumerator":
                     continue
