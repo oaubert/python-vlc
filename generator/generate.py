@@ -2321,6 +2321,8 @@ def preprocess(vlc_h: Path) -> Path:
             "-E",
             "-P",
             "-C",
+            "-I",
+            vlc_h.parent.parent.absolute(),
             vlc_h,
             "-o",
             preprocessed_file.absolute(),
