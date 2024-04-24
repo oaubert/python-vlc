@@ -1093,6 +1093,19 @@ declarator: (parenthesized_declarator
                 if child.type != "enumerator":
                     continue
 
+                # Since libvlc v4.0.0, there are enum values
+                # annotated with LIBVLC_DEPRECATED.
+                # Tree-sitter fails to parse that attribute at
+                # that place, producing an error in the subtree.
+                # To workaround this problem, we assume that
+                # when the `child` contains an error or is
+                # followed by an error, it is because
+                # LIBVLC_DEPRECATED is present.
+                if child.has_error or (
+                    child.next_sibling is not None and child.next_sibling.is_error
+                ):
+                    continue
+
                 vname_node = child.child_by_field_name("name")
                 assert (
                     vname_node is not None
