@@ -812,6 +812,43 @@ multiple lines""",
                 ],
                 "",
             ),
+            Func(
+                "libvlc_function_pointer_as_param",
+                "void",
+                [Func("cb", "void", [], "")],
+                "",
+            ),
+            Func(
+                "libvlc_complex_function_pointer_as_param",
+                "void",
+                [
+                    Func(
+                        "cb",
+                        "char*",
+                        [Par("", "char***", [False, True, True, False])],
+                        "",
+                    )
+                ],
+                "",
+            ),
+            Func(
+                "libvlc_complex_function_pointer_as_param_with_named_params",
+                "void",
+                [
+                    Func(
+                        "cb",
+                        "char**",
+                        [
+                            Par("c1", "char***", [False, True, True, False]),
+                            Par("c2", "char***", [False, True, False, False]),
+                        ],
+                        "",
+                    ),
+                    Par("i", "int", [False]),
+                    Par("d", "double", [False]),
+                ],
+                "",
+            ),
         ]
 
         p = self.get_parser("./tests/test_parser_inputs/funcs.h")

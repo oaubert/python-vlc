@@ -28,10 +28,8 @@ __attribute__((visibility("default"))) const char** libvlc_multiple_pointers(cha
 
 __attribute__((visibility("default"))) const char* const* libvlc_multiple_pointers_and_qualifiers(const char** const c1, char* const* const* const c2);
 
-// TODO: Change parse_funcs_with_ts to handle the following cases (function pointer as parameter and/or return type)
+__attribute__((visibility("default"))) void libvlc_function_pointer_as_param(void (*cb)());
 
-// __attribute__((visibility("default"))) void libvlc_function_pointer_as_param(void (*cb)());
-//
-// __attribute__((visibility("default"))) void libvlc_complex_function_pointer_as_param(const char* (*cb)(char* const* const*));
-//
-// __attribute__((visibility("default"))) bool (*libvlc_function_pointer_as_return_type(int a, float b))(bool b, char c);
+__attribute__((visibility("default"))) void libvlc_complex_function_pointer_as_param(const char* (*cb)(char* const* const*));
+
+__attribute__((visibility("default"))) void libvlc_complex_function_pointer_as_param_with_named_params(char** (*cb)(char* const* const* c1, char* const* * c2), int i, double d);
