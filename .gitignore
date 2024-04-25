@@ -51,3 +51,6 @@ venv
 
 # Preprocessed libvlc header files
 *.preprocessed*
+
+# Documentation
+docs/_build/
