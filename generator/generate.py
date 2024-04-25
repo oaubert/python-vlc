@@ -51,7 +51,7 @@ has not be maintained for a while...
 
 """
 
-__all__ = ("Parser", "PythonGenerator", "JavaGenerator", "process")
+__all__ = ("Parser", "PythonGenerator", "JavaGenerator")
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.

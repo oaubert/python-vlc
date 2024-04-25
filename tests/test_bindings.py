@@ -165,7 +165,7 @@ class TestVLCAPI(unittest.TestCase):
 
         instance = vlc.Instance("--vout dummy --aout dummy")
         instance.log_set(log_handler, None)
-        player = instance.media_player_new()
+        _player = instance.media_player_new()
 
     def test_equalizer(self):
         val = 9.5
