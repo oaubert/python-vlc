@@ -351,8 +351,8 @@ class Enum(_Source):
         sys.stderr.write(str(self))
 
     def epydocs(self):
-        """Return epydoc string."""
-        return self.docs.replace("@see", "See").replace("\\see", "See")
+        """Return Sphinx (Napoleon) docstring."""
+        return self.docs.replace("@see", ":see:").replace("\\see", ":see:")
 
 
 class Struct(_Source):
@@ -403,8 +403,8 @@ class Struct(_Source):
             field.dump(indent_lvl + 1)
 
     def epydocs(self):
-        """Return epydoc string."""
-        return self.docs.replace("@see", "See").replace("\\see", "See")
+        """Return Sphinx (Napoleon) docstring."""
+        return self.docs.replace("@see", ":see:").replace("\\see", ":see:")
 
 
 class Union(_Source):
@@ -453,8 +453,8 @@ class Union(_Source):
             field.dump(indent_lvl + 1)
 
     def epydocs(self):
-        """Return epydoc string."""
-        return self.docs.replace("@see", "See").replace("\\see", "See")
+        """Return Sphinx (Napoleon) docstring."""
+        return self.docs.replace("@see", ":see:").replace("\\see", ":see:")
 
 
 class Flag(object):
@@ -607,6 +607,73 @@ class Func(_Source):
             self.out = tuple(t.split()[0] for t in o)
             # ctypes returns [OUT] parameters as tuple
             r = ["@return: %s" % ", ".join(o)]
+        if p:
+            self.params = tuple(map(endot, p))
+        t = r + v + b
+        if t:
+            self.tails = tuple(map(endot, t))
+
+    def doxygen2sphinx(self):
+        """Return Sphinx (Napoleon) docstring."""
+        b, c, h, o, p, r, v = [], None, [], [], [], [], []
+        param_re = re.compile(r":param\s+(?P<param_name>[^\s]+)")
+        # see <https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html#html-metadata>
+        for t in (
+            self.docs.replace("@{", "")
+            .replace("@}", "")
+            .replace("\\ingroup", "")
+            .replace("{", "")
+            .replace("}", "")
+            .replace("<b>", "**")
+            .replace("</b>", "**")
+            .replace("@see", ":see:")
+            .replace("\\see", ":see:")
+            .replace("\\bug", ":bug:")
+            .replace("@bug", ":bug:")
+            .replace("\\version", ":version:")
+            .replace("@version", ":version:")
+            .replace("\\note", ":note:")
+            .replace("@note", ":note:")
+            .replace("\\warning", ":warning:")
+            .replace("@warning", ":warning:")
+            .replace("\\param", ":param")
+            .replace("@param", ":param")
+            .replace("\\return", ":return:")
+            .replace("@return", ":return:")
+            .replace("@ref", ":ref:")
+            .replace("NULL", "None")
+            .splitlines()
+        ):
+            if ":param" in t:
+                if _OUT_ in t:
+                    # KLUDGE: remove @param, some comment and [OUT]
+                    t = t.replace(_PNTR_, "").replace(_OUT_, "")
+                    # keep parameter name and doc string
+                    o.append(" ".join(t.split()))
+                    c = [""]  # drop continuation line(s)
+                else:
+                    p.append(param_re.sub(r":param \g<param_name>:", t))
+                    c = p
+            elif ":return:" in t:
+                r.append(t)
+                c = r
+            elif ":bug:" in t:
+                b.append(t)
+                c = b
+            elif ":version:" in t:
+                v.append(t)
+                c = v
+            elif c is None:
+                h.append(t)
+            else:  # continuation, concatenate to previous @tag line
+                c[-1] = "%s %s" % (c[-1], t.strip())
+        if h:
+            h[-1] = endot(h[-1])
+            self.heads = tuple(h)
+        if o:  # just the [OUT] parameter names
+            self.out = tuple(t.split()[0] for t in o)
+            # ctypes returns [OUT] parameters as tuple
+            r = [":return: %s" % ", ".join(o)]
         if p:
             self.params = tuple(map(endot, p))
         t = r + v + b
@@ -1869,10 +1936,12 @@ class PythonGenerator(_Generator):
 
         # xform docs to epydoc lines
         for f in self.parser.funcs:
-            f.xform()
+            # f.xform()
+            f.doxygen2sphinx()
             self.links[f.name] = f.name
         for f in self.parser.callbacks:
-            f.xform()
+            # f.xform()
+            f.doxygen2sphinx()
         self.check_types()
 
     def generate_ctypes(self):
