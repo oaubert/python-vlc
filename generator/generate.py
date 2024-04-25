@@ -51,7 +51,7 @@ has not be maintained for a while...
 
 """
 
-__all__ = ("Parser", "PythonGenerator", "JavaGenerator", "process")
+__all__ = ("Parser", "PythonGenerator", "JavaGenerator")
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
@@ -685,8 +685,9 @@ class Par(object):
 class Val(object):
     """Enum name and value."""
 
-    def __init__(self, enum, value, context=None):
+    def __init__(self, enum, value, docs="", context=None):
         self.enum = enum  # C name
+        self.docs = docs
         # convert name
         t = enum.split("_")
         if context is not None:
@@ -716,6 +717,7 @@ class Val(object):
         res = self.enum == other.enum
         res &= self.name == other.name
         res &= self.value == other.value
+        res &= self.docs == other.docs
         return res
 
     def __repr__(self) -> str:
@@ -1106,15 +1108,19 @@ declarator: (parenthesized_declarator
                 ):
                     continue
 
-                vname_node = child.child_by_field_name("name")
+                vname = child.child_by_field_name("name")
                 assert (
-                    vname_node is not None
+                    vname is not None
                 ), "Expected `child` to have a child of name _name_. `child` is not of type _enumerator_? Parsing malformed C code?"
-                vname = get_tsnode_text(vname_node)
+                vname = get_tsnode_text(vname)
 
-                vvalue_node = child.child_by_field_name("value")
-                if vvalue_node is not None:
-                    vvalue = get_tsnode_text(vvalue_node)
+                vdocs = self.parse_doxygen_comment(child)
+                if vdocs is None:
+                    vdocs = ""
+
+                vvalue = child.child_by_field_name("value")
+                if vvalue is not None:
+                    vvalue = get_tsnode_text(vvalue)
 
                     # Handle bit-shifted values.
                     # Bit-shifted characters cannot be directly evaluated in Python.
@@ -1136,11 +1142,11 @@ declarator: (parenthesized_declarator
                     else:
                         vvalue = str(e)
 
-                    vals.append(Val(vname, vvalue, context=name))
+                    vals.append(Val(vname, vvalue, vdocs, context=name))
                 else:
                     e += 1
                     locs[vname] = e
-                    vals.append(Val(vname, str(e), context=name))
+                    vals.append(Val(vname, str(e), vdocs, context=name))
 
             enums.append(
                 Enum(name, typ, vals, docs, file_=self.code_file.absolute(), line=line)

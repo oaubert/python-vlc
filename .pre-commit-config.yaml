@@ -1,0 +1,25 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+- repo: local
+  hooks:
+    # Abort the commit if there is one or more linting errors
+    - id: lint
+      name: Check no linting errors
+      entry: ruff check --config ruff.toml ./generator/generate.py ./tests
+      language: python
+      types_or: [python, pyi]
+      always_run: true
+      require_serial: true
+      minimum_pre_commit_version: "2.9.2"
+
+    # Abort the commit if code wasn't formatted
+    - id: format
+      name: Check code is formatted
+      entry: ruff format --config ruff.toml --check ./generator/generate.py ./tests
+      language: python
+      types_or: [python, pyi]
+      always_run: true
+      require_serial: true
+      minimum_pre_commit_version: "2.9.2"
+

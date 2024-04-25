@@ -141,6 +141,26 @@ multiple lines""",
                 "",
             ),
             Enum(
+                "libvlc_enum_with_deprecated_values",
+                "enum",
+                [],
+                "",
+            ),
+            Enum(
+                "libvlc_enum_with_documented_values",
+                "enum",
+                [
+                    Val("B1", "0", "This is a single line comment for B1."),
+                    Val(
+                        "B2",
+                        "1",
+                        """This is a multi line
+comment for B2.""",
+                    ),
+                ],
+                "",
+            ),
+            Enum(
                 "libvlc_enum_no_values_specified_t",
                 "enum",
                 [
@@ -208,6 +228,26 @@ multiple lines""",
                 "enum",
                 [
                     Val("ZZ", "0"),
+                ],
+                "",
+            ),
+            Enum(
+                "libvlc_enum_with_deprecated_values_t",
+                "enum",
+                [],
+                "",
+            ),
+            Enum(
+                "libvlc_enum_with_documented_values_t",
+                "enum",
+                [
+                    Val("BB1", "0", "This is a single line comment for BB1."),
+                    Val(
+                        "BB2",
+                        "1",
+                        """This is a multi line
+comment for BB2.""",
+                    ),
                 ],
                 "",
             ),
