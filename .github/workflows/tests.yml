@@ -1,0 +1,19 @@
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # TODO: Test bindings (requires even more setup)
+      - run: |
+          mkdir vendor
+          cd vendor
+          git clone https://github.com/tree-sitter/tree-sitter-c.git
+          cd ..
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip3 install -r requirements.txt
+          make test_generator
