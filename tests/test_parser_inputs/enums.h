@@ -33,6 +33,11 @@ enum libvlc_enum_with_hex_values { U = 0x1, V = 0xf };
 
 enum libvlc_enum_with_bit_shifted_values { W = 'r' << 16, X = 'g' << 16 };
 
+enum libvlc_enum_with_deprecated_values {
+  A1 __attribute__((deprecated)) = 1,
+  A2 __attribute__((deprecated))
+};
+
 // ============================================================================
 // Typedef enums
 // ============================================================================
@@ -82,3 +87,8 @@ typedef enum libvlc_enum_with_bit_shifted_values_t {
 // To test that the name taken into account
 // is the typedef's name, not the enum's name.
 typedef enum libvlc_enum { ZZ } libvlc_enum_t;
+
+typedef enum libvlc_enum_with_deprecated_values_t {
+  AA1 __attribute__((deprecated)) = 1,
+  AA2 __attribute__((deprecated))
+} libvlc_enum_with_deprecated_values_t;

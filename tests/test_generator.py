@@ -141,6 +141,12 @@ multiple lines""",
                 "",
             ),
             Enum(
+                "libvlc_enum_with_deprecated_values",
+                "enum",
+                [],
+                "",
+            ),
+            Enum(
                 "libvlc_enum_no_values_specified_t",
                 "enum",
                 [
@@ -209,6 +215,12 @@ multiple lines""",
                 [
                     Val("ZZ", "0"),
                 ],
+                "",
+            ),
+            Enum(
+                "libvlc_enum_with_deprecated_values_t",
+                "enum",
+                [],
                 "",
             ),
         ]
