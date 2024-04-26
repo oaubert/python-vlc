@@ -75,6 +75,7 @@ from tree_sitter import Parser as TSParser
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATEDIR = os.path.join(BASEDIR, "templates")
 PREPROCESSEDDIR = os.path.join(BASEDIR, "preprocessed")
+RUFF_CFG_FILE = os.path.join(os.path.dirname(BASEDIR), "ruff.toml")
 
 str = str
 
@@ -2213,18 +2214,47 @@ class _Enum(ctypes.c_uint):
 
         return Overrides(codes=codes, methods=methods, docstrs=docstrs)
 
-    def save(self, path=None):
+    def save(self, path=None, format=True):
         """Write Python bindings to a file or C{stdout}."""
-        self.outopen(path or "-")
-        self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), genums=True)
+        if format:
+            # Write to temporary file
+            tmp_path = os.path.join(BASEDIR, ".tmp")
+            self.outopen(tmp_path)
+            self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), genums=True)
+            self.generate_wrappers()
+            self.generate_ctypes()
+            self.unwrapped()
+            self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
+            self.outclose()
 
-        self.generate_wrappers()
-        self.generate_ctypes()
+            # Format the temporary file using ruff
+            completed_process = subprocess.run(
+                [
+                    "ruff",
+                    "format",
+                    "--config",
+                    RUFF_CFG_FILE,
+                    tmp_path,
+                ],
+                stdout=subprocess.DEVNULL,
+            )
+            completed_process.check_returncode()
 
-        self.unwrapped()
+            # Write to the actual `path`
+            self.outopen(path or "-")
+            self.insert_code(tmp_path)
+            self.outclose()
 
-        self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
-        self.outclose()
+            # Delete temporary file
+            os.remove(tmp_path)
+        else:
+            self.outopen(path or "-")
+            self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), genums=True)
+            self.generate_wrappers()
+            self.generate_ctypes()
+            self.unwrapped()
+            self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
+            self.outclose()
 
 
 class JavaGenerator(_Generator):
@@ -2334,7 +2364,7 @@ public enum %s
         self.unwrapped()
         self.outclose()
 
-    def save(self, dir=None):
+    def save(self, dir=None, format=True):
         """Write Java bindings into the given directory."""
         if dir in (None, "-"):
             d = "internal"
