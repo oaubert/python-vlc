@@ -815,6 +815,24 @@ class Parser(object):
         """
         if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
             docs = get_tsnode_text(tsnode.prev_sibling)
+
+            # Preprocessing can cause file documentation to be placed on top of an
+            # enum, say, or any other item.
+            # Because we assume that a Doxygen comment placed above an item is
+            # documentation for that item, we can mistakenly associate a file's
+            # documentation block to an item.
+            # To filter out file documentation blocks, we rely on the assumption
+            # that they start with "/***".
+            # Indeed, libvld headers tend to start with something like:
+            #   /*****************************************************************************
+            #    * <filename>: <short_descrption>
+            #    *****************************************************************************
+            #    * Copyright (C) 1998-2008 VLC authors and VideoLAN
+            #    * ...
+            #    *****************************************************************************/
+            if docs.startswith("/***"):
+                return None
+
             docs = clean_doxygen_comment_block(docs)
             return docs
         return None
