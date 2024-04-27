@@ -844,7 +844,6 @@ class Parser(object):
         # Sort parsed items by name as it proves
         # useful for debugging (diffing in particular)
         self.enums.sort(key=lambda x: x.name)
-        self.structs.sort(key=lambda x: x.name)
         self.funcs.sort(key=lambda x: x.name)
         self.callbacks.sort(key=lambda x: x.name)
 
