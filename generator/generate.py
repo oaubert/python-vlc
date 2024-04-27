@@ -1654,9 +1654,12 @@ class _Generator(object):
 
     def __init__(self, parser: Parser):
         self.parser = parser
-        self.convert_classnames(parser.structs)
-        self.convert_classnames(parser.enums)
-        self.convert_classnames(parser.callbacks)
+        for struct in parser.structs:
+            self.name_to_classname(struct)
+        for enum in parser.enums:
+            self.name_to_classname(enum)
+        for cb in parser.callbacks:
+            self.name_to_classname(cb)
 
     def check_types(self):
         """Make sure that all types are properly translated.
@@ -1684,29 +1687,28 @@ class _Generator(object):
             )
         return cl
 
-    def convert_classnames(self, element_list):
-        """Convert enum names to class names.
+    def name_to_classname(self, item):
+        """Puts the Python class name corresponding to the
+        `item`'s name in `self.type2class`.
 
-        source is either 'enum' or 'struct'.
-
+        @param: An `Enum`, `Struct`, `Union` or `Func`.
         """
-        for e in element_list:
-            if e.name in self.type2class:
-                # Do not override predefined values
-                continue
+        if item.name in self.type2class:
+            # Do not override predefined values
+            return
 
-            c = self.type_re.findall(e.name)
-            if c:
-                c = c[0][0]
-            else:
-                c = e.name
-            if "_" in c:
-                c = c.title().replace("_", "")
-            elif c[0].islower():
-                c = c.capitalize()
-            self.type2class[e.name] = c
-            self.type2class[e.name + "*"] = f"ctypes.POINTER({c})"
-            self.type2class[e.name + "**"] = f"ctypes.POINTER(ctypes.POINTER({c}))"
+        c = self.type_re.findall(item.name)
+        if c:
+            c = c[0][0]
+        else:
+            c = item.name
+        if "_" in c:
+            c = c.title().replace("_", "")
+        elif c[0].islower():
+            c = c.capitalize()
+        self.type2class[item.name] = c
+        self.type2class[item.name + "*"] = f"ctypes.POINTER({c})"
+        self.type2class[item.name + "**"] = f"ctypes.POINTER(ctypes.POINTER({c}))"
 
     def dump_dicts(self):  # for debug
         s = _NL_ + _INDENT_
@@ -1864,10 +1866,6 @@ class PythonGenerator(_Generator):
         # FIXME Temporary fix to generate valid code for the mapping of
         # libvlc_media_read_cb
         "ptrdiff_t": "ctypes.c_void_p",
-        # FIXME: gross hack to see if it makes things approximately work.#
-        # Unions should be properly converted
-        "union { libvlc_audio_track_t*": "ctypes.POINTER(AudioTrack)",
-        "union { { void*": "ctypes.c_void_p",
         "FILE*": "FILE_ptr",
         "...": "ctypes.c_void_p",
         "va_list": "ctypes.c_void_p",
@@ -2073,43 +2071,109 @@ class _Enum(ctypes.c_uint):
 
             self.output(_NL_.join(sorted(t)), nt=2)
 
+    def generate_struct(self, struct: Struct):
+        """Outputs a binding for `struct`.
+
+        @param struct: The `Struct` instance for which to output the binding.
+        """
+        for field in struct.fields:
+            if field.type == "struct" and field.name != struct.name:
+                self.name_to_classname(field)
+                self.generate_struct(field)
+            elif field.type == "union":
+                self.name_to_classname(field)
+                self.generate_union(field)
+
+        cls = self.class4(struct.name)
+
+        # We use a forward declaration here to allow for self-referencing structures - cf
+        # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
+        self.output(f"""class {cls}(ctypes.Structure):
+    '''{struct.epydocs() or _NA_}
+    '''
+    pass
+""")
+
+        # We can override struct definitions (for tricky ones) in override.py
+        if cls in self.overrides.codes:
+            # Assume the overriding definition contains all code in .codes
+            self.output(self.overrides.codes[cls])
+        else:
+            self.output(f"{cls}._fields_ = (")
+
+            for field in struct.fields:
+                field_type = self.class4(field.type)
+                if field.type in ["struct", "union"]:
+                    field_type = self.class4(field.name)
+
+                # Strip the polish-notation prefixes from entries, to
+                # preserve compatibility in 3.x series.
+                # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
+                # See https://github.com/oaubert/python-vlc/issues/174
+                self.output(
+                    "%s('%s', %s),"
+                    % (
+                        _INDENT_,
+                        re.sub("^(i_|f_|p_|psz_)", "", field.name)
+                        if self.parser.version < "4"
+                        else field.name,
+                        field_type,
+                    )
+                )
+            self.output(")")
+            self.output("")
+
+    def generate_union(self, union: Union):
+        """Outputs a binding for `union`.
+
+        @param union: The `Union` instance for which to output the binding.
+        """
+        for field in union.fields:
+            if field.type == "struct":
+                self.name_to_classname(field)
+                self.generate_struct(field)
+            if field.type == "union" and field.name != union.name:
+                self.name_to_classname(field)
+                self.generate_union(field)
+
+        cls = self.class4(union.name)
+
+        # We use a forward declaration here to allow for self-referencing structures - cf
+        # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
+        self.output(f"""class {cls}(ctypes.Structure):
+    '''{union.epydocs() or _NA_}
+    '''
+    pass
+""")
+
+        self.output(f"{cls}._fields_ = (")
+
+        for field in union.fields:
+            field_type = self.class4(field.type)
+            if field.type in ["struct", "union"]:
+                field_type = self.class4(field.name)
+
+            # Strip the polish-notation prefixes from entries, to
+            # preserve compatibility in 3.x series.
+            # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
+            # See https://github.com/oaubert/python-vlc/issues/174
+            self.output(
+                "%s('%s', %s),"
+                % (
+                    _INDENT_,
+                    re.sub("^(i_|f_|p_|psz_)", "", field.name)
+                    if self.parser.version < "4"
+                    else field.name,
+                    field_type,
+                )
+            )
+        self.output(")")
+        self.output("")
+
     def generate_structs(self):
         """Generate classes for all structs types."""
-        for e in self.parser.structs:
-            cls = self.class4(e.name)
-
-            # We use a forward declaration here to allow for self-referencing structures - cf
-            # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
-            self.output(f"""class {cls}(ctypes.Structure):
-    '''{e.epydocs() or _NA_}
-    '''
-    pass""")
-
-            # We can override struct definitions (for tricky ones) in override.py
-            if cls in self.overrides.codes:
-                # Assume the overriding definition contains all code in .codes
-                self.output(self.overrides.codes[cls])
-            else:
-                self.output(f"""{cls}._fields_ = (""")
-
-                for v in e.fields:
-                    # Strip the polish-notation prefixes from entries, to
-                    # preserve compatibility in 3.x series.
-
-                    # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
-
-                    # See https://github.com/oaubert/python-vlc/issues/174
-                    self.output(
-                        "        ('%s', %s),"
-                        % (
-                            re.sub("^(i_|f_|p_|psz_)", "", v.name)
-                            if self.parser.version < "4"
-                            else v.name,
-                            self.class4(v.type),
-                        )
-                    )
-                self.output("    )")
-            self.output("")
+        for struct in self.parser.structs:
+            self.generate_struct(struct)
 
     def generate_callbacks(self):
         """Generate decorators for callback functions.
