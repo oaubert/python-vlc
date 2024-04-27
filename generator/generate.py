@@ -149,6 +149,7 @@ _BUILD_DATE_ = "build_date  = "
 _GENERATED_ENUMS_ = "# GENERATED_ENUMS"
 _GENERATED_STRUCTS_ = "# GENERATED_STRUCTS"
 _GENERATED_CALLBACKS_ = "# GENERATED_CALLBACKS"
+_GENERATED_WRAPPERS_ = "# GENERATED_WRAPPERS"
 
 # attributes
 _ATTR_DEPRECATED_ = "__attribute__((deprecated))"
@@ -1739,6 +1740,15 @@ class _Generator(object):
     def generate_enums(self):
         raise TypeError("must be overloaded")
 
+    def generate_structs(self):
+        raise TypeError("must be overloaded")
+
+    def generate_callbacks(self):
+        raise TypeError("must be overloaded")
+
+    def generate_wrappers(self):
+        raise TypeError("must be overloaded")
+
     def insert_code(self, source, genums=False):
         """Include code from source file."""
         f = opener(source)
@@ -1749,6 +1759,8 @@ class _Generator(object):
                 self.generate_structs()
             elif genums and t.startswith(_GENERATED_CALLBACKS_):
                 self.generate_callbacks()
+            elif genums and t.startswith(_GENERATED_WRAPPERS_):
+                self.generate_wrappers()
             elif t.startswith(_BUILD_DATE_):
                 v = self.parser.version or _NA_
                 self.output('__version__ = "%s"' % (self.parser.bindings_version(),))
@@ -2361,7 +2373,6 @@ class _Enum(ctypes.c_uint):
             tmp_path = os.path.join(BASEDIR, ".tmp")
             self.outopen(tmp_path)
             self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), genums=True)
-            self.generate_wrappers()
             self.generate_ctypes()
             self.unwrapped()
             self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
@@ -2403,7 +2414,6 @@ class _Enum(ctypes.c_uint):
         else:
             self.outopen(path or "-")
             self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), genums=True)
-            self.generate_wrappers()
             self.generate_ctypes()
             self.unwrapped()
             self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))

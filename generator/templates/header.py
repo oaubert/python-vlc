@@ -446,6 +446,10 @@ def track_description_list(head):
 
     return r
 
+# Generated wrappers #
+# GENERATED_WRAPPERS go here  # see generate.py
+# End of generated wrappers #
+
 # Generated enum types #
 # GENERATED_ENUMS go here  # see generate.py
 # End of generated enum types #
