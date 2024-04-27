@@ -6,20 +6,24 @@ repos:
     # Abort the commit if there is one or more linting errors
     - id: lint
       name: Check no linting errors
-      entry: ruff check --config ruff.toml ./generator/generate.py ./tests
+      entry: ruff check --config ruff.toml
       language: python
-      types_or: [python, pyi]
-      always_run: true
-      require_serial: true
+      files: |
+        (?x)^(
+          generator/generate\.py|
+          tests/.*\.py
+        )$
       minimum_pre_commit_version: "2.9.2"
 
     # Abort the commit if code wasn't formatted
     - id: format
       name: Check code is formatted
-      entry: ruff format --config ruff.toml --check ./generator/generate.py ./tests
+      entry: ruff format --config ruff.toml --check
       language: python
-      types_or: [python, pyi]
-      always_run: true
-      require_serial: true
+      files: |
+        (?x)^(
+          generator/generate\.py|
+          tests/.*\.py
+        )$
       minimum_pre_commit_version: "2.9.2"
 
