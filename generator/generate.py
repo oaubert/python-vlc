@@ -2315,6 +2315,19 @@ class _Enum(ctypes.c_uint):
                 stdout=subprocess.DEVNULL,
             )
             completed_process.check_returncode()
+            completed_process = subprocess.run(
+                [
+                    "ruff",
+                    "check",
+                    "--fix",
+                    "--exit-zero",
+                    "--config",
+                    RUFF_CFG_FILE,
+                    tmp_path,
+                ],
+                stdout=subprocess.DEVNULL,
+            )
+            completed_process.check_returncode()
 
             # Write to the actual `path`
             self.outopen(path or "-")
