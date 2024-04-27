@@ -1652,7 +1652,7 @@ class _Generator(object):
     type2class = {}  # must be overloaded
     type2class_out = {}  # Specific values for OUT parameters
 
-    def __init__(self, parser=None):
+    def __init__(self, parser: Parser):
         self.parser = parser
         self.convert_classnames(parser.structs)
         self.convert_classnames(parser.enums)
@@ -1928,7 +1928,7 @@ class PythonGenerator(_Generator):
         "RendererDiscoverer",
     )
 
-    def __init__(self, parser=None):
+    def __init__(self, parser: Parser):
         """New instance.
 
         @param parser: a L{Parser} instance.
@@ -2375,7 +2375,7 @@ class JavaGenerator(_Generator):
         "void*": "Pointer",
     }
 
-    def __init__(self, parser=None):
+    def __init__(self, parser: Parser):
         """New instance.
 
         @param parser: a L{Parser} instance.
