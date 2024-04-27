@@ -87,6 +87,7 @@ publish: $(VERSIONED_NAME)
 
 format:
 	ruff format ./generator/generate.py ./tests
+	ruff check --fix --fix-only --exit-zero ./generator/generate.py ./tests
 
 rcheck:
 	ruff check ./generator/generate.py ./tests
