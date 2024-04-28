@@ -7,13 +7,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # TODO: Test bindings (requires even more setup)
       - run: |
-          mkdir vendor
-          cd vendor
-          git clone https://github.com/tree-sitter/tree-sitter-c.git
-          cd ..
-          python3 -m venv .venv
-          . .venv/bin/activate
-          pip3 install -r requirements.txt
+          python3 dev_setup.py
+          sudo apt-get install -y vlc pulseaudio libvlc-dev
+          pulseaudio --start
           make test_generator
+          make test_bindings
