@@ -235,6 +235,61 @@ class TestVLCAPI(unittest.TestCase):
         player.set_media(media)
         player.play()
 
+    if vlc.__generator_version__ >= "2":
+
+        def test_dialog_cbs(self):
+            dialog_cbs = vlc.DialogCbs()
+
+            @vlc.DialogCbs.PfDisplayError
+            def display_error_cb(p_data, psz_title, psz_text):
+                pass
+
+            @vlc.DialogCbs.PfDisplayLogin
+            def display_login_cb(
+                p_data, p_id, psz_title, psz_text, psz_default_username, b_ask_store
+            ):
+                pass
+
+            @vlc.DialogCbs.PfDisplayQuestion
+            def display_question_cb(
+                p_data,
+                p_id,
+                psz_title,
+                psz_text,
+                i_type,
+                psz_cancel,
+                psz_action1,
+                psz_action2,
+            ):
+                pass
+
+            @vlc.DialogCbs.PfDisplayProgress
+            def display_progress_cb(
+                p_data,
+                p_id,
+                psz_title,
+                psz_text,
+                b_indeterminate,
+                f_position,
+                psz_cancel,
+            ):
+                pass
+
+            @vlc.DialogCbs.PfCancel
+            def cancel_cb(p_data, p_id):
+                pass
+
+            @vlc.DialogCbs.PfUpdateProgress
+            def update_progress_cb(p_data, p_id, f_position, psz_text):
+                pass
+
+            dialog_cbs.pf_display_error = display_error_cb
+            dialog_cbs.pf_display_login = display_login_cb
+            dialog_cbs.pf_display_question = display_question_cb
+            dialog_cbs.pf_display_progress = display_progress_cb
+            dialog_cbs.pf_cancel = cancel_cb
+            dialog_cbs.pf_update_progress = update_progress_cb
+
 
 if __name__ == "__main__":
     logging.basicConfig()
