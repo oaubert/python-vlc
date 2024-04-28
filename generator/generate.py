@@ -2117,6 +2117,10 @@ class _Enum(ctypes.c_uint):
                 if field.type in ["struct", "union"]:
                     field_type = self.class4(field.name)
 
+                # FIXME: For now, ignore field if it's type is one of the wrapper classes.
+                if field_type in self.defined_classes:
+                    continue
+
                 # Strip the polish-notation prefixes from entries, to
                 # preserve compatibility in 3.x series.
                 # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
@@ -2163,6 +2167,10 @@ class _Enum(ctypes.c_uint):
             field_type = self.class4(field.type)
             if field.type in ["struct", "union"]:
                 field_type = self.class4(field.name)
+
+            # FIXME: For now, ignore field if it's type is one of the wrapper classes.
+            if field_type in self.defined_classes:
+                continue
 
             # Strip the polish-notation prefixes from entries, to
             # preserve compatibility in 3.x series.
