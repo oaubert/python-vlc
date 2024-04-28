@@ -2082,50 +2082,54 @@ class _Enum(ctypes.c_uint):
 
             self.output(_NL_.join(sorted(t)), nt=2)
 
-    def generate_struct(self, struct: Struct):
+    def generate_func_pointer_decorator(self, pf: Func, indent_lvl: int = 0):
+        """Generates a declarator for a struct/union field that is a function pointer.
+
+        @param pf: A field that is a function pointer (instance of Func).
+        @param indent_lvl: A positive integer representing how many indentations
+        should precede each line generated.
+        """
+        indent = _INDENT_ * indent_lvl
+        name = self.class4(pf.name)
+        # return value and arg classes
+        types = ", ".join(
+            [self.class4(pf.type)]  # PYCHOK flake
+            + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
+        )
+        docs = pf.epydocs()
+        self.output(f"""{indent}{_INDENT_}{name} = ctypes.CFUNCTYPE({types})
+{indent}{_INDENT_}{name}.__doc__ = '''{docs}'''""")
+        self.output("")
+
+    def generate_struct(self, struct: Struct, indent_lvl: int = 0):
         """Outputs a binding for `struct`.
 
         @param struct: The `Struct` instance for which to output the binding.
+        @param indent_lvl: A positive integer representing how many indentations
+        should precede each line generated.
         """
-        pfs = []
-        for field in struct.fields:
-            if isinstance(field, Struct) and field.name != struct.name:
-                self.name_to_classname(field)
-                self.generate_struct(field)
-            elif isinstance(field, Union):
-                self.name_to_classname(field)
-                self.generate_union(field)
-            elif isinstance(field, Func):
-                self.name_to_classname(field)
-                pfs.append(field)
-
+        indent = _INDENT_ * indent_lvl
         cls = self.class4(struct.name)
 
         # We use a forward declaration here to allow for self-referencing structures - cf
         # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
-        self.output(f"""class {cls}(_Cstruct):
-    '''{struct.epydocs() or _NA_}
-    '''
-""")
+        self.output(f"""{indent}class {cls}(_Cstruct):
+{indent}{_INDENT_}'''{struct.epydocs() or _NA_}
+{indent}{_INDENT_}'''""")
 
-        # We put decorators in the class for the function pointers defined in the struct.
-        for pf in pfs:
-            name = self.class4(pf.name)  # PYCHOK flake
+        for field in struct.fields:
+            if isinstance(field, Struct):
+                self.name_to_classname(field)
+                self.generate_struct(field, indent_lvl + 1)
+            elif isinstance(field, Union):
+                self.name_to_classname(field)
+                self.generate_union(field, indent_lvl + 1)
+            elif isinstance(field, Func):
+                self.name_to_classname(field)
+                self.generate_func_pointer_decorator(field, indent_lvl)
 
-            # return value and arg classes
-            types = ", ".join(
-                [self.class4(pf.type)]  # PYCHOK flake
-                + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
-            )
-
-            docs = pf.epydocs()
-
-            self.output(f"""{_INDENT_}{name} = ctypes.CFUNCTYPE({types})
-    {name}.__doc__ = '''{docs}'''""")
-            self.output("")
-
-        self.output("""
-    pass
+        self.output(f"""
+{indent}{_INDENT_}pass
 """)
 
         # We can override struct definitions (for tricky ones) in override.py
@@ -2133,13 +2137,15 @@ class _Enum(ctypes.c_uint):
             # Assume the overriding definition contains all code in .codes
             self.output(self.overrides.codes[cls])
         else:
-            self.output(f"{cls}._fields_ = (")
+            self.output(f"{indent}{cls}._fields_ = (")
 
             for field in struct.fields:
                 field_type = self.class4(field.type)
-                if isinstance(field, Struct) or isinstance(field, Union):
-                    field_type = self.class4(field.name)
-                elif isinstance(field, Func):
+                if (
+                    isinstance(field, Struct)
+                    or isinstance(field, Union)
+                    or isinstance(field, Func)
+                ):
                     field_type = f"{cls}.{self.class4(field.name)}"
 
                 # Special case!
@@ -2167,8 +2173,9 @@ class _Enum(ctypes.c_uint):
                 # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
                 # See https://github.com/oaubert/python-vlc/issues/174
                 self.output(
-                    "%s('%s', %s),"
+                    "%s%s('%s', %s),"
                     % (
+                        indent,
                         _INDENT_,
                         re.sub("^(i_|f_|p_|psz_)", "", field.name)
                         if self.parser.version < "4"
@@ -2176,62 +2183,49 @@ class _Enum(ctypes.c_uint):
                         field_type,
                     )
                 )
-            self.output(")")
+            self.output(f"{indent})")
             self.output("")
 
-    def generate_union(self, union: Union):
+    def generate_union(self, union: Union, indent_lvl: int = 0):
         """Outputs a binding for `union`.
 
         @param union: The `Union` instance for which to output the binding.
+        @param indent_lvl: A positive integer representing how many indentations
+        should precede each line generated.
         """
-        pfs = []
-        for field in union.fields:
-            if isinstance(field, Struct):
-                self.name_to_classname(field)
-                self.generate_struct(field)
-            elif isinstance(field, Union) and field.name != union.name:
-                self.name_to_classname(field)
-                self.generate_union(field)
-            elif isinstance(field, Func):
-                self.name_to_classname(field)
-                pfs.append(field)
-
+        indent = _INDENT_ * indent_lvl
         cls = self.class4(union.name)
 
         # We use a forward declaration here to allow for self-referencing structures - cf
         # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
-        self.output(f"""class {cls}(ctypes.Union):
-    '''{union.epydocs() or _NA_}
-    '''
+        self.output(f"""{indent}class {cls}(ctypes.Union):
+{indent}{_INDENT_}'''{union.epydocs() or _NA_}
+{indent}{_INDENT_}'''""")
+
+        for field in union.fields:
+            if isinstance(field, Struct):
+                self.name_to_classname(field)
+                self.generate_struct(field, indent_lvl + 1)
+            elif isinstance(field, Union):
+                self.name_to_classname(field)
+                self.generate_union(field, indent_lvl + 1)
+            elif isinstance(field, Func):
+                self.name_to_classname(field)
+                self.generate_func_pointer_decorator(field, indent_lvl)
+
+        self.output(f"""
+{indent}{_INDENT_}pass
 """)
 
-        # We put decorators in the class for the function pointers defined in the struct.
-        for pf in pfs:
-            name = self.class4(pf.name)  # PYCHOK flake
-
-            # return value and arg classes
-            types = ", ".join(
-                [self.class4(pf.type)]  # PYCHOK flake
-                + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
-            )
-
-            docs = pf.epydocs()
-
-            self.output(f"""{_INDENT_}{name} = ctypes.CFUNCTYPE({types})
-    {name}.__doc__ = '''{docs}'''""")
-            self.output("")
-
-        self.output("""
-    pass
-""")
-
-        self.output(f"{cls}._fields_ = (")
+        self.output(f"{indent}{cls}._fields_ = (")
 
         for field in union.fields:
             field_type = self.class4(field.type)
-            if isinstance(field, Struct) or isinstance(field, Union):
-                field_type = self.class4(field.name)
-            elif isinstance(field, Func):
+            if (
+                isinstance(field, Struct)
+                or isinstance(field, Union)
+                or isinstance(field, Func)
+            ):
                 field_type = f"{cls}.{self.class4(field.name)}"
 
             # FIXME: For now, ignore field if it's type is one of the wrapper classes.
@@ -2243,8 +2237,9 @@ class _Enum(ctypes.c_uint):
             # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
             # See https://github.com/oaubert/python-vlc/issues/174
             self.output(
-                "%s('%s', %s),"
+                "%s%s('%s', %s),"
                 % (
+                    indent,
                     _INDENT_,
                     re.sub("^(i_|f_|p_|psz_)", "", field.name)
                     if self.parser.version < "4"
@@ -2252,7 +2247,7 @@ class _Enum(ctypes.c_uint):
                     field_type,
                 )
             )
-        self.output(")")
+        self.output(f"{indent})")
         self.output("")
 
     def generate_structs(self):
