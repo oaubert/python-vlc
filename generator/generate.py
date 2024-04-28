@@ -2151,7 +2151,7 @@ class _Enum(ctypes.c_uint):
 
         # We use a forward declaration here to allow for self-referencing structures - cf
         # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
-        self.output(f"""class {cls}(ctypes.Structure):
+        self.output(f"""class {cls}(ctypes.Union):
     '''{union.epydocs() or _NA_}
     '''
     pass
