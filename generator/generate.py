@@ -2087,13 +2087,17 @@ class _Enum(ctypes.c_uint):
 
         @param struct: The `Struct` instance for which to output the binding.
         """
+        pfs = []
         for field in struct.fields:
-            if field.type == "struct" and field.name != struct.name:
+            if isinstance(field, Struct) and field.name != struct.name:
                 self.name_to_classname(field)
                 self.generate_struct(field)
-            elif field.type == "union":
+            elif isinstance(field, Union):
                 self.name_to_classname(field)
                 self.generate_union(field)
+            elif isinstance(field, Func):
+                self.name_to_classname(field)
+                pfs.append(field)
 
         cls = self.class4(struct.name)
 
@@ -2102,6 +2106,25 @@ class _Enum(ctypes.c_uint):
         self.output(f"""class {cls}(_Cstruct):
     '''{struct.epydocs() or _NA_}
     '''
+""")
+
+        # We put decorators in the class for the function pointers defined in the struct.
+        for pf in pfs:
+            name = self.class4(pf.name)  # PYCHOK flake
+
+            # return value and arg classes
+            types = ", ".join(
+                [self.class4(pf.type)]  # PYCHOK flake
+                + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
+            )
+
+            docs = pf.epydocs()
+
+            self.output(f"""{_INDENT_}{name} = ctypes.CFUNCTYPE({types})
+    {name}.__doc__ = '''{docs}'''""")
+            self.output("")
+
+        self.output("""
     pass
 """)
 
@@ -2114,8 +2137,10 @@ class _Enum(ctypes.c_uint):
 
             for field in struct.fields:
                 field_type = self.class4(field.type)
-                if field.type in ["struct", "union"]:
+                if isinstance(field, Struct) or isinstance(field, Union):
                     field_type = self.class4(field.name)
+                elif isinstance(field, Func):
+                    field_type = f"{cls}.{self.class4(field.name)}"
 
                 # FIXME: For now, ignore field if it's type is one of the wrapper classes.
                 if field_type in self.defined_classes:
@@ -2143,13 +2168,17 @@ class _Enum(ctypes.c_uint):
 
         @param union: The `Union` instance for which to output the binding.
         """
+        pfs = []
         for field in union.fields:
-            if field.type == "struct":
+            if isinstance(field, Struct):
                 self.name_to_classname(field)
                 self.generate_struct(field)
-            if field.type == "union" and field.name != union.name:
+            elif isinstance(field, Union) and field.name != union.name:
                 self.name_to_classname(field)
                 self.generate_union(field)
+            elif isinstance(field, Func):
+                self.name_to_classname(field)
+                pfs.append(field)
 
         cls = self.class4(union.name)
 
@@ -2158,6 +2187,25 @@ class _Enum(ctypes.c_uint):
         self.output(f"""class {cls}(ctypes.Union):
     '''{union.epydocs() or _NA_}
     '''
+""")
+
+        # We put decorators in the class for the function pointers defined in the struct.
+        for pf in pfs:
+            name = self.class4(pf.name)  # PYCHOK flake
+
+            # return value and arg classes
+            types = ", ".join(
+                [self.class4(pf.type)]  # PYCHOK flake
+                + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
+            )
+
+            docs = pf.epydocs()
+
+            self.output(f"""{_INDENT_}{name} = ctypes.CFUNCTYPE({types})
+    {name}.__doc__ = '''{docs}'''""")
+            self.output("")
+
+        self.output("""
     pass
 """)
 
@@ -2165,8 +2213,10 @@ class _Enum(ctypes.c_uint):
 
         for field in union.fields:
             field_type = self.class4(field.type)
-            if field.type in ["struct", "union"]:
+            if isinstance(field, Struct) or isinstance(field, Union):
                 field_type = self.class4(field.name)
+            elif isinstance(field, Func):
+                field_type = f"{cls}.{self.class4(field.name)}"
 
             # FIXME: For now, ignore field if it's type is one of the wrapper classes.
             if field_type in self.defined_classes:
