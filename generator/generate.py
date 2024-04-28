@@ -354,7 +354,14 @@ class Enum(_Source):
 
     def epydocs(self):
         """Return Sphinx (Napoleon) docstring."""
-        return self.docs.replace("@see", ":see:").replace("\\see", ":see:")
+        return (
+            self.docs.replace("@see", ":see:")
+            .replace("\\see", ":see:")
+            .replace("@ingroup", ":ingroup:")
+            .replace("@defgroup", ":defgroup:")
+            .replace("@file", ":file:")
+            .replace("@{", "")
+        )
 
 
 class Struct(_Source):
@@ -619,8 +626,9 @@ class Func(_Source):
         """Return Sphinx (Napoleon) docstring."""
         b, c, h, o, p, r, v = [], None, [], [], [], [], []
         param_re = re.compile(r":param\s+(?P<param_name>[^\s]+)")
+        code_block_cpp = False
         # see <https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html#html-metadata>
-        for t in (
+        lines = (
             self.docs.replace("@{", "")
             .replace("@}", "")
             .replace("\\ingroup", "")
@@ -643,9 +651,25 @@ class Func(_Source):
             .replace("\\return", ":return:")
             .replace("@return", ":return:")
             .replace("@ref", ":ref:")
+            .replace("@code.mm", "\n.. code-block:: objectivec++")
+            .replace("@code.m", ".. code-block:: objectivec++\n")
+            .replace("@code", "\n.. code-block:: objectivec++\n")
+            .replace("\@protocol", "@protocol")
+            .replace("@endcode", "")
+            .replace("\@end", "@end")
             .replace("NULL", "None")
             .splitlines()
-        ):
+        )
+        for i in range(len(lines)):
+            t = lines[i]
+            if ".. code-block:: objectivec++" in t:
+                if lines[i + 1].strip() == "":
+                    code_block_cpp = True
+                    empty_line_count = 0
+            if code_block_cpp and t.strip() == "":
+                empty_line_count += 1
+                if empty_line_count == 3:
+                    code_block_cpp = False
             if ":param" in t:
                 if _OUT_ in t:
                     # KLUDGE: remove @param, some comment and [OUT]
@@ -665,6 +689,12 @@ class Func(_Source):
             elif ":version:" in t:
                 v.append(t)
                 c = v
+            elif (
+                code_block_cpp
+                and ((empty_line_count == 1) or (empty_line_count == 2))
+                and not t.startswith(".. code-block:: objectivec++")
+            ):
+                h.append("\t" + t)
             elif c is None:
                 h.append(t)
             else:  # continuation, concatenate to previous @tag line
