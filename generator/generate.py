@@ -2142,6 +2142,22 @@ class _Enum(ctypes.c_uint):
                 elif isinstance(field, Func):
                     field_type = f"{cls}.{self.class4(field.name)}"
 
+                # Special case!
+                #
+                # For the struct 'Event', the field 'type' is given the
+                # type 'int' in libvlc, but it should be an 'EventType'.
+                #
+                # It was handled in override.py before, also because the
+                # field 'u' was a complicated nested union to parse for
+                # the regex-based version of this generator (that union
+                # was hardcoded in header.py, and called 'EventUnion').
+                #
+                # Now we can handle the complicated union but still
+                # want to keep the little fix of 'type', which can't
+                # be applied generally.
+                if cls == "Event" and field.name == "type":
+                    field_type = "EventType"
+
                 # FIXME: For now, ignore field if it's type is one of the wrapper classes.
                 if field_type in self.defined_classes:
                     continue
