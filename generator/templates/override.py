@@ -40,7 +40,7 @@ class Instance:
     def media_player_new(self, uri=None):
         """Create a new MediaPlayer instance.
 
-        @param uri: an optional URI to play in the player as a str, bytes or PathLike object.
+        :param uri: an optional URI to play in the player as a str, bytes or PathLike object.
         """
         p = libvlc_media_player_new(self)
         if uri:
@@ -72,8 +72,8 @@ class Instance:
         Alternatively, options can be added to the media using the
         Media.add_options method (with the same limitation).
 
-        @param mrl: A str, bytes or PathLike object
-        @param options: optional media option=value strings
+        :param mrl: A str, bytes or PathLike object
+        :param options: optional media option=value strings
         """
         mrl = try_fspath(mrl)
         if ':' in mrl and mrl.index(':') > 1:
@@ -90,15 +90,15 @@ class Instance:
     def media_new_path(self, path):
         """Create a media for a certain file path.
         See L{media_release}.
-        @param path: A str, byte, or PathLike object representing a local filesystem path.
-        @return: the newly created media or None on error.
+        :param path: A str, byte, or PathLike object representing a local filesystem path.
+        :return: the newly created media or None on error.
         """
         path = try_fspath(path)
         return libvlc_media_new_path(self, str_to_bytes(path))
 
     def media_list_new(self, mrls=None):
         """Create a new MediaList instance.
-        @param mrls: optional list of MRL strings, bytes, or PathLike objects.
+        :param mrls: optional list of MRL strings, bytes, or PathLike objects.
         """
         # API 3 vs 4: libvlc_media_list_new does not take any
         # parameter as input anymore.
@@ -117,7 +117,7 @@ class Instance:
     def audio_output_enumerate_devices(self):
         """Enumerate the defined audio output devices.
 
-        @return: list of dicts {name:, description:, devices:}
+        :return: list of dicts {name:, description:, devices:}
         """
         r = []
         head = libvlc_audio_output_list_get(self)
@@ -171,7 +171,7 @@ class Media:
         effects on an individual media. These options must be set at
         the vlc.Instance or vlc.MediaPlayer instanciation.
 
-        @param options: optional media option=value strings
+        :param options: optional media option=value strings
         """
         for o in options:
             self.add_option(o)
@@ -182,7 +182,7 @@ class Media:
         before calling this function.
         Not doing this will result in an empty array.
         The result must be freed with L{tracks_release}.
-        @version: LibVLC 2.1.0 and later.
+        :version: LibVLC 2.1.0 and later.
         """
         mediaTrack_pp = ctypes.POINTER(MediaTrack)()
         n = libvlc_media_tracks_get(self, ctypes.byref(mediaTrack_pp))
@@ -221,8 +221,8 @@ class MediaList:
         """Add media instance to media list.
 
         The L{lock} should be held upon entering this function.
-        @param mrl: a media instance or a MRL.
-        @return: 0 on success, -1 if the media list is read-only.
+        :param mrl: a media instance or a MRL.
+        :return: 0 on success, -1 if the media list is read-only.
         """
         mrl = try_fspath(mrl)
         if isinstance(mrl, basestring):
@@ -263,9 +263,9 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         have no effects on an individual media. These options must be
         set at the vlc.Instance or vlc.MediaPlayer instanciation.
 
-        @param mrl: The MRL
-        @param options: optional media option=value strings
-        @return: the Media object
+        :param mrl: The MRL
+        :param options: optional media option=value strings
+        :return: the Media object
         """
         m = self.get_instance().media_new(mrl, *options)
         self.set_media(m)
@@ -288,8 +288,8 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
 
     def get_full_title_descriptions(self):
         '''Get the full description of available titles.
-        @return: the titles list
-        @version: LibVLC 3.0.0 and later.
+        :return: the titles list
+        :version: LibVLC 3.0.0 and later.
         '''
         titleDescription_pp = ctypes.POINTER(TitleDescription)()
         n = libvlc_media_player_get_full_title_descriptions(self, ctypes.byref(titleDescription_pp))
@@ -304,9 +304,9 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
 
     def get_full_chapter_descriptions(self, i_chapters_of_title):
         '''Get the full description of available chapters.
-        @param i_chapters_of_title: index of the title to query for chapters (uses current title if set to -1).
-        @return: the chapters list
-        @version: LibVLC 3.0.0 and later.
+        :param i_chapters_of_title: index of the title to query for chapters (uses current title if set to -1).
+        :return: the chapters list
+        :version: LibVLC 3.0.0 and later.
         '''
         chapterDescription_pp = ctypes.POINTER(ChapterDescription)()
         n = libvlc_media_player_get_full_chapter_descriptions(self, i_chapters_of_title, ctypes.byref(chapterDescription_pp))
@@ -322,7 +322,7 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
     def video_get_size(self, num=0):
         """Get the video size in pixels as 2-tuple (width, height).
 
-        @param num: video number (default 0).
+        :param num: video number (default 0).
         """
         r = libvlc_video_get_size(self, num)
         if isinstance(r, tuple) and len(r) == 2:
@@ -337,7 +337,7 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         output. If LibVLC was built without Win32/Win64 API output
         support, then this has no effects.
 
-        @param drawable: windows handle of the drawable.
+        :param drawable: windows handle of the drawable.
         """
         if not isinstance(drawable, ctypes.c_void_p):
             drawable = ctypes.c_void_p(int(drawable))
@@ -346,14 +346,14 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
     def video_get_width(self, num=0):
         """Get the width of a video in pixels.
 
-        @param num: video number (default 0).
+        :param num: video number (default 0).
         """
         return self.video_get_size(num)[0]
 
     def video_get_height(self, num=0):
         """Get the height of a video in pixels.
 
-        @param num: video number (default 0).
+        :param num: video number (default 0).
         """
         return self.video_get_size(num)[1]
 
@@ -367,14 +367,14 @@ class MediaPlayer:  #PYCHOK expected (comment is lost)
         Either coordinate may be negative or larger than the corresponding
         size of the video, if the cursor is outside the rendering area.
 
-        @warning: The coordinates may be out-of-date if the pointer is not
+        :warning: The coordinates may be out-of-date if the pointer is not
         located on the video rendering area.  LibVLC does not track the
         mouse pointer if the latter is outside the video widget.
 
-        @note: LibVLC does not support multiple mouse pointers (but does
+        :note: LibVLC does not support multiple mouse pointers (but does
         support multiple input devices sharing the same pointer).
 
-        @param num: video number (default 0).
+        :param num: video number (default 0).
         """
         r = libvlc_video_get_cursor(self, num)
         if isinstance(r, tuple) and len(r) == 2:
@@ -443,7 +443,7 @@ class EventManager:
     remain alive (i.e. are not garbage collected) until
     B{after} the notification has been unregistered.
 
-    @note: Only a single notification can be registered
+    :note: Only a single notification can be registered
     for each event type in an EventManager instance.
     """
     _callback_handler = None
@@ -457,13 +457,13 @@ class EventManager:
     def event_attach(self, eventtype, callback, *args, **kwds):
         """Register an event notification.
 
-        @param eventtype: the desired event type to be notified about.
-        @param callback: the function to call when the event occurs.
-        @param args: optional positional arguments for the callback.
-        @param kwds: optional keyword arguments for the callback.
-        @return: 0 on success, ENOMEM on error.
+        :param eventtype: the desired event type to be notified about.
+        :param callback: the function to call when the event occurs.
+        :param args: optional positional arguments for the callback.
+        :param kwds: optional keyword arguments for the callback.
+        :return: 0 on success, ENOMEM on error.
 
-        @note: The callback function must have at least one argument,
+        :note: The callback function must have at least one argument,
         an Event instance.  Any other, optional positional and keyword
         arguments are in B{addition} to the first one. Warning: libvlc
         is not reentrant, i.e. you cannot call libvlc functions from
@@ -484,7 +484,7 @@ class EventManager:
             def _callback_handler(event, k):
                 """(INTERNAL) handle callback call from ctypes.
 
-                @note: We cannot simply make this an EventManager
+                :note: We cannot simply make this an EventManager
                 method since ctypes does not prepend self as the
                 first parameter, hence this closure.
                 """
@@ -507,7 +507,7 @@ class EventManager:
     def event_detach(self, eventtype):
         """Unregister an event notification.
 
-        @param eventtype: the event type notification to be removed.
+        :param eventtype: the event type notification to be removed.
         """
         if not isinstance(eventtype, EventType):
             raise VLCException("%s required: %r" % ('EventType', eventtype))
