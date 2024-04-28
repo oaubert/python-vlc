@@ -446,31 +446,13 @@ def track_description_list(head):
 
     return r
 
+# Generated wrappers #
+# GENERATED_WRAPPERS go here  # see generate.py
+# End of generated wrappers #
+
 # Generated enum types #
 # GENERATED_ENUMS go here  # see generate.py
 # End of generated enum types #
-
-class EventUnion(ctypes.Union):
-    _fields_ = [
-        ('meta_type',    ctypes.c_uint    ),
-        ('new_child',    ctypes.c_uint    ),
-        ('new_duration', ctypes.c_longlong),
-        ('new_status',   ctypes.c_int     ),
-        ('media',        ctypes.c_void_p  ),
-        ('new_state',    ctypes.c_uint    ),
-        # FIXME: Media instance
-        ('new_cache', ctypes.c_float   ),
-        ('new_position', ctypes.c_float   ),
-        ('new_time',     ctypes.c_longlong),
-        ('new_title',    ctypes.c_int     ),
-        ('new_seekable', ctypes.c_longlong),
-        ('new_pausable', ctypes.c_longlong),
-        ('new_scrambled', ctypes.c_longlong),
-        ('new_count', ctypes.c_longlong),
-        # FIXME: Skipped MediaList and MediaListView...
-        ('filename',     ctypes.c_char_p  ),
-        ('new_length',   ctypes.c_longlong),
-    ]
 
 # Generated structs #
 # GENERATED_STRUCTS go here  # see generate.py

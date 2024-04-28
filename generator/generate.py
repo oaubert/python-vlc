@@ -55,7 +55,7 @@ __all__ = ("Parser", "PythonGenerator", "JavaGenerator")
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ = "1.23"
+__version__ = "2.0"
 
 _debug = False
 
@@ -75,6 +75,7 @@ from tree_sitter import Parser as TSParser
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATEDIR = os.path.join(BASEDIR, "templates")
 PREPROCESSEDDIR = os.path.join(BASEDIR, "preprocessed")
+RUFF_CFG_FILE = os.path.join(os.path.dirname(BASEDIR), "ruff.toml")
 
 str = str
 
@@ -148,6 +149,7 @@ _BUILD_DATE_ = "build_date  = "
 _GENERATED_ENUMS_ = "# GENERATED_ENUMS"
 _GENERATED_STRUCTS_ = "# GENERATED_STRUCTS"
 _GENERATED_CALLBACKS_ = "# GENERATED_CALLBACKS"
+_GENERATED_WRAPPERS_ = "# GENERATED_WRAPPERS"
 
 # attributes
 _ATTR_DEPRECATED_ = "__attribute__((deprecated))"
@@ -869,6 +871,12 @@ class Parser(object):
         if not self.version:
             self.version = self.parse_version()
 
+        # Sort parsed items by name as it proves
+        # useful for debugging (diffing in particular)
+        self.enums.sort(key=lambda x: x.name)
+        self.funcs.sort(key=lambda x: x.name)
+        self.callbacks.sort(key=lambda x: x.name)
+
         # self.dump("enums")
         # self.dump("structs")
         # self.dump("funcs")
@@ -912,6 +920,24 @@ class Parser(object):
         """
         if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
             docs = get_tsnode_text(tsnode.prev_sibling)
+
+            # Preprocessing can cause file documentation to be placed on top of an
+            # enum, say, or any other item.
+            # Because we assume that a Doxygen comment placed above an item is
+            # documentation for that item, we can mistakenly associate a file's
+            # documentation block to an item.
+            # To filter out file documentation blocks, we rely on the assumption
+            # that they start with "/***".
+            # Indeed, libvld headers tend to start with something like:
+            #   /*****************************************************************************
+            #    * <filename>: <short_descrption>
+            #    *****************************************************************************
+            #    * Copyright (C) 1998-2008 VLC authors and VideoLAN
+            #    * ...
+            #    *****************************************************************************/
+            if docs.startswith("/***"):
+                return None
+
             docs = clean_doxygen_comment_block(docs)
             return docs
         return None
@@ -1656,11 +1682,14 @@ class _Generator(object):
     type2class = {}  # must be overloaded
     type2class_out = {}  # Specific values for OUT parameters
 
-    def __init__(self, parser=None):
+    def __init__(self, parser: Parser):
         self.parser = parser
-        self.convert_classnames(parser.structs)
-        self.convert_classnames(parser.enums)
-        self.convert_classnames(parser.callbacks)
+        for struct in parser.structs:
+            self.name_to_classname(struct)
+        for enum in parser.enums:
+            self.name_to_classname(enum)
+        for cb in parser.callbacks:
+            self.name_to_classname(cb)
 
     def check_types(self):
         """Make sure that all types are properly translated.
@@ -1688,29 +1717,28 @@ class _Generator(object):
             )
         return cl
 
-    def convert_classnames(self, element_list):
-        """Convert enum names to class names.
+    def name_to_classname(self, item):
+        """Puts the Python class name corresponding to the
+        `item`'s name in `self.type2class`.
 
-        source is either 'enum' or 'struct'.
-
+        @param: An `Enum`, `Struct`, `Union` or `Func`.
         """
-        for e in element_list:
-            if e.name in self.type2class:
-                # Do not override predefined values
-                continue
+        if item.name in self.type2class:
+            # Do not override predefined values
+            return
 
-            c = self.type_re.findall(e.name)
-            if c:
-                c = c[0][0]
-            else:
-                c = e.name
-            if "_" in c:
-                c = c.title().replace("_", "")
-            elif c[0].islower():
-                c = c.capitalize()
-            self.type2class[e.name] = c
-            self.type2class[e.name + "*"] = f"ctypes.POINTER({c})"
-            self.type2class[e.name + "**"] = f"ctypes.POINTER(ctypes.POINTER({c}))"
+        c = self.type_re.findall(item.name)
+        if c:
+            c = c[0][0]
+        else:
+            c = item.name
+        if "_" in c:
+            c = c.title().replace("_", "")
+        elif c[0].islower():
+            c = c.capitalize()
+        self.type2class[item.name] = c
+        self.type2class[item.name + "*"] = f"ctypes.POINTER({c})"
+        self.type2class[item.name + "**"] = f"ctypes.POINTER(ctypes.POINTER({c}))"
 
     def dump_dicts(self):  # for debug
         s = _NL_ + _INDENT_
@@ -1741,6 +1769,15 @@ class _Generator(object):
     def generate_enums(self):
         raise TypeError("must be overloaded")
 
+    def generate_structs(self):
+        raise TypeError("must be overloaded")
+
+    def generate_callbacks(self):
+        raise TypeError("must be overloaded")
+
+    def generate_wrappers(self):
+        raise TypeError("must be overloaded")
+
     def insert_code(self, source, genums=False):
         """Include code from source file."""
         f = opener(source)
@@ -1751,6 +1788,8 @@ class _Generator(object):
                 self.generate_structs()
             elif genums and t.startswith(_GENERATED_CALLBACKS_):
                 self.generate_callbacks()
+            elif genums and t.startswith(_GENERATED_WRAPPERS_):
+                self.generate_wrappers()
             elif t.startswith(_BUILD_DATE_):
                 v = self.parser.version or _NA_
                 self.output('__version__ = "%s"' % (self.parser.bindings_version(),))
@@ -1868,10 +1907,6 @@ class PythonGenerator(_Generator):
         # FIXME Temporary fix to generate valid code for the mapping of
         # libvlc_media_read_cb
         "ptrdiff_t": "ctypes.c_void_p",
-        # FIXME: gross hack to see if it makes things approximately work.#
-        # Unions should be properly converted
-        "union { libvlc_audio_track_t*": "ctypes.POINTER(AudioTrack)",
-        "union { { void*": "ctypes.c_void_p",
         "FILE*": "FILE_ptr",
         "...": "ctypes.c_void_p",
         "va_list": "ctypes.c_void_p",
@@ -1932,7 +1967,7 @@ class PythonGenerator(_Generator):
         "RendererDiscoverer",
     )
 
-    def __init__(self, parser=None):
+    def __init__(self, parser: Parser):
         """New instance.
 
         @param parser: a L{Parser} instance.
@@ -2077,43 +2112,183 @@ class _Enum(ctypes.c_uint):
 
             self.output(_NL_.join(sorted(t)), nt=2)
 
+    def generate_struct(self, struct: Struct):
+        """Outputs a binding for `struct`.
+
+        @param struct: The `Struct` instance for which to output the binding.
+        """
+        pfs = []
+        for field in struct.fields:
+            if isinstance(field, Struct) and field.name != struct.name:
+                self.name_to_classname(field)
+                self.generate_struct(field)
+            elif isinstance(field, Union):
+                self.name_to_classname(field)
+                self.generate_union(field)
+            elif isinstance(field, Func):
+                self.name_to_classname(field)
+                pfs.append(field)
+
+        cls = self.class4(struct.name)
+
+        # We use a forward declaration here to allow for self-referencing structures - cf
+        # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
+        self.output(f"""class {cls}(_Cstruct):
+    '''{struct.epydocs() or _NA_}
+    '''
+""")
+
+        # We put decorators in the class for the function pointers defined in the struct.
+        for pf in pfs:
+            name = self.class4(pf.name)  # PYCHOK flake
+
+            # return value and arg classes
+            types = ", ".join(
+                [self.class4(pf.type)]  # PYCHOK flake
+                + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
+            )
+
+            docs = pf.epydocs()
+
+            self.output(f"""{_INDENT_}{name} = ctypes.CFUNCTYPE({types})
+    {name}.__doc__ = '''{docs}'''""")
+            self.output("")
+
+        self.output("""
+    pass
+""")
+
+        # We can override struct definitions (for tricky ones) in override.py
+        if cls in self.overrides.codes:
+            # Assume the overriding definition contains all code in .codes
+            self.output(self.overrides.codes[cls])
+        else:
+            self.output(f"{cls}._fields_ = (")
+
+            for field in struct.fields:
+                field_type = self.class4(field.type)
+                if isinstance(field, Struct) or isinstance(field, Union):
+                    field_type = self.class4(field.name)
+                elif isinstance(field, Func):
+                    field_type = f"{cls}.{self.class4(field.name)}"
+
+                # Special case!
+                #
+                # For the struct 'Event', the field 'type' is given the
+                # type 'int' in libvlc, but it should be an 'EventType'.
+                #
+                # It was handled in override.py before, also because the
+                # field 'u' was a complicated nested union to parse for
+                # the regex-based version of this generator (that union
+                # was hardcoded in header.py, and called 'EventUnion').
+                #
+                # Now we can handle the complicated union but still
+                # want to keep the little fix of 'type', which can't
+                # be applied generally.
+                if cls == "Event" and field.name == "type":
+                    field_type = "EventType"
+
+                # FIXME: For now, ignore field if it's type is one of the wrapper classes.
+                if field_type in self.defined_classes:
+                    continue
+
+                # Strip the polish-notation prefixes from entries, to
+                # preserve compatibility in 3.x series.
+                # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
+                # See https://github.com/oaubert/python-vlc/issues/174
+                self.output(
+                    "%s('%s', %s),"
+                    % (
+                        _INDENT_,
+                        re.sub("^(i_|f_|p_|psz_)", "", field.name)
+                        if self.parser.version < "4"
+                        else field.name,
+                        field_type,
+                    )
+                )
+            self.output(")")
+            self.output("")
+
+    def generate_union(self, union: Union):
+        """Outputs a binding for `union`.
+
+        @param union: The `Union` instance for which to output the binding.
+        """
+        pfs = []
+        for field in union.fields:
+            if isinstance(field, Struct):
+                self.name_to_classname(field)
+                self.generate_struct(field)
+            elif isinstance(field, Union) and field.name != union.name:
+                self.name_to_classname(field)
+                self.generate_union(field)
+            elif isinstance(field, Func):
+                self.name_to_classname(field)
+                pfs.append(field)
+
+        cls = self.class4(union.name)
+
+        # We use a forward declaration here to allow for self-referencing structures - cf
+        # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
+        self.output(f"""class {cls}(ctypes.Union):
+    '''{union.epydocs() or _NA_}
+    '''
+""")
+
+        # We put decorators in the class for the function pointers defined in the struct.
+        for pf in pfs:
+            name = self.class4(pf.name)  # PYCHOK flake
+
+            # return value and arg classes
+            types = ", ".join(
+                [self.class4(pf.type)]  # PYCHOK flake
+                + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
+            )
+
+            docs = pf.epydocs()
+
+            self.output(f"""{_INDENT_}{name} = ctypes.CFUNCTYPE({types})
+    {name}.__doc__ = '''{docs}'''""")
+            self.output("")
+
+        self.output("""
+    pass
+""")
+
+        self.output(f"{cls}._fields_ = (")
+
+        for field in union.fields:
+            field_type = self.class4(field.type)
+            if isinstance(field, Struct) or isinstance(field, Union):
+                field_type = self.class4(field.name)
+            elif isinstance(field, Func):
+                field_type = f"{cls}.{self.class4(field.name)}"
+
+            # FIXME: For now, ignore field if it's type is one of the wrapper classes.
+            if field_type in self.defined_classes:
+                continue
+
+            # Strip the polish-notation prefixes from entries, to
+            # preserve compatibility in 3.x series.
+            # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
+            # See https://github.com/oaubert/python-vlc/issues/174
+            self.output(
+                "%s('%s', %s),"
+                % (
+                    _INDENT_,
+                    re.sub("^(i_|f_|p_|psz_)", "", field.name)
+                    if self.parser.version < "4"
+                    else field.name,
+                    field_type,
+                )
+            )
+        self.output(")")
+        self.output("")
+
     def generate_structs(self):
         """Generate classes for all structs types."""
-        for e in self.parser.structs:
-            cls = self.class4(e.name)
-
-            # We use a forward declaration here to allow for self-referencing structures - cf
-            # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
-            self.output(f"""class {cls}(ctypes.Structure):
-    '''{e.epydocs() or _NA_}
-    '''
-    pass""")
-
-            # We can override struct definitions (for tricky ones) in override.py
-            if cls in self.overrides.codes:
-                # Assume the overriding definition contains all code in .codes
-                self.output(self.overrides.codes[cls])
-            else:
-                self.output(f"""{cls}._fields_ = (""")
-
-                for v in e.fields:
-                    # Strip the polish-notation prefixes from entries, to
-                    # preserve compatibility in 3.x series.
-
-                    # Preserve them in 4.x series, because it will be more consistent with the native libvlc API.
-
-                    # See https://github.com/oaubert/python-vlc/issues/174
-                    self.output(
-                        "        ('%s', %s),"
-                        % (
-                            re.sub("^(i_|f_|p_|psz_)", "", v.name)
-                            if self.parser.version < "4"
-                            else v.name,
-                            self.class4(v.type),
-                        )
-                    )
-                self.output("    )")
-            self.output("")
+        for struct in self.parser.structs:
+            self.generate_struct(struct)
 
     def generate_callbacks(self):
         """Generate decorators for callback functions.
@@ -2294,18 +2469,58 @@ class _Enum(ctypes.c_uint):
 
         return Overrides(codes=codes, methods=methods, docstrs=docstrs)
 
-    def save(self, path=None):
+    def save(self, path=None, format=True):
         """Write Python bindings to a file or C{stdout}."""
-        self.outopen(path or "-")
-        self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), genums=True)
+        if format:
+            # Write to temporary file
+            tmp_path = os.path.join(BASEDIR, ".tmp")
+            self.outopen(tmp_path)
+            self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), genums=True)
+            self.generate_ctypes()
+            self.unwrapped()
+            self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
+            self.outclose()
 
-        self.generate_wrappers()
-        self.generate_ctypes()
+            # Format the temporary file using ruff
+            completed_process = subprocess.run(
+                [
+                    "ruff",
+                    "format",
+                    "--config",
+                    RUFF_CFG_FILE,
+                    tmp_path,
+                ],
+                stdout=subprocess.DEVNULL,
+            )
+            completed_process.check_returncode()
+            completed_process = subprocess.run(
+                [
+                    "ruff",
+                    "check",
+                    "--fix",
+                    "--exit-zero",
+                    "--config",
+                    RUFF_CFG_FILE,
+                    tmp_path,
+                ],
+                stdout=subprocess.DEVNULL,
+            )
+            completed_process.check_returncode()
 
-        self.unwrapped()
+            # Write to the actual `path`
+            self.outopen(path or "-")
+            self.insert_code(tmp_path)
+            self.outclose()
 
-        self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
-        self.outclose()
+            # Delete temporary file
+            os.remove(tmp_path)
+        else:
+            self.outopen(path or "-")
+            self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), genums=True)
+            self.generate_ctypes()
+            self.unwrapped()
+            self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
+            self.outclose()
 
 
 class JavaGenerator(_Generator):
@@ -2350,7 +2565,7 @@ class JavaGenerator(_Generator):
         "void*": "Pointer",
     }
 
-    def __init__(self, parser=None):
+    def __init__(self, parser: Parser):
         """New instance.
 
         @param parser: a L{Parser} instance.
@@ -2415,7 +2630,7 @@ public enum %s
         self.unwrapped()
         self.outclose()
 
-    def save(self, dir=None):
+    def save(self, dir=None, format=True):
         """Write Java bindings into the given directory."""
         if dir in (None, "-"):
             d = "internal"

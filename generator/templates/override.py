@@ -528,11 +528,3 @@ class AudioEqualizer:
         if len(args) == 1 and isinstance(args[0], _Ints):
             return _Constructor(cls, args[0])
         return libvlc_audio_equalizer_new()
-
-class Event(_Cstruct):
-    _fields_ = [
-        ('type',   EventType      ),
-        ('object', ctypes.c_void_p),
-        ('u',      EventUnion     ),
-    ]
-
