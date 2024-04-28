@@ -39,9 +39,6 @@ nosetests.xml
 .project
 .pydevproject
 
-# Treesitter grammar(s)
-vendor
-
 # Virtual environment
 .venv
 venv

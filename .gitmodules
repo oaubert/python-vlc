@@ -1,0 +1,4 @@
+[submodule "vendor/tree-sitter-c"]
+    path = vendor/tree-sitter-c
+    url = https://github.com/tree-sitter/tree-sitter-c
+    ignore = dirty
