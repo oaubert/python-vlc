@@ -55,7 +55,7 @@ __all__ = ("Parser", "PythonGenerator", "JavaGenerator")
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated.
-__version__ = "1.23"
+__version__ = "2.0"
 
 _debug = False
 
