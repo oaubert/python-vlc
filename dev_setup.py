@@ -38,23 +38,23 @@ if on_windows:
         ("Install pre-commit hooks", ["pre-commit", "install"]),
     ]
 else:  # on posix
+    python = "python3"
+    venv_bin = ".venv/bin"
+    venv_python = f"{venv_bin}/python3"
+    pre_commit = f"{venv_bin}/pre-commit"
     cmds = [
         # See https://git-scm.com/book/en/v2/Git-Tools-Submodules
         (
             "Clone vendored C Tree-sitter grammar",
             ["git", "submodule", "update", "--init", "--recursive"],
         ),
-        ("Create a virtual environment in .venv", ["python3", "-m", "venv", ".venv"]),
-        # A common cause of failure is the Powershell Execution Policy
-        # blocking the execution of the activation script.
-        # In this case, see https://stackoverflow.com/questions/18713086/virtualenv-wont-activate-on-windows
+        ("Create a virtual environment in .venv", [python, "-m", "venv", ".venv"]),
+        ("Upgrade pip", [venv_python, "-m", "pip", "install", "--upgrade", "pip"]),
         (
-            "Activate the virtual environment",
-            ["/bin/sh", ".venv/bin/activate"],
+            "Install dependencies",
+            [venv_python, "-m", "pip", "install", "-r", "requirements.txt"],
         ),
-        ("Upgrade pip", ["pip3", "install", "--upgrade", "pip"]),
-        ("Install dependencies", ["pip3", "install", "-r", "requirements.txt"]),
-        ("Install pre-commit hooks", ["pre-commit", "install"]),
+        ("Install pre-commit hooks", [pre_commit, "install"]),
     ]
 
 for mess, cmd in cmds:
