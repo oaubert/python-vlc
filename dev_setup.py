@@ -15,47 +15,24 @@ assert (
 # See https://stackoverflow.com/questions/1854/how-to-identify-which-os-python-is-running-on
 on_windows = os.name == "nt"
 
-cmds = []
-if on_windows:
-    cmds = [
-        # See https://git-scm.com/book/en/v2/Git-Tools-Submodules
-        (
-            "Clone vendored C Tree-sitter grammar",
-            ["git", "submodule", "update", "--init", "--recursive"],
-        ),
-        ("Create a virtual environment in .venv", ["python", "-m", "venv", ".venv"]),
-        # A common cause of failure is the Powershell Execution Policy
-        # blocking the execution of the activation script.
-        # In this case, see https://stackoverflow.com/questions/18713086/virtualenv-wont-activate-on-windows
-        # ----------------
-        # Also, assumes the script is executed from Powershell.
-        (
-            "Activate the virtual environment",
-            [r".\.venv\Scripts\Activate.ps1"],
-        ),
-        ("Upgrade pip", ["pip", "install", "--upgrade", "pip"]),
-        ("Install dependencies", ["pip", "install", "-r", "requirements.txt"]),
-        ("Install pre-commit hooks", ["pre-commit", "install"]),
-    ]
-else:  # on posix
-    python = "python3"
-    venv_bin = ".venv/bin"
-    venv_python = f"{venv_bin}/python3"
-    pre_commit = f"{venv_bin}/pre-commit"
-    cmds = [
-        # See https://git-scm.com/book/en/v2/Git-Tools-Submodules
-        (
-            "Clone vendored C Tree-sitter grammar",
-            ["git", "submodule", "update", "--init", "--recursive"],
-        ),
-        ("Create a virtual environment in .venv", [python, "-m", "venv", ".venv"]),
-        ("Upgrade pip", [venv_python, "-m", "pip", "install", "--upgrade", "pip"]),
-        (
-            "Install dependencies",
-            [venv_python, "-m", "pip", "install", "-r", "requirements.txt"],
-        ),
-        ("Install pre-commit hooks", [pre_commit, "install"]),
-    ]
+python = "python3"
+venv_bin = ".venv/Scripts" if on_windows else ".venv/bin"
+venv_python = f"{venv_bin}/python3"
+pre_commit = f"{venv_bin}/pre-commit"
+cmds = [
+    # See https://git-scm.com/book/en/v2/Git-Tools-Submodules
+    (
+        "Clone vendored C Tree-sitter grammar",
+        ["git", "submodule", "update", "--init", "--recursive"],
+    ),
+    ("Create a virtual environment in .venv", [python, "-m", "venv", ".venv"]),
+    ("Upgrade pip", [venv_python, "-m", "pip", "install", "--upgrade", "pip"]),
+    (
+        "Install dependencies",
+        [venv_python, "-m", "pip", "install", "-r", "requirements.txt"],
+    ),
+    ("Install pre-commit hooks", [pre_commit, "install"]),
+]
 
 for mess, cmd in cmds:
     print(f"{mess}...", end=" ", flush=True)
