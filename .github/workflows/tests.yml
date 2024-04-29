@@ -8,8 +8,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          python3 dev_setup.py
           sudo apt-get install -y vlc pulseaudio libvlc-dev
           pulseaudio --start
+          python3 dev_setup.py
+          . .venv/bin/activate
           make test_generator
           make test_bindings
