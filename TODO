@@ -1,6 +1,2 @@
 * Add more test coverage
 * Provide more examples
-* Rewrite parsing code using a proper C parser, such as
-https://github.com/eliben/pycparser
-or
-https://github.com/albertz/PyCParser
