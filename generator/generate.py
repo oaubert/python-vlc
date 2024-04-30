@@ -28,16 +28,13 @@ corresponding Python/ctypes bindingsB{**} code.  Moreover, it
 generates Python class and method wrappers from the VLC functions
 and enum types.
 
-There are 3 dependencies.  Files C{header.py} and C{footer.py}
-contain the pre- and postamble of the generated code.  Module
+There are 3 dependencies. Files C{header.py} and C{footer.py}
+contain the pre- and postamble of the generated code. Module
 C{override.py} defines a number of classes and methods overriding
 the ones to be generated.
 
-This module and the generated Python bindings have been verified
-with PyChecker 0.8.18, see U{http://pychecker.sourceforge.net}
-and PyFlakes 0.4.0, see U{http://pypi.python.org/pypi/pyflakes}.
-The C{#PYCHOK ...} comments direct the PyChecker/-Flakes post-
-processor, see U{http://code.activestate.com/recipes/546532}.
+This module and the generated Python bindings have been formatted
+and verified with ruff, see U{https://github.com/astral-sh/ruff}.
 
 This module and the generated Python bindings have been tested with
 32- and 64-bit Python 2.6, 2.7 and 3.6 on Linux, Windows XP SP3, MacOS
@@ -48,7 +45,6 @@ B{**)} Java/JNA bindings for the VLC public API can be created in a
 similar manner and depend on 3 Java files: C{boilerplate.java},
 C{LibVlc-footer.java} and C{LibVlc-header.java}. Note that this code
 has not be maintained for a while...
-
 """
 
 __all__ = ("Parser", "PythonGenerator", "JavaGenerator")
@@ -99,7 +95,7 @@ else:  # Python 3+
     PYTHON3 = True
     bytes = bytes
 
-    def opener(name, mode="r"):  # PYCHOK expected
+    def opener(name, mode="r"):
         return open(name, mode, encoding="utf8")
 
 
@@ -306,7 +302,7 @@ class _Source(object):
 
     def __init__(self, file_="", line=0):
         self.source = "%s:%s" % (file_, line)
-        self.dump()  # PYCHOK expected
+        self.dump()
 
 
 class Enum(_Source):
@@ -778,7 +774,7 @@ class Par(object):
         if default is None:
             return (f,)  # 1-tuple
         else:  # see ctypes 15.16.2.4 Function prototypes
-            return f, self.name, default  # PYCHOK expected
+            return f, self.name, default
 
 
 class Val(object):
@@ -1835,9 +1831,7 @@ class _Generator(object):
         for f, t in ((b, "blacklisted"), (u, "not wrapped as methods")):
             if f:
                 self.output("%s %d function(s) %s:" % (c, len(f), t), nl=1)
-                self.output(
-                    _NL_.join("%s  %s" % (c, f) for f in sorted(f))
-                )  # PYCHOK false?
+                self.output(_NL_.join("%s  %s" % (c, f) for f in sorted(f)))
 
 
 class PythonGenerator(_Generator):
@@ -2015,13 +2009,13 @@ class PythonGenerator(_Generator):
  # LibVLC __version__ functions #
 """)
         for f in self.parser.funcs:
-            name = f.name  # PYCHOK flake
+            name = f.name
 
             # arg names, excluding output args
-            args = ", ".join(f.args())  # PYCHOK flake
+            args = ", ".join(f.args())
 
             # tuples of arg flags
-            flags = ", ".join(str(p.flags(f.out)) for p in f.pars)  # PYCHOK false?
+            flags = ", ".join(str(p.flags(f.out)) for p in f.pars)
             if flags:
                 flags += ","
 
@@ -2054,7 +2048,7 @@ class PythonGenerator(_Generator):
             types = ", ".join(types)
 
             # xformed doc string with first @param
-            docs = self.epylink(f.epydocs(0, 4))  # PYCHOK flake
+            docs = self.epylink(f.epydocs(0, 4))
             self.output(
                 """def %(name)s(%(args)s):
     '''%(docs)s
@@ -2123,7 +2117,7 @@ class _Enum(ctypes.c_uint):
         name = self.class4(pf.name)
         # return value and arg classes
         types = ", ".join(
-            [self.class4(pf.type)]  # PYCHOK flake
+            [self.class4(pf.type)]
             + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
         )
         docs = pf.epydocs()
@@ -2297,7 +2291,7 @@ class _Enum(ctypes.c_uint):
         for f in self.parser.callbacks:
             if f.name in _blacklist:
                 continue
-            name = self.class4(f.name)  # PYCHOK flake
+            name = self.class4(f.name)
             docs = self.epylink(f.epydocs(0, 4))
             self.output(
                 '''class %(name)s(ctypes.c_void_p):
@@ -2312,11 +2306,11 @@ class _Enum(ctypes.c_uint):
             '    "Class holding various method decorators for callback functions."'
         )
         for f in self.parser.callbacks:
-            name = self.class4(f.name)  # PYCHOK flake
+            name = self.class4(f.name)
 
             # return value and arg classes
             types = ", ".join(
-                [self.class4(f.type)]  # PYCHOK flake
+                [self.class4(f.type)]
                 + [self.class4(p.type, p.flags(f.out)[0]) for p in f.pars]
             )
 
@@ -2379,17 +2373,17 @@ class _Enum(ctypes.c_uint):
 
             # arg names, excluding output args
             # and rename first arg to 'self'
-            args = ", ".join(["self"] + f.args(1))  # PYCHOK flake "
+            args = ", ".join(["self"] + f.args(1))
             wrapped_args = ", ".join(
                 ["self"]
                 + [
                     ("str_to_bytes(%s)" % pa.name if pa.type == "char*" else pa.name)
                     for pa in f.in_params(1)
                 ]
-            )  # PYCHOK flake
+            )
 
             # xformed doc string without first @param
-            docs = self.epylink(f.epydocs(1, 8), striprefix)  # PYCHOK flake
+            docs = self.epylink(f.epydocs(1, 8), striprefix)
             decorator = ""
             if meth.endswith("event_manager"):
                 decorator = "    @memoize_parameterless"
@@ -2828,7 +2822,7 @@ Parse VLC include files and generate bindings code for Python or Java."""
     vlc_h = Path(vlc_h)
     libvlc_version_h = Path(libvlc_version_h)
     vlc_preprocessed = preprocess(vlc_h)
-    p = Parser(vlc_preprocessed, libvlc_version_h, opts.version, False)
+    p = Parser(vlc_preprocessed, libvlc_version_h, opts.version)
     if opts.debug:
         for t in ("structs", "enums", "funcs", "callbacks"):
             p.dump(t)

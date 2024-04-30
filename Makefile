@@ -89,12 +89,8 @@ format:
 	ruff format ./generator/generate.py ./tests dev_setup.py
 	ruff check --fix --fix-only --exit-zero ./generator/generate.py ./tests dev_setup.py
 
-rcheck:
+check:
 	ruff check ./generator/generate.py ./tests dev_setup.py
-
-check: $(MODULE_NAME)
-	-pyflakes $<
-	-pylint $<
 
 clean:
 	-$(RM) -r $(DEV_PATH)
