@@ -34,9 +34,9 @@ C{override.py} defines a number of classes and methods overriding
 the ones to be generated.
 
 This module and the generated Python bindings have been formatted
-and verified with ruff, see U{https://github.com/astral-sh/ruff}.
+and verified using ruff, see U{https://github.com/astral-sh/ruff}.
 
-This module and the generated Python bindings have been tested with
+The generated Python bindings have been tested with
 32- and 64-bit Python 2.6, 2.7 and 3.6 on Linux, Windows XP SP3, MacOS
 X 10.4.11 (Intel) and MacOS X 10.11.3 using the public API include
 files from VLC 1.1.4.1, 1.1.5, 2.1.0, 2.2.2, 3.0.3.
@@ -73,30 +73,9 @@ TEMPLATEDIR = os.path.join(BASEDIR, "templates")
 PREPROCESSEDDIR = os.path.join(BASEDIR, "preprocessed")
 RUFF_CFG_FILE = os.path.join(os.path.dirname(BASEDIR), "ruff.toml")
 
-str = str
 
-try:
-    basestring = basestring  # Python 2
-except NameError:
-    basestring = (str, bytes)  # Python 3
-
-try:
-    unicode = unicode  # Python 2
-except NameError:
-    unicode = str  # Python 3
-
-if sys.version_info[0] < 3:
-    PYTHON3 = False
-    bytes = str
-
-    def opener(name, mode="r"):
-        return open(name, mode)
-else:  # Python 3+
-    PYTHON3 = True
-    bytes = bytes
-
-    def opener(name, mode="r"):
-        return open(name, mode, encoding="utf8")
+def opener(name, mode="r"):
+    return open(name, mode, encoding="utf8")
 
 
 # Functions not wrapped/not referenced
