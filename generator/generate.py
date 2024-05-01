@@ -913,6 +913,11 @@ class Parser(object):
             if docs.startswith("/***"):
                 return None
 
+            # Similarly to the previous case, we want to ignore Doxygen blocks
+            # containing a \file or @file tag.
+            if r"\file" in docs or "@file" in docs:
+                return None
+
             docs = clean_doxygen_comment_block(docs)
             return docs
         return None
