@@ -446,6 +446,31 @@ def track_description_list(head):
 
     return r
 
+
+class _Enum(ctypes.c_uint):
+    """(INTERNAL) Base class"""
+
+    _enum_names_ = {}
+
+    def __str__(self):
+        n = self._enum_names_.get(self.value, "") or ("FIXME_(%r)" % (self.value,))
+        return ".".join((self.__class__.__name__, n))
+
+    def __hash__(self):
+        return self.value
+
+    def __repr__(self):
+        return ".".join((self.__class__.__module__, self.__str__()))
+
+    def __eq__(self, other):
+        return (isinstance(other, _Enum) and self.value == other.value) or (
+            isinstance(other, _Ints) and self.value == other
+        )
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
 # Generated wrappers #
 # GENERATED_WRAPPERS go here  # see generate.py
 # End of generated wrappers #
