@@ -1977,15 +1977,18 @@ class PythonGenerator(_Generator):
         # We have to hardcode this one, which is not regular in vlc headers
         self.prefixes["AudioEqualizer"] = "libvlc_audio_equalizer_"
 
-        # xform docs to epydoc lines
         for f in self.parser.funcs:
-            # f.xform()
-            f.doxygen2sphinx()
             self.links[f.name] = f.name
-        for f in self.parser.callbacks:
-            # f.xform()
-            f.doxygen2sphinx()
         self.check_types()
+
+    def generate_docstring(self, docs: str, indent_lvl: int = 0):
+        if docs:
+            indent = _INDENT_ * indent_lvl
+            lines = docs.splitlines()
+            self.output(f"{indent}{_INDENT_}'''{lines[0]}")
+            for line in lines[1:]:
+                self.output(f"{indent}{_INDENT_}{line}")
+            self.output(f"{indent}{_INDENT_}'''")
 
     def generate_ctypes(self):
         """Generate a ctypes decorator for all functions."""
@@ -2031,40 +2034,31 @@ class PythonGenerator(_Generator):
 
             types = ", ".join(types)
 
-            # xformed doc string with first @param
-            docs = self.epylink(f.epydocs(0, 4))
+            f.doxygen2sphinx()
+            docs = f.epydocs()
+
+            self.output(f"def {name}({args}):")
+            self.generate_docstring(docs)
             self.output(
-                """def %(name)s(%(args)s):
-    '''%(docs)s
-    '''
-    f = _Cfunctions.get('%(name)s', None) or \\
-        _Cfunction('%(name)s', (%(flags)s), %(errcheck)s,
-                    %(types)s)
-    return f(%(args)s)
+                f"""{_INDENT_}f = _Cfunctions.get('{name}', None) or \\
+{_INDENT_}_Cfunction('{name}', ({flags}), {errcheck}, {types})
+{_INDENT_}return f({args})
 """
-                % locals()
             )
 
     def generate_enums(self):
         """Generate classes for all enum types."""
         for e in self.parser.enums:
             cls = self.class4(e.name)
-            self.output(
-                """class %s(_Enum):
-    '''%s
-    '''
-    _enum_names_ = {"""
-                % (cls, e.epydocs() or _NA_)
-            )
+            self.output(f"class {cls}(_Enum):")
+            self.generate_docstring(e.epydocs())
+            self.output(_INDENT_ + "_enum_names_ = {")
 
             for v in e.vals:
-                self.output("        %s: '%s'," % (v.value, v.name))
-            self.output("    }")
+                self.output(f"{_INDENT_ * 2}{v.value}: '{v.name}',")
+            self.output(_INDENT_ + "}")
 
-            # align on '=' signs
-            w = -max(len(v.name) for v in e.vals)
-            t = ["%s.%*s = %s(%s)" % (cls, w, v.name, cls, v.value) for v in e.vals]
-
+            t = [f"{cls}.{v.name} = {cls}({v.value})" for v in e.vals]
             self.output(_NL_.join(sorted(t)), nt=2)
 
     def generate_func_pointer_decorator(self, pf: Func, indent_lvl: int = 0):
@@ -2081,9 +2075,13 @@ class PythonGenerator(_Generator):
             [self.class4(pf.type)]
             + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
         )
-        docs = pf.epydocs()
-        self.output(f"""{indent}{_INDENT_}{name} = ctypes.CFUNCTYPE({types})
-{indent}{_INDENT_}{name}.__doc__ = '''{docs}'''""")
+
+        pf.doxygen2sphinx()
+        docs = self.epylink(pf.epydocs())
+
+        self.output(f"{indent}{_INDENT_}{name} = ctypes.CFUNCTYPE({types})")
+        if docs:
+            self.output(f"{indent}{_INDENT_}{name}.__doc__ = '''{docs}'''")
         self.output("")
 
     def generate_struct(self, struct: Struct, indent_lvl: int = 0):
@@ -2098,9 +2096,8 @@ class PythonGenerator(_Generator):
 
         # We use a forward declaration here to allow for self-referencing structures - cf
         # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
-        self.output(f"""{indent}class {cls}(_Cstruct):
-{indent}{_INDENT_}'''{struct.epydocs() or _NA_}
-{indent}{_INDENT_}'''""")
+        self.output(f"{indent}class {cls}(_Cstruct):")
+        self.generate_docstring(struct.epydocs(), indent_lvl)
 
         for field in struct.fields:
             if isinstance(field, Struct):
@@ -2113,9 +2110,7 @@ class PythonGenerator(_Generator):
                 self.name_to_classname(field)
                 self.generate_func_pointer_decorator(field, indent_lvl)
 
-        self.output(f"""
-{indent}{_INDENT_}pass
-""")
+        self.output(f"{indent}{_INDENT_}pass{_NL_}")
 
         # We can override struct definitions (for tricky ones) in override.py
         if cls in self.overrides.codes:
@@ -2168,8 +2163,7 @@ class PythonGenerator(_Generator):
                         field_type,
                     )
                 )
-            self.output(f"{indent})")
-            self.output("")
+            self.output(f"{indent}){_NL_}")
 
     def generate_union(self, union: Union, indent_lvl: int = 0):
         """Outputs a binding for `union`.
@@ -2183,9 +2177,8 @@ class PythonGenerator(_Generator):
 
         # We use a forward declaration here to allow for self-referencing structures - cf
         # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
-        self.output(f"""{indent}class {cls}(ctypes.Union):
-{indent}{_INDENT_}'''{union.epydocs() or _NA_}
-{indent}{_INDENT_}'''""")
+        self.output(f"{indent}class {cls}(ctypes.Union):")
+        self.generate_docstring(union.epydocs(), indent_lvl)
 
         for field in union.fields:
             if isinstance(field, Struct):
@@ -2198,9 +2191,7 @@ class PythonGenerator(_Generator):
                 self.name_to_classname(field)
                 self.generate_func_pointer_decorator(field, indent_lvl)
 
-        self.output(f"""
-{indent}{_INDENT_}pass
-""")
+        self.output(f"{indent}{_INDENT_}pass{_NL_}")
 
         self.output(f"{indent}{cls}._fields_ = (")
 
@@ -2232,8 +2223,22 @@ class PythonGenerator(_Generator):
                     field_type,
                 )
             )
-        self.output(f"{indent})")
-        self.output("")
+        self.output(f"{indent}){_NL_}")
+
+    def generate_callback_class(self, cb: Func):
+        """Outputs a class for `cb`.
+
+        @param cb: The `Func` instance for which to output a corresponding class.
+        """
+        if cb.name in _blacklist:
+            return
+
+        name = self.class4(cb.name)
+        cb.doxygen2sphinx()
+        docs = self.epylink(cb.epydocs())
+        self.output(f"class {name}(ctypes.c_void_p):")
+        self.generate_docstring(docs)
+        self.output(f"{_INDENT_}pass{_NL_}")
 
     def generate_structs(self):
         """Generate classes for all structs types."""
@@ -2248,42 +2253,16 @@ class PythonGenerator(_Generator):
         """
         if not self.parser.callbacks:
             return
-        # Generate classes
-        for f in self.parser.callbacks:
-            if f.name in _blacklist:
-                continue
-            name = self.class4(f.name)
-            docs = self.epylink(f.epydocs(0, 4))
-            self.output(
-                '''class %(name)s(ctypes.c_void_p):
-    """%(docs)s
-    """
-    pass'''
-                % locals()
-            )
 
-        self.output("class CallbackDecorators(object):")
-        self.output(
-            '    "Class holding various method decorators for callback functions."'
-        )
-        for f in self.parser.callbacks:
-            name = self.class4(f.name)
+        for cb in self.parser.callbacks:
+            self.generate_callback_class(cb)
 
-            # return value and arg classes
-            types = ", ".join(
-                [self.class4(f.type)]
-                + [self.class4(p.type, p.flags(f.out)[0]) for p in f.pars]
-            )
+        self.output(f"""class CallbackDecorators(object):
+{_INDENT_}'''Class holding various method decorators for callback functions.'''
+""")
+        for cb in self.parser.callbacks:
+            self.generate_func_pointer_decorator(cb)
 
-            # xformed doc string with first @param
-            docs = self.epylink(f.epydocs(0, 8))
-
-            self.output(
-                """    %(name)s = ctypes.CFUNCTYPE(%(types)s)
-    %(name)s.__doc__ = '''%(docs)s
-    '''"""
-                % locals()
-            )
         self.output("cb = CallbackDecorators")
 
     def generate_wrappers(self):
@@ -2301,16 +2280,15 @@ class PythonGenerator(_Generator):
                 c = self.class4(p.type)
                 if c in self.defined_classes:
                     t.append((c, f))
+
         cls = x = ""  # wrap functions in class methods
         for c, f in sorted(t, key=operator.itemgetter(0)):
             if cls != c:
                 cls = c
-                self.output(
-                    """class %s(_Ctype):
-    '''%s
-    '''"""
-                    % (cls, self.overrides.docstrs.get(cls, "") or _NA_)
-                )  # """ emacs-mode is confused...
+                self.output(f"class {cls}(_Ctype):")
+                docs = self.overrides.docstrs.get(cls, "")
+                if docs:
+                    self.output(f"{_INDENT_}'''{docs}{_NL_}{_INDENT_}'''")
 
                 c = self.overrides.codes.get(cls, "")
                 if "def __new__" not in c:
@@ -2343,20 +2321,13 @@ class PythonGenerator(_Generator):
                 ]
             )
 
-            # xformed doc string without first @param
-            docs = self.epylink(f.epydocs(1, 8), striprefix)
-            decorator = ""
+            f.doxygen2sphinx()
+            docs = self.epylink(f.epydocs(1), striprefix).strip()
             if meth.endswith("event_manager"):
-                decorator = "    @memoize_parameterless"
-            self.output(
-                """%(decorator)s
-    def %(meth)s(%(args)s):
-        '''%(docs)s
-        '''
-        return %(name)s(%(wrapped_args)s)
-"""
-                % locals()
-            )
+                self.output(f"{_INDENT_}@memoize_parameterless")
+            self.output(f"{_INDENT_}def {meth}({args}):")
+            self.generate_docstring(docs, indent_lvl=1)
+            self.output(f"{_INDENT_ * 2}return {name}({wrapped_args}){_NL_}")
 
             # check for some standard methods
             if meth == "count":
