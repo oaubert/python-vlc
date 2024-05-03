@@ -45,6 +45,7 @@ from ctypes.util import find_library
 import os
 import sys
 import functools
+import platform
 
 # Used by EventManager in override.py
 import inspect as _inspect
@@ -215,6 +216,22 @@ def find_lib():
 
 # plugin_path used on win32 and MacOS in override.py
 dll, plugin_path  = find_lib()
+
+def find_libc():
+    """Return an instance of the loaded standard C library or raise an error if
+       the library has not been found.
+
+       This function should be compatible with Linux, Windows and macOS.
+    """
+    system = platform.system()
+    if system == 'Windows':
+        # On Windows, msvcrt provides MS standard C
+        return ctypes.cdll.msvcrt
+    elif system == 'Linux' or system == 'Darwin':
+        libc_path = find_library('c')
+        if libc_path is None:
+            raise NotImplementedError('Cannot find a proper standard C library')
+        return ctypes.CDLL(libc_path)
 
 class VLCException(Exception):
     """Exception raised by libvlc methods.
