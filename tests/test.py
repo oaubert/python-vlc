@@ -214,7 +214,9 @@ class TestVLCAPI(unittest.TestCase):
         formatter = logging.Formatter('%(asctime)s;;;%(name)s;;;%(levelname)s;;;%(vlc_module)s;;;%(file)s;;;%(line)d;;;%(message)s')
         handler.setFormatter(formatter)
         vlc_logger.addHandler(handler)
-        instance = vlc.Instance('--vout dummy --aout dummy')
+        # start in quiet mode: we cannot control how to logs are produced
+        # before setting the logger
+        instance = vlc.Instance('--vout dummy --aout dummy --quiet')
         instance.set_logger(vlc_logger)
         player = instance.media_player_new()
         media = instance.media_new(SAMPLE)
