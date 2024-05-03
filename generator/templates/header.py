@@ -489,6 +489,20 @@ class EventUnion(ctypes.Union):
         ('new_length',   ctypes.c_longlong),
     ]
 
+def loglevel_to_logging(level):
+    """Converts VLC log level to python logging Log level
+    """
+    if level == LogLevel.DEBUG:
+        return logging.DEBUG
+    elif level == LogLevel.ERROR:
+        return logging.ERROR
+    elif level == LogLevel.NOTICE:
+        return logging.INFO
+    elif level == LogLevel.WARNING:
+        return logging.WARNING
+    else:
+        return logging.INFO
+
 # Generated structs #
 # GENERATED_STRUCTS go here  # see generate.py
 # End of generated structs #
