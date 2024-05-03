@@ -189,6 +189,11 @@ class Instance:
         self._log_handler = log_handler
         self.log_set(self._log_handler, None)
 
+    def get_logger(self):
+        """Return the logger attached to the libVLC Instance (None by default)
+        """
+        return getattr(self, '_logger', None)
+
 class Media:
     """Create a new Media instance.
 
