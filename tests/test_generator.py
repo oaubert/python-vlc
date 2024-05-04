@@ -41,6 +41,7 @@ from generator.generate import (
     class_re,
     clean_doxygen_comment_block,
     def_re,
+    strip_whitespaces,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,33 @@ class TestREs(unittest.TestCase):
             ),
             ["__new__", "get_instance", "add_media"],
         )
+
+
+class TestUtils(unittest.TestCase):
+    """Test utility functions"""
+
+    def test_strip_whitespaces(self):
+        test_cases = [
+            ([], []),
+            (["a", "b"], ["a", "b"]),
+            (["", "a", "b", ""], ["a", "b"]),
+            (["\n", "\t", "a", "b", "\n", " "], ["a", "b"]),
+            ([" ", "a", "b", "\n", "\r", "\f"], ["a", "b"]),
+            (["\n", "a", "\n", "b", "\n"], ["a", "\n", "b"]),
+            ((), ()),
+            (("", "a", "b", ""), ("a", "b")),
+            (("\n", "\t", "a", "b", "\n", " "), ("a", "b")),
+            ((" ", "a", "b", "\n", "\r", "\f"), ("a", "b")),
+            (("\n", "a", " ", "b", "\n"), ("a", " ", "b")),
+            ("", ""),
+            ("ab", "ab"),
+            ("\n\tab\n ", "ab"),
+            (" ab\n\r\f", "ab"),
+            ("\na b\n", "a b"),
+        ]
+
+        for input, expected_result in test_cases:
+            self.assertEqual(strip_whitespaces(input), expected_result)
 
 
 class TestParser(unittest.TestCase):

@@ -146,6 +146,23 @@ def endot(text):
     return text
 
 
+def strip_whitespaces(seq):
+    """Strip whitespaces (and empty strings) at the beginning and end of the
+    sequence of strings *seq* (str, list, tuple, etc.).
+
+    :param seq: A sequence of strings.
+    :return: The sequence stripped of its whitespaces and empty strings.
+    """
+    whitespaces = " \t\r\n\f"
+    start = 0
+    while start < len(seq) and (not seq[start] or seq[start] in whitespaces):
+        start += 1
+    end = len(seq) - 1
+    while end >= 0 and (not seq[end] or seq[end] in whitespaces):
+        end -= 1
+    return seq[start : end + 1]
+
+
 def errorf(fmt, *args):
     """Print error."""
     global _nerrors
