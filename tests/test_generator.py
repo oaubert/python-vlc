@@ -37,7 +37,6 @@ from generator.generate import (
     Struct,
     Union,
     Val,
-    at_param_re,
     class_re,
     clean_doxygen_comment_block,
     def_re,
@@ -49,10 +48,6 @@ logger = logging.getLogger(__name__)
 
 # Test internal generator only in python3
 class TestREs(unittest.TestCase):
-    def test_at_param_re(self):
-        match = at_param_re.match("@param p_mi media player")
-        self.assertEqual(match.group(1, 2), ("@param p_mi", " media player"))
-
     def test_class_re_method(self):
         self.assertIsNone(class_re.match("    def __new__(cls, arg=None):\n"))
 

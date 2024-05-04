@@ -55,6 +55,7 @@ __version__ = "2.0"
 
 _debug = False
 
+import enum
 import operator
 import os
 import re
@@ -118,6 +119,7 @@ _NL_ = "\n"  # os.linesep
 _OUT_ = "[OUT]"
 _PNTR_ = "pointer to get the "  # KLUDGE: see @param ... [OUT]
 _INDENT_ = "    "
+_SPHINX_CODE_BLOCK_ = ".. code-block:: objectivec++"
 
 # special keywords in header.py
 _BUILD_DATE_ = "build_date = "
@@ -132,11 +134,10 @@ _ATTR_VISIBILITY_DEFAULT_ = '__attribute__((visibility("default")))'
 _ATTR_DLL_EXPORT_ = "__declspec(dllexport)"
 
 # Precompiled regexps
-at_param_re = re.compile(r"(@param\s+\S+)(.+)")
-bs_param_re = re.compile(r"\\param\s+(\S+)")
+param_re = re.compile(r":param\s+(?P<param_name>[^\s]+)")
 class_re = re.compile(r"class\s+(\S+?)(?:\(\S+\))?:")
 def_re = re.compile(r"^\s+def\s+(\w+)", re.MULTILINE)
-libvlc_re = re.compile(r"libvlc_[a-z_]+")
+libvlc_re = re.compile(r"libvlc_[a-z_]+\(*\)*")
 
 
 def endot(text):
@@ -344,16 +345,48 @@ class Enum(_Source):
     def dump(self):
         sys.stderr.write(str(self))
 
-    def epydocs(self):
+    def docs_in_sphinx_format(self) -> str:
         """Return Sphinx (Napoleon) docstring."""
-        return (
-            self.docs.replace("@see", ":see:")
-            .replace("\\see", ":see:")
-            .replace("@ingroup", ":ingroup:")
-            .replace("@defgroup", ":defgroup:")
-            .replace("@file", ":file:")
-            .replace("@{", "")
+        in_block = False
+        res = []
+        lines = (
+            self.docs.replace(r"\see", "See")
+            .replace("@see", "See")
+            .replace(r"\note", ".. note::")
+            .replace("@note", ".. note::")
+            .replace(r"\warning", ".. warning::")
+            .replace("@warning", ".. warning::")
+            .replace(r"\ref ", "")
+            .replace("@ref ", "")
+            .replace(r"\version", ":version:")
+            .replace("@version", ":version:")
+            .splitlines()
         )
+
+        for i, line in enumerate(lines):
+            if ".. note::" in line:
+                if i - 1 >= 0 and line:
+                    res.append("")
+                res.append(line)
+                in_block = True
+            elif ".. warning::" in lines[i]:
+                if i - 1 >= 0 and lines[i - 1]:
+                    res.append("")
+                res.append(line)
+                in_block = True
+            elif in_block:
+                if lines[i]:
+                    lines[i] = "\t" + lines[i]
+                else:
+                    in_block = False
+                res.append(line)
+            else:
+                res.append(line)
+
+        if res:
+            res[-1] = endot(res[-1])
+
+        return _NL_.join(res)
 
 
 class Struct(_Source):
@@ -403,9 +436,48 @@ class Struct(_Source):
         for field in self.fields:
             field.dump(indent_lvl + 1)
 
-    def epydocs(self):
+    def docs_in_sphinx_format(self) -> str:
         """Return Sphinx (Napoleon) docstring."""
-        return self.docs.replace("@see", ":see:").replace("\\see", ":see:")
+        in_block = False
+        res = []
+        lines = (
+            self.docs.replace(r"\see", "See")
+            .replace("@see", "See")
+            .replace(r"\note", ".. note::")
+            .replace("@note", ".. note::")
+            .replace(r"\warning", ".. warning::")
+            .replace("@warning", ".. warning::")
+            .replace(r"\ref ", "")
+            .replace("@ref ", "")
+            .replace(r"\version", ":version:")
+            .replace("@version", ":version:")
+            .splitlines()
+        )
+
+        for i, line in enumerate(lines):
+            if ".. note::" in line:
+                if i - 1 >= 0 and line:
+                    res.append("")
+                res.append(line)
+                in_block = True
+            elif ".. warning::" in lines[i]:
+                if i - 1 >= 0 and lines[i - 1]:
+                    res.append("")
+                res.append(line)
+                in_block = True
+            elif in_block:
+                if lines[i]:
+                    lines[i] = "\t" + lines[i]
+                else:
+                    in_block = False
+                res.append(line)
+            else:
+                res.append(line)
+
+        if res:
+            res[-1] = endot(res[-1])
+
+        return _NL_.join(res)
 
 
 class Union(_Source):
@@ -453,9 +525,9 @@ class Union(_Source):
         for field in self.fields:
             field.dump(indent_lvl + 1)
 
-    def epydocs(self):
+    def docs_in_sphinx_format(self) -> str:
         """Return Sphinx (Napoleon) docstring."""
-        return self.docs.replace("@see", ":see:").replace("\\see", ":see:")
+        return self.docs
 
 
 class Flag(object):
@@ -541,168 +613,165 @@ class Func(_Source):
         for p in self.pars:
             p.dump(indent_lvl + 1, self.out)
 
-    def epydocs(self, first=0, indent=0):
-        """Return epydoc doc string with/out first parameter."""
-        # "out-of-bounds" slices are OK, e.g. ()[1:] == ()
-        t = _NL_ + (" " * indent)
-        return t.join(self.heads + self.params[first:] + self.tails)
+    @property
+    def nparams(self):
+        """Number of param lines in docstring."""
+        return len(self.params) + len(self.out)
 
-    def __nparams_(self):
-        return (len(self.params) + len(self.out)) or len(bs_param_re.findall(self.docs))
+    def wrap_params_in_asterisks(self, s: str) -> str:
+        for par in self.pars:
+            s = re.sub(rf"([^\w]){par.name}([^\w])", rf"\1*{par.name}*\2", s)
+        return s
 
-    nparams = property(__nparams_, doc="number of \\param lines in doc string")
-
-    def xform(self):
-        """Transform Doxygen to epydoc syntax."""
-        b, c, h, o, p, r, v = [], None, [], [], [], [], []
-        # see <http://epydoc.sourceforge.net/manual-fields.html>
-        # (or ...replace('{', 'E{lb}').replace('}', 'E{rb}') ?)
-        for t in (
-            self.docs.replace("@{", "")
-            .replace("@}", "")
-            .replace("\\ingroup", "")
-            .replace("{", "")
-            .replace("}", "")
-            .replace("<b>", "B{")
-            .replace("</b>", "}")
-            .replace("@see", "See")
-            .replace("\\see", "See")
-            .replace("\\bug", "@bug")
-            .replace("\\version", "@version")
-            .replace("\\note", "@note")
-            .replace("\\warning", "@warning")
-            .replace("\\param", "@param")
-            .replace("\\return", "@return")
-            .replace("NULL", "None")
-            .splitlines()
-        ):
-            if "@param" in t:
-                if _OUT_ in t:
-                    # KLUDGE: remove @param, some comment and [OUT]
-                    t = t.replace("@param", "").replace(_PNTR_, "").replace(_OUT_, "")
-                    # keep parameter name and doc string
-                    o.append(" ".join(t.split()))
-                    c = [""]  # drop continuation line(s)
-                else:
-                    p.append(at_param_re.sub(r"\1:\2", t))
-                    c = p
-            elif "@return" in t:
-                r.append(t.replace("@return ", "@return: "))
-                c = r
-            elif "@bug" in t:
-                b.append(t.replace("@bug ", "@bug: "))
-                c = b
-            elif "@version" in t:
-                v.append(t.replace("@version ", "@version: "))
-                c = v
-            elif c is None:
-                h.append(
-                    t.replace("@note ", "@note: ").replace("@warning ", "@warning: ")
-                )
-            else:  # continuation, concatenate to previous @tag line
-                c[-1] = "%s %s" % (c[-1], t.strip())
-        if h:
-            h[-1] = endot(h[-1])
-            self.heads = tuple(h)
-        if o:  # just the [OUT] parameter names
-            self.out = tuple(t.split()[0] for t in o)
-            # ctypes returns [OUT] parameters as tuple
-            r = ["@return: %s" % ", ".join(o)]
-        if p:
-            self.params = tuple(map(endot, p))
-        t = r + v + b
-        if t:
-            self.tails = tuple(map(endot, t))
-
-    def doxygen2sphinx(self):
+    def docs_in_sphinx_format(self, first=0) -> str:
         """Return Sphinx (Napoleon) docstring."""
-        b, c, h, o, p, r, v = [], None, [], [], [], [], []
-        param_re = re.compile(r":param\s+(?P<param_name>[^\s]+)")
-        code_block_cpp = False
-        # see <https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html#html-metadata>
+        b = []
+        heads = []
+        out = []
+        params = []
+        r = []
+        v = []
+        block = None
+
+        # See https://devguide.python.org/documentation/markup/
         lines = (
             self.docs.replace("@{", "")
             .replace("@}", "")
-            .replace("\\ingroup", "")
+            .replace(r"\ingroup", "")
             .replace("{", "")
             .replace("}", "")
             .replace("<b>", "**")
             .replace("</b>", "**")
-            .replace("@see", ":see:")
-            .replace("\\see", ":see:")
-            .replace("\\bug", ":bug:")
+            .replace(r"\see ", "")
+            .replace("@see ", "")
+            .replace(r"\bug", ":bug:")
             .replace("@bug", ":bug:")
-            .replace("\\version", ":version:")
+            .replace(r"\version", ":version:")
             .replace("@version", ":version:")
-            .replace("\\note", ":note:")
-            .replace("@note", ":note:")
-            .replace("\\warning", ":warning:")
-            .replace("@warning", ":warning:")
-            .replace("\\param", ":param")
+            .replace(r"\param", ":param")
             .replace("@param", ":param")
-            .replace("\\return", ":return:")
+            .replace(r"\return", ":return:")
             .replace("@return", ":return:")
-            .replace("@ref", ":ref:")
-            .replace("@code.mm", "\n.. code-block:: objectivec++")
-            .replace("@code.m", ".. code-block:: objectivec++\n")
-            .replace("@code", "\n.. code-block:: objectivec++\n")
+            .replace(r"\ref ", "")
+            .replace("@ref ", "")
             .replace(r"\@protocol", "@protocol")
-            .replace("@endcode", "")
             .replace(r"\@end", "@end")
+            .replace(r"\note", ".. note::")
+            .replace("@note", ".. note::")
+            .replace(r"\warning", ".. warning::")
+            .replace("@warning", ".. warning::")
+            .replace(r"\deprecated", "\n.. warning:: **Deprecated!**")
+            .replace("@deprecated", "\n.. warning:: **Deprecated!**")
             .replace("NULL", "None")
+            .replace(
+                r"\libvlc_return_bool", ""
+            )  # strange special case in libvlc_media_player_will_play
             .splitlines()
         )
-        for i in range(len(lines)):
-            t = lines[i]
-            if ".. code-block:: objectivec++" in t:
-                if lines[i + 1].strip() == "":
-                    code_block_cpp = True
-                    empty_line_count = 0
-            if code_block_cpp and t.strip() == "":
-                empty_line_count += 1
-                if empty_line_count == 3:
-                    code_block_cpp = False
-            if ":param" in t:
-                if _OUT_ in t:
-                    # KLUDGE: remove @param, some comment and [OUT]
-                    t = t.replace(_PNTR_, "").replace(_OUT_, "")
-                    # keep parameter name and doc string
-                    o.append(" ".join(t.split()))
-                    c = [""]  # drop continuation line(s)
+
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+
+            if ":param" in line:
+                if _OUT_ in line:
+                    line = line.replace(_PNTR_, "")
+                    out.append(line.split()[1])
+                params.append(param_re.sub(r":param \g<param_name>:", line))
+                block = params
+            elif ":return:" in line:
+                r.append(line)
+                block = r
+            elif ":version:" in line:
+                v.append(line)
+                block = v
+            elif ":bug:" in line:
+                b.append(line)
+                block = b
+            elif "@code" in line:  # we are dealing with a code block
+                # Check whether there is a blonk line right before the @code line.
+                # If not, add one (needed for sphinx to properly display the code block).
+                if i - 1 >= 0 and lines[i - 1].strip():
+                    heads.append("")
+
+                # process the first line
+                line = (
+                    line.replace("@code.mm", f"{_SPHINX_CODE_BLOCK_}")
+                    .replace("@code.m", f"{_SPHINX_CODE_BLOCK_}")
+                    .replace("@code", f"{_SPHINX_CODE_BLOCK_}")
+                    .strip()
+                )
+                heads.append(line)
+
+                # Check whether there is a blonk line right after the @code line.
+                # If not, add one (needed for sphinx to properly display the code block).
+                i += 1
+                line = lines[i].strip()
+                if line:
+                    heads.append("")
+
+                # process lines within block, until the end
+                while "@endcode" not in line:
+                    # add a tab before each non-empty line within the code block
+                    if line:
+                        heads.append("\t" + line)
+                    else:
+                        heads.append(line)
+                    # don't bother to check if out of bounds,
+                    # assume there must be more lines if starting a code block
+                    i += 1
+                    line = lines[i]
+
+                # process last line (@endcode)
+                if i + 1 < len(lines) and lines[i + 1].strip():
+                    heads.append(line.replace("@endcode", "").strip())
+
+                block = None
+            elif ".. note::" in line:
+                if i - 1 >= 0 and lines[i - 1]:
+                    heads.append("")
+                heads.append(line)
+                block = heads
+            elif ".. warning::" in line:
+                heads.append(line)
+                block = heads
+            elif block is not None:
+                if line:
+                    block.append("\t" + line)
                 else:
-                    p.append(param_re.sub(r":param \g<param_name>:", t))
-                    c = p
-            elif ":return:" in t:
-                r.append(t)
-                c = r
-            elif ":bug:" in t:
-                b.append(t)
-                c = b
-            elif ":version:" in t:
-                v.append(t)
-                c = v
-            elif (
-                code_block_cpp
-                and ((empty_line_count == 1) or (empty_line_count == 2))
-                and not t.startswith(".. code-block:: objectivec++")
-            ):
-                h.append("\t" + t)
-            elif c is None:
-                h.append(t)
-            else:  # continuation, concatenate to previous @tag line
-                c[-1] = "%s %s" % (c[-1], t.strip())
-        if h:
-            h[-1] = endot(h[-1])
-            self.heads = tuple(h)
-        if o:  # just the [OUT] parameter names
-            self.out = tuple(t.split()[0] for t in o)
-            # ctypes returns [OUT] parameters as tuple
-            r = [":return: %s" % ", ".join(o)]
-        if p:
-            self.params = tuple(map(endot, p))
-        t = r + v + b
-        if t:
-            self.tails = tuple(map(endot, t))
+                    block.append(line)
+                    block = None
+            else:
+                heads.append(line)
+
+            i += 1
+
+        if heads:
+            heads[-1] = endot(heads[-1])
+            self.heads = strip_whitespaces(
+                tuple(map(self.wrap_params_in_asterisks, heads))
+            )
+        if out:
+            self.out = tuple(out)
+        if params:
+            self.params = strip_whitespaces(tuple(map(endot, params)))
+
+        tails = (
+            list(map(self.wrap_params_in_asterisks, r))
+            + v
+            + list(map(self.wrap_params_in_asterisks, b))
+        )
+        if tails:
+            self.tails = strip_whitespaces(tuple(map(endot, tails)))
+
+        res = _NL_.join(self.heads)
+        if self.params[first:]:
+            res += _NL_ * 2
+            res += _NL_.join(self.params[first:])
+        if self.tails:
+            res += _NL_ * 2
+            res += _NL_.join(self.tails)
+        return res
 
 
 class Par(object):
@@ -1667,12 +1736,21 @@ declarator: (parenthesized_declarator
         return version
 
 
+class LnKind(enum.Enum):
+    CLASS = 1
+    FUNC = 2
+    METH = 3
+
+    def __str__(self):
+        return self.name.lower()
+
+
 class _Generator(object):
     """Base class."""
 
     comment_line = "#"  # Python
     file = None
-    links = {}  # must be overloaded
+    links: dict[str, tuple[str, LnKind]] = {}  # must be overloaded
     outdir = ""
     outpath = ""
     type_re = None  # must be overloaded
@@ -1681,10 +1759,10 @@ class _Generator(object):
 
     def __init__(self, parser: Parser):
         self.parser = parser
-        for struct in parser.structs:
-            self.name_to_classname(struct)
-        for enum in parser.enums:
-            self.name_to_classname(enum)
+        for s in parser.structs:
+            self.name_to_classname(s)
+        for e in parser.enums:
+            self.name_to_classname(e)
         for cb in parser.callbacks:
             self.name_to_classname(cb)
 
@@ -1745,17 +1823,19 @@ class _Generator(object):
                 n = ["%s==== %s ==== %s" % (_NL_, n, self.parser.bindings_version())]
                 sys.stderr.write(s.join(n + sorted("%s: %s\n" % t for t in d.items())))
 
-    def epylink(self, docs, striprefix=None):
-        """Link function, method and type names in doc string."""
+    def add_sphinx_cross_refs(self, docs, striprefix=None):
+        """Make Sphinx cross references for functions, methods and classes in `docs`."""
 
         def _L(m):  # re.sub callback
-            t = m.group(0)
+            t = m.group(0).replace("()", "")
             n = t.strip()
-            k = self.links.get(n, "")
+
+            k, lnkind = self.links.get(n, ("", None))
             if k:
                 if striprefix:
                     k = striprefix(k)
-                t = t.replace(n, "L{%s}" % (k,))
+                t = t.replace(n, ":%s:`%s`" % (lnkind, k))
+
             return t
 
         if self.links:
@@ -1975,27 +2055,28 @@ class PythonGenerator(_Generator):
         # one special enum type class
         self.type2class["libvlc_event_e"] = "EventType"
         # doc links to functions, methods and types
-        self.links = {"libvlc_event_e": "EventType"}
+        self.links = {"libvlc_event_e": ("EventType", LnKind.CLASS)}
         # link enum value names to enum type/class
         for t in self.parser.enums:
-            self.links[t.name] = self.class4(t.name)
+            self.links[t.name] = (self.class4(t.name), LnKind.CLASS)
         # prefixes to strip from method names
         # when wrapping them into class methods
         self.prefixes = {}
         for t, c in self.type2class.items():
             t = t.rstrip("*")
             if c in self.defined_classes:
-                self.links[t] = c
+                self.links[t] = (c, LnKind.CLASS)
                 self.prefixes[c] = t[:-1]
             elif c.startswith("ctypes.POINTER("):
                 c = c.replace("ctypes.POINTER(", "").rstrip(")")
                 if c[:1].isupper():
-                    self.links[t] = c
+                    self.links[t] = (c, LnKind.CLASS)
+
         # We have to hardcode this one, which is not regular in vlc headers
         self.prefixes["AudioEqualizer"] = "libvlc_audio_equalizer_"
 
         for f in self.parser.funcs:
-            self.links[f.name] = f.name
+            self.links[f.name] = (f.name, LnKind.FUNC)
         self.check_types()
 
     def generate_docstring(self, docs: str, indent_lvl: int = 0):
@@ -2009,9 +2090,6 @@ class PythonGenerator(_Generator):
 
     def generate_ctypes(self):
         """Generate a ctypes decorator for all functions."""
-        self.output("""
- # LibVLC __version__ functions #
-""")
         for f in self.parser.funcs:
             name = f.name
 
@@ -2051,8 +2129,7 @@ class PythonGenerator(_Generator):
 
             types = ", ".join(types)
 
-            f.doxygen2sphinx()
-            docs = f.epydocs()
+            docs = self.add_sphinx_cross_refs(f.docs_in_sphinx_format())
 
             self.output(f"def {name}({args}):")
             self.generate_docstring(docs)
@@ -2067,8 +2144,9 @@ class PythonGenerator(_Generator):
         """Generate classes for all enum types."""
         for e in self.parser.enums:
             cls = self.class4(e.name)
+            docs = self.add_sphinx_cross_refs(e.docs_in_sphinx_format())
             self.output(f"class {cls}(_Enum):")
-            self.generate_docstring(e.epydocs())
+            self.generate_docstring(docs)
             self.output(_INDENT_ + "_enum_names_ = {")
 
             for v in e.vals:
@@ -2093,8 +2171,7 @@ class PythonGenerator(_Generator):
             + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
         )
 
-        pf.doxygen2sphinx()
-        docs = self.epylink(pf.epydocs())
+        docs = self.add_sphinx_cross_refs(pf.docs_in_sphinx_format())
 
         self.output(f"{indent}{_INDENT_}{name} = ctypes.CFUNCTYPE({types})")
         if docs:
@@ -2114,7 +2191,8 @@ class PythonGenerator(_Generator):
         # We use a forward declaration here to allow for self-referencing structures - cf
         # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
         self.output(f"{indent}class {cls}(_Cstruct):")
-        self.generate_docstring(struct.epydocs(), indent_lvl)
+        docs = self.add_sphinx_cross_refs(struct.docs_in_sphinx_format())
+        self.generate_docstring(docs, indent_lvl)
 
         for field in struct.fields:
             if isinstance(field, Struct):
@@ -2195,7 +2273,8 @@ class PythonGenerator(_Generator):
         # We use a forward declaration here to allow for self-referencing structures - cf
         # https://docs.python.org/3/library/ctypes.html#ctypes.Structure._fields_
         self.output(f"{indent}class {cls}(ctypes.Union):")
-        self.generate_docstring(union.epydocs(), indent_lvl)
+        docs = self.add_sphinx_cross_refs(union.docs_in_sphinx_format())
+        self.generate_docstring(docs, indent_lvl)
 
         for field in union.fields:
             if isinstance(field, Struct):
@@ -2251,8 +2330,7 @@ class PythonGenerator(_Generator):
             return
 
         name = self.class4(cb.name)
-        cb.doxygen2sphinx()
-        docs = self.epylink(cb.epydocs())
+        docs = self.add_sphinx_cross_refs(cb.docs_in_sphinx_format())
         self.output(f"class {name}(ctypes.c_void_p):")
         self.generate_docstring(docs)
         self.output(f"{_INDENT_}pass{_NL_}")
@@ -2338,8 +2416,9 @@ class PythonGenerator(_Generator):
                 ]
             )
 
-            f.doxygen2sphinx()
-            docs = self.epylink(f.epydocs(1), striprefix).strip()
+            docs = self.add_sphinx_cross_refs(
+                f.docs_in_sphinx_format(1), striprefix
+            ).strip()
             if meth.endswith("event_manager"):
                 self.output(f"{_INDENT_}@memoize_parameterless")
             self.output(f"{_INDENT_}def {meth}({args}):")
