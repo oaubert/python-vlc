@@ -6,10 +6,6 @@
 Welcome to python-vlc's documentation!
 ======================================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
 .. automodule:: vlc
    :members:
    :undoc-members:
