@@ -2,7 +2,7 @@
 
 # Backward compatibility
 def callbackmethod(callback):
-    """Now obsolete @callbackmethod decorator."""
+    """Now obsolete ``@callbackmethod`` decorator."""
     return callback
 
 

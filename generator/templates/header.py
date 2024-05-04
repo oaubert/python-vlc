@@ -25,19 +25,19 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301 USA
 
 """This module provides bindings for the LibVLC public API, see
-U{http://wiki.videolan.org/LibVLC}.
+http://wiki.videolan.org/LibVLC.
 
 You can find the documentation and a README file with some examples
-at U{https://www.olivieraubert.net/vlc/python-ctypes/}.
+at https://www.olivieraubert.net/vlc/python-ctypes/.
 
-Basically, the most important class is L{Instance}, which is used
-to create a libvlc instance.  From this instance, you then create
-L{MediaPlayer} and L{MediaListPlayer} instances.
+Basically, the most important class is :class:`Instance`, which is used
+to create a libvlc instance. From this instance, you then create
+:class:`MediaPlayer` and :class:`MediaListPlayer` instances.
 
-Alternatively, you may create instances of the L{MediaPlayer} and
-L{MediaListPlayer} class directly and an instance of L{Instance}
-will be implicitly created.  The latter can be obtained using the
-C{get_instance} method of L{MediaPlayer} and L{MediaListPlayer}.
+Alternatively, you may create instances of the :class:`MediaPlayer` and
+:class:`MediaListPlayer` class directly and an instance of :class:`Instance`
+will be implicitly created. The latter can be obtained using the
+:meth:`MediaPlayer.get_instance` and :class:`MediaListPlayer`.
 """
 
 import ctypes
@@ -242,9 +242,9 @@ _Seqs = (list, tuple)
 class memoize_parameterless(object):
     """Decorator. Caches a parameterless method's return value each time it is called.
 
-    If called later with the same arguments, the cached value is returned
-    (not reevaluated).
-    Adapted from https://wiki.python.org/moin/PythonDecoratorLibrary
+    If called later with the same arguments, the cached value is returned (not reevaluated).
+
+    Adapted from https://wiki.python.org/moin/PythonDecoratorLibrary.
     """
 
     def __init__(self, func):
@@ -273,7 +273,7 @@ _default_instance = None
 
 
 def get_default_instance():
-    """Return the default VLC.Instance."""
+    """Returns the default :class:`Instance`."""
     global _default_instance
     if _default_instance is None:
         _default_instance = Instance()
@@ -281,8 +281,9 @@ def get_default_instance():
 
 
 def try_fspath(path):
-    """Try calling os.fspath
-    os.fspath is only available from py3.6
+    """Try calling ``os.fspath``.
+
+    ``os.fspath`` is only available from py3.6.
     """
     try:
         return os.fspath(path)
@@ -371,7 +372,7 @@ class ListPOINTER(object):
 def string_result(result, func, arguments):
     """Errcheck function. Returns a string and frees the original pointer.
 
-    It assumes the result is a char *.
+    It assumes the result is a ``char*``.
     """
     if result:
         # make a python string copy
