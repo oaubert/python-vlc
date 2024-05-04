@@ -120,7 +120,7 @@ _PNTR_ = "pointer to get the "  # KLUDGE: see @param ... [OUT]
 _INDENT_ = "    "
 
 # special keywords in header.py
-_BUILD_DATE_ = "build_date  = "
+_BUILD_DATE_ = "build_date = "
 _GENERATED_ENUMS_ = "# GENERATED_ENUMS"
 _GENERATED_STRUCTS_ = "# GENERATED_STRUCTS"
 _GENERATED_CALLBACKS_ = "# GENERATED_CALLBACKS"

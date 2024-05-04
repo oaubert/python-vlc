@@ -86,8 +86,8 @@ publish: $(VERSIONED_NAME)
 	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist && twine upload dist/*
 
 format:
-	ruff format ./generator/generate.py ./tests dev_setup.py
-	ruff check --fix --fix-only --exit-zero ./generator/generate.py ./tests dev_setup.py
+	ruff format ./generator/generate.py ./tests dev_setup.py ./generator/templates/
+	ruff check --fix --fix-only --exit-zero ./generator/generate.py ./tests dev_setup.py ./generator/templates
 
 check:
 	ruff check ./generator/generate.py ./tests dev_setup.py

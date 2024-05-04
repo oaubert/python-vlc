@@ -25,7 +25,8 @@ repos:
         (?x)^(
           generator/generate\.py|
           tests/.*\.py|
-          dev_setup\.py
+          dev_setup\.py|
+          generator/templates/.*\.py
         )$
       minimum_pre_commit_version: "2.9.2"
 
