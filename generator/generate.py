@@ -127,6 +127,7 @@ _GENERATED_ENUMS_ = "# GENERATED_ENUMS"
 _GENERATED_STRUCTS_ = "# GENERATED_STRUCTS"
 _GENERATED_CALLBACKS_ = "# GENERATED_CALLBACKS"
 _GENERATED_WRAPPERS_ = "# GENERATED_WRAPPERS"
+_GENERATED_FUNCTIONS_ = "# GENERATED_FUNCTIONS"
 
 # attributes
 _ATTR_DEPRECATED_ = "__attribute__((deprecated))"
@@ -1870,6 +1871,8 @@ class _Generator(object):
                 self.generate_callbacks()
             elif generate_items and t.startswith(_GENERATED_WRAPPERS_):
                 self.generate_wrappers()
+            elif generate_items and t.startswith(_GENERATED_FUNCTIONS_):
+                self.generate_funcs()
             elif t.startswith(_BUILD_DATE_):
                 v = self.parser.version or _NA_
                 self.output('__version__ = "%s"' % (self.parser.bindings_version(),))
@@ -2498,7 +2501,6 @@ class PythonGenerator(_Generator):
             self.insert_code(
                 os.path.join(TEMPLATEDIR, "header.py"), generate_items=True
             )
-            self.generate_funcs()
             self.unwrapped()
             self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
             self.outclose()
@@ -2541,7 +2543,6 @@ class PythonGenerator(_Generator):
             self.insert_code(
                 os.path.join(TEMPLATEDIR, "header.py"), generate_items=True
             )
-            self.generate_funcs()
             self.unwrapped()
             self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
             self.outclose()

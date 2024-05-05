@@ -517,6 +517,10 @@ class _Enum(ctypes.c_uint):
 
 # Generated callback definitions #
 # GENERATED_CALLBACKS
-# End of generated enum types #
+# End of generated callback definitions #
+
+# Generated functions #
+# GENERATED_FUNCTIONS
+# End of generated functions #
 
 # End of header.py #
