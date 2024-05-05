@@ -42,3 +42,4 @@ tree-sitter==0.20.4
 typing_extensions==4.9.0
 urllib3==2.2.1
 virtualenv==20.26.0
+wheel==0.43.0
