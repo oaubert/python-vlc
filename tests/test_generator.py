@@ -38,7 +38,7 @@ from generator.generate import (
     Union,
     Val,
     class_re,
-    clean_doxygen_comment_block,
+    clean_doxygen_comment,
     def_re,
     strip_whitespaces,
 )
@@ -1040,7 +1040,7 @@ multiple lines""",
 
 
 class TestUtilities(unittest.TestCase):
-    def test_clean_doxygen_comment_block(self):
+    def test_clean_doxygen_comment(self):
         test_cases = [
             # non javadoc style comments should be ignored
             ("// regular comment", ""),
@@ -1118,7 +1118,7 @@ played
         ]
 
         for input, expected_output in test_cases:
-            self.assertEqual(clean_doxygen_comment_block(input), expected_output)
+            self.assertEqual(clean_doxygen_comment(input), expected_output)
 
 
 if __name__ == "__main__":

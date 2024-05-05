@@ -24,27 +24,27 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
 
 """This module parses VLC public API include files and generates
-corresponding Python/ctypes bindingsB{**} code.  Moreover, it
+corresponding Python/ctypes bindings [1]_ code. Moreover, it
 generates Python class and method wrappers from the VLC functions
 and enum types.
 
-There are 3 dependencies. Files C{header.py} and C{footer.py}
+There are 3 dependencies. Files ``header.py`` and ``footer.py``
 contain the pre- and postamble of the generated code. Module
-C{override.py} defines a number of classes and methods overriding
+``override.py`` defines a number of classes and methods overriding
 the ones to be generated.
 
 This module and the generated Python bindings have been formatted
-and verified using ruff, see U{https://github.com/astral-sh/ruff}.
+and verified using ruff, see https://github.com/astral-sh/ruff.
 
 The generated Python bindings have been tested with
 32- and 64-bit Python 2.6, 2.7 and 3.6 on Linux, Windows XP SP3, MacOS
 X 10.4.11 (Intel) and MacOS X 10.11.3 using the public API include
 files from VLC 1.1.4.1, 1.1.5, 2.1.0, 2.2.2, 3.0.3.
 
-B{**)} Java/JNA bindings for the VLC public API can be created in a
-similar manner and depend on 3 Java files: C{boilerplate.java},
-C{LibVlc-footer.java} and C{LibVlc-header.java}. Note that this code
-has not be maintained for a while...
+.. [1] Java/JNA bindings for the VLC public API can be created in a
+    similar manner and depend on 3 Java files: ``boilerplate.java``,
+    ``LibVlc-footer.java`` and ``LibVlc-header.java``. Note that this code
+    has not be maintained for a while...
 """
 
 __all__ = ("Parser", "PythonGenerator", "JavaGenerator")
@@ -142,7 +142,12 @@ libvlc_re = re.compile(r"libvlc_[a-z_]+\(*\)*")
 
 
 def endot(text):
-    """Terminate string with a period."""
+    """Terminate string with a period.
+
+    :param text: A string.
+
+    :return: `text` with a period added at the end if there weren't already one.
+    """
     if text and text[-1] not in ".,:;?!":
         text += "."
     return text
@@ -153,6 +158,7 @@ def strip_whitespaces(seq):
     sequence of strings *seq* (str, list, tuple, etc.).
 
     :param seq: A sequence of strings.
+
     :return: The sequence stripped of its whitespaces and empty strings.
     """
     whitespaces = " \t\r\n\f"
@@ -166,7 +172,11 @@ def strip_whitespaces(seq):
 
 
 def errorf(fmt, *args):
-    """Print error."""
+    r"""Print error to stderr.
+
+    :param fmt: A format string.
+    :param \*args: A list of arguments to insert in the format string.
+    """
     global _nerrors
     _nerrors += 1
     sys.stderr.write("Error: " + (fmt % args) + "\n")
@@ -186,9 +196,18 @@ def errors(fmt, e=0):
         sys.stderr.write(fmt % (_NL_ + "No") + "\n")
 
 
-# Adapted from https://gist.github.com/TACIXAT/c5b2db4a80c812c4b4373b65e179a220
-def format_sexp(s_exp, indent_size=4):
-    """Formats a Tree sitter S-expression for better readability."""
+def format_sexp(s_exp: str, indent_size: int = 4) -> str:
+    """Formats a Tree-sitter S-expression for better readability.
+
+    Source
+    ------
+    Code adapted from https://gist.github.com/TACIXAT/c5b2db4a80c812c4b4373b65e179a220
+
+    :param s_exp: A string containing the S-expression to format.
+    :param indent_size: The number of spaces with which to differentiate different levels of the tree.
+
+    :return: The formatted *s_exp*.
+    """
 
     indent_level = 0
     output = ""
@@ -233,23 +252,49 @@ def format_sexp(s_exp, indent_size=4):
     return output
 
 
-def get_tsnode_sexp(tsnode):
+def tsnode_sexp(tsnode: Node) -> str:
+    """
+    :param tsnode: A :class:`Node`.
+
+    :return: The formatted S-expression corresponding to *tsnoden*.
+    """
     return format_sexp(tsnode.sexp())
 
 
-def get_tsnode_text(tsnode, encoding="utf-8"):
+def tsnode_text(tsnode: Node, encoding: str = "utf-8"):
+    """
+    :param tsnode: A :class:`Node`.
+    :param endoding: The encoding with which to decode *tsnode*'s source code.
+        Default is "utf-8".
+
+    :return: The source code corresponding to *tsnode*.
+    """
     return tsnode.text.decode(encoding)
 
 
-def get_children_by_type(tsnode, type):
+def children_by_type(tsnode: Node, type: str):
+    """
+    :param tsnode: A :class:`Node`.
+    :param type: The type (not to confuse with the name) of the children to retrieve.
+
+    :return: *tsnode*'s (named) children of type *type*.
+    """
     return list(filter(lambda child: child.type == type, tsnode.named_children))
 
 
-def clean_doxygen_comment_block(docs):
-    """This function assumes that the Doxygen comment block syntax used
-    is the Javadoc style one, which consists of the block starting with /**.
-    See https://www.doxygen.nl/manual/docblocks.html#cppblock for all the ways
-    to mark a comment block.
+def clean_doxygen_comment(docs: str) -> str:
+    """Remove the ``/**``, ``*``, etc. artifacts of a Doxygen comment.
+
+    .. note::
+        This function assumes that the Doxygen comment syntax used
+        is the Javadoc style one, which consists of the block starting with ``/**``.
+        If *docs* doesn't start with ``/**``, the empty string will be returned.
+        See https://www.doxygen.nl/manual/docblocks.html#cppblock for all the ways
+        to mark a comment block.
+
+    :param docs: The Doxygen comment to clean.
+
+    :return: The cleaned Doxygen comment or the empty string if *docs*'s syntax is not Javadoc style.
     """
     if not docs.startswith("/**"):
         return ""
@@ -285,11 +330,11 @@ def clean_doxygen_comment_block(docs):
     return cleaned_docs
 
 
-def is_deprecated_attr(s: str):
+def is_deprecated_attr(s: str) -> bool:
     return s == _ATTR_DEPRECATED_
 
 
-def is_public_attr(s: str):
+def is_public_attr(s: str) -> bool:
     return s in [_ATTR_VISIBILITY_DEFAULT_, _ATTR_DLL_EXPORT_]
 
 
@@ -347,7 +392,6 @@ class Enum(_Source):
         sys.stderr.write(str(self))
 
     def docs_in_sphinx_format(self) -> str:
-        """Return Sphinx (Napoleon) docstring."""
         in_block = False
         res = []
         lines = (
@@ -438,7 +482,6 @@ class Struct(_Source):
             field.dump(indent_lvl + 1)
 
     def docs_in_sphinx_format(self) -> str:
-        """Return Sphinx (Napoleon) docstring."""
         in_block = False
         res = []
         lines = (
@@ -527,7 +570,6 @@ class Union(_Source):
             field.dump(indent_lvl + 1)
 
     def docs_in_sphinx_format(self) -> str:
-        """Return Sphinx (Napoleon) docstring."""
         return self.docs
 
 
@@ -625,7 +667,6 @@ class Func(_Source):
         return s
 
     def docs_in_sphinx_format(self, first=0) -> str:
-        """Return Sphinx (Napoleon) docstring."""
         b = []
         heads = []
         out = []
@@ -780,15 +821,18 @@ class Par(object):
 
     def __init__(self, name, type, constness):
         """
-        constness:  a list of bools where each index refers to the constness
-                    of that level of indirection.
-                        [0] no indirection: is the value const?
-                        [1] pointer to value: is this pointer const?
-                        [2] pointer to pointer: is this pointer const?
-                        ... rare to see more than two levels of indirection
+        :param name: A string containing the name of the parameter.
+        :param type: A string containing the C type of the parameter.
+        :param constness:
+            A list of bools where each index refers to the constness
+            of that level of indirection:
+            * [0] no indirection: is the value const?
+            * [1] pointer to value: is this pointer const?
+            * [2] pointer to pointer: is this pointer const?
+            * ... rare to see more than two levels of indirection
         """
         self.name = name
-        self.type = type  # C type
+        self.type = type
         self.constness = constness
 
     def __eq__(self, other: object) -> bool:
@@ -821,7 +865,7 @@ class Par(object):
     # Parameter passing flags for types.  This shouldn't
     # be hardcoded this way, but works all right for now.
     def flags(self, out=(), default=None):
-        """Return parameter flags tuple.
+        """Return the parameter flags tuple.
 
         Return the parameter flags tuple for the given parameter
         type and name and a list of parameter names documented as
@@ -945,11 +989,13 @@ class Parser(object):
         # self.dump("callbacks")
 
     def bindings_version(self):
-        """Return the bindings version number.
+        """Returns the bindings version number.
 
         It is built from the VLC version number and the generator
         version number as:
-        vlc_major.vlc_minor.(1000 * vlc_micro + 100 * generator_major + generator_minor)
+
+            vlc_major.vlc_minor.(1000 * vlc_micro + 100 * generator_major + generator_minor)
+
         """
         major, minor = [int(i) for i in __version__.split(".")]
         bindings_version = "%s%d%02d" % (self.version, major, minor)
@@ -974,14 +1020,14 @@ class Parser(object):
             a.dump()
         sys.stderr.write(_NL_)
 
-    def parse_doxygen_comment(self, tsnode: Node):
+    def parse_doxygen_comment(self, tsnode: Node) -> str | None:
         """
-        @param tsnode: A Node for which to get the associated Doxygen doc
-        comment.
-        @return: A string containing the comment if it exists, None otherwise.
+        :param tsnode: A :class:`Node` for which to get the associated Doxygen doc comment.
+
+        :return: A string containing the (cleaned) comment if it exists, None otherwise.
         """
         if tsnode.prev_sibling is not None and tsnode.prev_sibling.type == "comment":
-            docs = get_tsnode_text(tsnode.prev_sibling)
+            docs = tsnode_text(tsnode.prev_sibling)
 
             # Preprocessing can cause file documentation to be placed on top of an
             # enum, say, or any other item.
@@ -1005,17 +1051,20 @@ class Parser(object):
             if r"\file" in docs or "@file" in docs:
                 return None
 
-            docs = clean_doxygen_comment_block(docs)
+            docs = clean_doxygen_comment(docs)
             return docs
         return None
 
     def parse_type(self, tsnode: Node):
         """
-        @param tsnode: A Node that is expected to have a direct
-        child named _type_ (otherwise the function will throw).
-        @return: A string representation of the type of `tsnode`,
-        a 'constness' list of the type, and the last non-pointer
-        declaration node encountered (in a tuple, in this order).
+        :param tsnode:
+            A :class:`Node` that is expected to have a
+            direct child named ``type`` (otherwise the function will throw).
+
+        :return:
+            A string representation of the type of *tsnode*,
+            a 'constness' list of the type, and the last non-pointer
+            declaration node encountered (in a tuple, in this order).
         """
         type_node = tsnode.child_by_field_name("type")
         assert (
@@ -1023,15 +1072,15 @@ class Parser(object):
         ), "Expected `tsnode` to have a direct child named _type_."
 
         constness = []
-        t = get_tsnode_text(type_node)
+        t = tsnode_text(type_node)
         if (
             type_node.prev_sibling is not None
             and type_node.prev_sibling.type == "type_qualifier"
-            and get_tsnode_text(type_node.prev_sibling) == "const"
+            and tsnode_text(type_node.prev_sibling) == "const"
         ) or (
             type_node.next_sibling is not None
             and type_node.next_sibling.type == "type_qualifier"
-            and get_tsnode_text(type_node.next_sibling) == "const"
+            and tsnode_text(type_node.next_sibling) == "const"
         ):
             constness.append(True)
         else:
@@ -1044,9 +1093,9 @@ class Parser(object):
         ]:
             t += "*"
             constness.append(False)
-            type_qualifiers = get_children_by_type(decl_node, "type_qualifier")
+            type_qualifiers = children_by_type(decl_node, "type_qualifier")
             if len(type_qualifiers) > 0:
-                type_qualifier_text = get_tsnode_text(type_qualifiers[0])
+                type_qualifier_text = tsnode_text(type_qualifiers[0])
                 if type_qualifier_text == "const":
                     constness[-1] = True
             decl_node = decl_node.child_by_field_name("declarator")
@@ -1058,13 +1107,19 @@ class Parser(object):
 
     def parse_func_pointer(self, tsnode: Node):
         """
-        @param tsnode: A Node that is expected to be a field_declaration
-        with a subtree matching:
-        (function_declarator
-            declarator: (parenthesized_declarator (pointer_declarator))
-            parameters: (parameter_list))
-        @return: A Func representing a function pointer if `tsnode`
-        matches the above query, or None otherwise.
+        :param tsnode:
+            A :class:`Node` that is expected to be a ``field_declaration``
+            with a subtree matching:
+
+            .. code-block::
+
+                (function_declarator
+                    declarator: (parenthesized_declarator (pointer_declarator))
+                    parameters: (parameter_list))
+
+        :return:
+            A :class:`Func` representing a function pointer if *tsnode*
+            matches the above query, or None otherwise.
         """
         query_func_p_str = """
 (function_declarator
@@ -1099,7 +1154,7 @@ declarator: (parenthesized_declarator
         # We can't enforce exactly one match for the same reason we
         # can't enforce exactly one match for the function
         # pointer query.
-        name = get_tsnode_text(func_id_caps[0][0])
+        name = tsnode_text(func_id_caps[0][0])
 
         type_node = tsnode.child_by_field_name("type")
         assert (
@@ -1115,7 +1170,7 @@ declarator: (parenthesized_declarator
         assert (
             params is not None
         ), "Expected `func_decl` to have a child of name _parameters_."
-        params = get_children_by_type(params, "parameter_declaration")
+        params = children_by_type(params, "parameter_declaration")
         params = [
             p for param in params for p in self.parse_param(param) if p is not None
         ]
@@ -1132,9 +1187,8 @@ declarator: (parenthesized_declarator
         )
 
     def parse_callbacks(self):
-        """Parse header file for callback signature definitions.
-
-        @return: yield a Func instance for each callback signature, unless blacklisted.
+        """
+        :return: A list of :class:`Func` representing callbacks (without blacklisted ones).
         """
         typedef_query = self.C_LANGUAGE.query("""
 (type_definition declarator: [
@@ -1180,7 +1234,7 @@ declarator: (parenthesized_declarator
             assert (
                 func_id_node is not None
             ), "Expected `func_id_node` to not be None. Maybe `typedef_node` doesn't have the structure assumed in `func_id_query`?"
-            name = get_tsnode_text(func_id_node)
+            name = tsnode_text(func_id_node)
 
             # Make the assumption that every function of interest starts with 'libvlc_'.
             # Because the code parsed is the output of vlc.h's preprocessing, some signatures
@@ -1207,7 +1261,7 @@ declarator: (parenthesized_declarator
             assert (
                 params_nodes is not None
             ), "Expected `func_decl_node` to have a child of name _parameters_. Wrong query? Wrong field name for child?"
-            params_decls = get_children_by_type(params_nodes, "parameter_declaration")
+            params_decls = children_by_type(params_nodes, "parameter_declaration")
             params = [
                 p
                 for param_decl in params_decls
@@ -1254,11 +1308,11 @@ declarator: (parenthesized_declarator
             if parent is not None and parent.type == "type_definition":
                 type_id = parent.child_by_field_name("declarator")
                 if type_id is not None and not type_id.is_missing:
-                    name = get_tsnode_text(type_id)
+                    name = tsnode_text(type_id)
             else:
                 type_id = node.child_by_field_name("name")
                 if type_id is not None:
-                    name = get_tsnode_text(type_id)
+                    name = tsnode_text(type_id)
             # ignore if anonymous enum
             if name == "":
                 continue
@@ -1302,7 +1356,7 @@ declarator: (parenthesized_declarator
                 assert (
                     vname is not None
                 ), "Expected `child` to have a child of name _name_. `child` is not of type _enumerator_? Parsing malformed C code?"
-                vname = get_tsnode_text(vname)
+                vname = tsnode_text(vname)
 
                 vdocs = self.parse_doxygen_comment(child)
                 if vdocs is None:
@@ -1310,7 +1364,7 @@ declarator: (parenthesized_declarator
 
                 vvalue = child.child_by_field_name("value")
                 if vvalue is not None:
-                    vvalue = get_tsnode_text(vvalue)
+                    vvalue = tsnode_text(vvalue)
 
                     # Handle bit-shifted values.
                     # Bit-shifted characters cannot be directly evaluated in Python.
@@ -1345,23 +1399,24 @@ declarator: (parenthesized_declarator
         return enums
 
     def parse_param(self, tsnode: Node):
-        """Returns a list of Par, Struct, Union and/or None.
+        """Returns a list of :class:`Par`, :class:`Struct`, :class:`Union` and/or None
+        representing the parameters of *tsnode*.
 
-        When `tsnode` is a parameter_declaration, the list returned will only contain
-        one element being an instance of Par or Func.
+        When *tsnode* is a ``parameter_declaration``, the list returned will only contain
+        one element being an instance of :class:`Par` or :class:`Func`.
 
-        When `tsnode` is a field_declaration, the element can be a Struct/Union
-        as well.
-        Furthermore, if it happens to be an anonymous Struct/Union, a list containing
-        the Struct/Union's fields will be returned instead of a list containing the
-        Struct/Union.
+        When *tsnode* is a ``field_declaration``, the element can be a class:`Struct`/:class:`Union` as well.
+        Furthermore, if it happens to be an anonymous class:`Struct`/:class:`Union`, a list containing
+        the class:`Struct`/:class:`Union`'s fields will be returned instead of a list containing the
+        class:`Struct`/:class:`Union`.
 
-        None can be part of the list only when the Parser option `with_extra` is False.
+        None can be part of the list only when the Parser option *with_extra* is False.
         In this case, nested structs/unions and function pointers as parameter/field are
         ignored, meaning None is returned instead.
 
-        @param tsnode: A Node of type parameter_declaration or field_declaration.
-        @return: A list of Par, Struct, Union and/or None
+        :param tsnode: A :class:`Node` of type ``parameter_declaration`` or ``field_declaration``.
+
+        :return: A list of :class:`Par`, :class:`Struct`, :class:`Union` and/or None
         """
         accepted_node_types = [
             "parameter_declaration",
@@ -1405,20 +1460,25 @@ declarator: (parenthesized_declarator
 
             # Otherwise assume that the first non-pointer declaration is the declaration
             # for the identifier/field_identifier, or is None.
-            name = get_tsnode_text(decl_node)
+            name = tsnode_text(decl_node)
 
         return [Par(name, t, constness)]
 
     def parse_nested_struct(self, tsnode: Node):
-        """Returns a Struct representing a nested structure if `tsnode`
+        """Returns a :class:`Struct` representing a nested structure if *tsnode*
         has the right structure, or None otherwise.
 
-        @param tsnode: An instance of Node that is expected to match:
-        (field_declaration
-            type:
-                (struct_specifier body: (field_declaration_list)))
-        @return: A Struct if `tsnode` matches the above query, or
-        None otherwise.
+        :param tsnode:
+            An instance of Node that is expected to match:
+
+            .. code-block::
+
+                (field_declaration
+                    type:
+                        (struct_specifier body: (field_declaration_list)))
+
+        :return:
+            A :class:`Struct` if *tsnode* matches the above query or None otherwise.
         """
         query_str = """
 (field_declaration
@@ -1452,11 +1512,11 @@ declarator: (parenthesized_declarator
             docs = ""
 
         declarator = tsnode.child_by_field_name("declarator")
-        name = "" if declarator is None else get_tsnode_text(declarator)
+        name = "" if declarator is None else tsnode_text(declarator)
 
         fields = [
             f
-            for decl in get_children_by_type(body, "field_declaration")
+            for decl in children_by_type(body, "field_declaration")
             for f in self.parse_param(decl)
             if f is not None
         ]
@@ -1471,15 +1531,20 @@ declarator: (parenthesized_declarator
         )
 
     def parse_nested_union(self, tsnode: Node):
-        """Returns a Union representing a nested union if `tsnode`
+        """Returns a :class:`Union` representing a nested union if *tsnode*
         has the right structure, or None otherwise.
 
-        @param tsnode: An instance of Node that is expected to match:
-        (field_declaration
-            type:
-                (union_specifier body: (field_declaration_list)))
-        @return: A Union if `tsnode` matches the above query, or
-        None otherwise.
+        :param tsnode:
+            An instance of Node that is expected to match:
+
+            .. code-block::
+
+                (field_declaration
+                    type:
+                        (union_specifier body: (field_declaration_list)))
+
+        :return:
+            A :class:`Union` if *tsnode* matches the above query or None otherwise.
         """
         query_str = """
 (field_declaration
@@ -1513,11 +1578,11 @@ declarator: (parenthesized_declarator
             docs = ""
 
         declarator = tsnode.child_by_field_name("declarator")
-        name = "" if declarator is None else get_tsnode_text(declarator)
+        name = "" if declarator is None else tsnode_text(declarator)
 
         fields = [
             f
-            for decl in get_children_by_type(body, "field_declaration")
+            for decl in children_by_type(body, "field_declaration")
             for f in self.parse_param(decl)
             if f is not None
         ]
@@ -1532,11 +1597,6 @@ declarator: (parenthesized_declarator
         )
 
     def parse_structs(self):
-        """Parse header file for struct definitions.
-
-        @return: yield a Struct instance for each struct.
-        """
-
         struct_query = self.C_LANGUAGE.query("(struct_specifier) @struct")
         struct_captures = struct_query.captures(self.code_tstree.root_node)
 
@@ -1555,11 +1615,11 @@ declarator: (parenthesized_declarator
             if parent is not None and parent.type == "type_definition":
                 type_id = parent.child_by_field_name("declarator")
                 if type_id is not None and not type_id.is_missing:
-                    name = get_tsnode_text(type_id)
+                    name = tsnode_text(type_id)
             else:
                 type_id = node.child_by_field_name("name")
                 if type_id is not None:
-                    name = get_tsnode_text(type_id)
+                    name = tsnode_text(type_id)
             # ignore if anonymous struct
             if name == "":
                 continue
@@ -1580,7 +1640,7 @@ declarator: (parenthesized_declarator
             if body is not None:
                 fields = [
                     f
-                    for decl in get_children_by_type(body, "field_declaration")
+                    for decl in children_by_type(body, "field_declaration")
                     for f in self.parse_param(decl)
                     if f is not None
                 ]
@@ -1598,9 +1658,8 @@ declarator: (parenthesized_declarator
         return structs
 
     def parse_funcs(self):
-        """Parse header file for public function definitions.
-
-        @return: yield a Func instance for each function, unless blacklisted.
+        """
+        :return: A list of :class:`Func` representing the top-level functions (without blacklisted ones).
         """
         decl_query = self.C_LANGUAGE.query("(declaration) @decl")
         decl_captures = decl_query.captures(self.code_tstree.root_node)
@@ -1617,7 +1676,7 @@ declarator: (parenthesized_declarator
             assert (
                 func_id_node is not None
             ), "Expected `func_decl_node` to have a child of name _declarator_. Wrong query? Typo for child field name?"
-            name = get_tsnode_text(func_id_node)
+            name = tsnode_text(func_id_node)
 
             # Make the assumption that every function of interest starts with 'libvlc_'.
             # Because the code parsed is the output of vlc.h's preprocessing, some signatures
@@ -1638,10 +1697,10 @@ declarator: (parenthesized_declarator
 
             _deprecated = False
             in_api = False
-            attributes = get_children_by_type(decl_node, "attribute_specifier")
-            ms_declspecs = get_children_by_type(decl_node, "ms_declspec_modifier")
+            attributes = children_by_type(decl_node, "attribute_specifier")
+            ms_declspecs = children_by_type(decl_node, "ms_declspec_modifier")
             for a in attributes + ms_declspecs:
-                a_txt = get_tsnode_text(a)
+                a_txt = tsnode_text(a)
                 if is_deprecated_attr(a_txt):
                     _deprecated = True
                 if is_public_attr(a_txt):
@@ -1658,7 +1717,7 @@ declarator: (parenthesized_declarator
             assert (
                 params_nodes is not None
             ), "Expected `func_decl_node` to have a child of name _parameters_. Wrong query? Typo for child field name?"
-            params_decls = get_children_by_type(params_nodes, "parameter_declaration")
+            params_decls = children_by_type(params_nodes, "parameter_declaration")
             params = [
                 p
                 for param_decl in params_decls
@@ -1700,10 +1759,10 @@ declarator: (parenthesized_declarator
             "LIBVLC_VERSION_EXTRA": -1,
         }
         for macro, _ in macros:
-            name = get_tsnode_text(macro.child_by_field_name("name"))
+            name = tsnode_text(macro.child_by_field_name("name"))
             if name in version_numbers:
                 version_numbers[name] = int(
-                    get_tsnode_text(macro.child_by_field_name("value"))[1:-1]
+                    tsnode_text(macro.child_by_field_name("value"))[1:-1]
                 )
 
         if (
@@ -1747,7 +1806,7 @@ class LnKind(enum.Enum):
 
 
 class _Generator(object):
-    """Base class."""
+    """Generator base class."""
 
     comment_line = "#"  # Python
     file = None
@@ -1768,11 +1827,7 @@ class _Generator(object):
             self.name_to_classname(cb)
 
     def check_types(self):
-        """Make sure that all types are properly translated.
-
-        @note: This method must be called B{after} C{convert_enums},
-        since the latter populates C{type2class} with enum class names.
-        """
+        """Make sure that all types are properly translated."""
         e = _nerrors
         for f in self.parser.funcs:
             if f.type not in self.type2class:
@@ -1795,9 +1850,9 @@ class _Generator(object):
 
     def name_to_classname(self, item):
         """Puts the Python class name corresponding to the
-        `item`'s name in `self.type2class`.
+        *item*'s name in ``self.type2class``.
 
-        @param: An `Enum`, `Struct`, `Union` or `Func`.
+        :param item: An :class:`Enum`, :class:`Struct`, :class:`Union` or :class:`Func`.
         """
         if item.name in self.type2class:
             # Do not override predefined values
@@ -1825,7 +1880,7 @@ class _Generator(object):
                 sys.stderr.write(s.join(n + sorted("%s: %s\n" % t for t in d.items())))
 
     def add_sphinx_cross_refs(self, docs, striprefix=None):
-        """Make Sphinx cross references for functions, methods and classes in `docs`."""
+        """Make Sphinx cross references for functions, methods and classes in *docs*."""
 
         def _L(m):  # re.sub callback
             t = m.group(0).replace("()", "")
@@ -1926,8 +1981,7 @@ class PythonGenerator(_Generator):
 
     type_re = re.compile(r"libvlc_(.+?)(_t)?$")  # Python
 
-    # C-type to Python/ctypes type conversion.  Note, enum
-    # type conversions are generated (cf convert_enums).
+    # C-type to Python/ctypes type conversion.
     type2class = {
         "libvlc_audio_output_t*": "ctypes.POINTER(AudioOutput)",
         "libvlc_event_t*": "ctypes.c_void_p",
@@ -2049,9 +2103,8 @@ class PythonGenerator(_Generator):
     )
 
     def __init__(self, parser: Parser):
-        """New instance.
-
-        @param parser: a L{Parser} instance.
+        """
+        :param parser: a :class:`Parser` instance.
         """
         _Generator.__init__(self, parser)
 
@@ -2165,9 +2218,9 @@ class PythonGenerator(_Generator):
     def generate_func_pointer_decorator(self, pf: Func, indent_lvl: int = 0):
         """Generates a declarator for a struct/union field that is a function pointer.
 
-        @param pf: A field that is a function pointer (instance of Func).
-        @param indent_lvl: A positive integer representing how many indentations
-        should precede each line generated.
+        :param pf: A field that is a function pointer (instance of :class:`Func`).
+        :param indent_lvl: A positive integer representing how many indentations
+            should precede each line generated.
         """
         indent = _INDENT_ * indent_lvl
         name = self.class4(pf.name)
@@ -2185,11 +2238,11 @@ class PythonGenerator(_Generator):
         self.output("")
 
     def generate_struct(self, struct: Struct, indent_lvl: int = 0):
-        """Outputs a binding for `struct`.
+        """Outputs a binding for *struct*.
 
-        @param struct: The `Struct` instance for which to output the binding.
-        @param indent_lvl: A positive integer representing how many indentations
-        should precede each line generated.
+        :param struct: The :class:`Struct` instance for which to output the binding.
+        :param indent_lvl: A positive integer representing how many indentations
+            should precede each line generated.
         """
         indent = _INDENT_ * indent_lvl
         cls = self.class4(struct.name)
@@ -2267,11 +2320,11 @@ class PythonGenerator(_Generator):
             self.output(f"{indent}){_NL_}")
 
     def generate_union(self, union: Union, indent_lvl: int = 0):
-        """Outputs a binding for `union`.
+        """Outputs a binding for *union*.
 
-        @param union: The `Union` instance for which to output the binding.
-        @param indent_lvl: A positive integer representing how many indentations
-        should precede each line generated.
+        :param union: The :class:`Union` instance for which to output the binding.
+        :param indent_lvl: A positive integer representing how many indentations
+            should precede each line generated.
         """
         indent = _INDENT_ * indent_lvl
         cls = self.class4(union.name)
@@ -2328,9 +2381,9 @@ class PythonGenerator(_Generator):
         self.output(f"{indent}){_NL_}")
 
     def generate_callback_class(self, cb: Func):
-        """Outputs a class for `cb`.
+        """Outputs a class for *cb*.
 
-        @param cb: The `Func` instance for which to output a corresponding class.
+        :param cb: The :class:`Func` instance for which to output a corresponding class.
         """
         if cb.name in _blacklist:
             return
@@ -2458,12 +2511,12 @@ class PythonGenerator(_Generator):
 
         It is possible to override methods definitions in classes.
 
-        @param override: the C{override.py} file name.
+        :param override: the ``override.py`` file name.
 
-        @return: a tuple (codes, methods, docstrs) of 3 dicts
-        containing the source code, the method names and the
-        class-level doc strings for each of the classes defined
-        in the B{override} file.
+        :return: a tuple (codes, methods, docstrs) of 3 dicts
+            containing the source code, the method names and the
+            class-level doc strings for each of the classes defined
+            in the *override* file.
         """
         codes = {}
         k, v = None, []
@@ -2493,7 +2546,7 @@ class PythonGenerator(_Generator):
         return Overrides(codes=codes, methods=methods, docstrs=docstrs)
 
     def save(self, path=None, format=True):
-        """Write Python bindings to a file or C{stdout}."""
+        """Write Python bindings to a file or ``stdout``."""
         if format:
             # Write to temporary file
             tmp_path = os.path.join(BASEDIR, ".tmp")
@@ -2591,9 +2644,8 @@ class JavaGenerator(_Generator):
     }
 
     def __init__(self, parser: Parser):
-        """New instance.
-
-        @param parser: a L{Parser} instance.
+        """
+        :param parser: a :class:`Parser` instance.
         """
         _Generator.__init__(self, parser)
         self.check_types()
@@ -2704,7 +2756,7 @@ def preprocess(vlc_h: Path) -> Path:
 def prepare_package(output):
     """Prepare a python-vlc package for the designated module.
 
-    output is the location of the generated vlc.py file.
+    :param output: the location of the generated ``vlc.py`` file.
     """
     # Parse the module for VLC version number
     bindings_version = None
