@@ -1849,6 +1849,9 @@ class _Generator(object):
     def generate_structs(self):
         raise TypeError("must be overloaded")
 
+    def generate_funcs(self):
+        raise TypeError("must be overloaded")
+
     def generate_callbacks(self):
         raise TypeError("must be overloaded")
 
@@ -2088,7 +2091,7 @@ class PythonGenerator(_Generator):
                 self.output(f"{indent}{_INDENT_}{line}")
             self.output(f"{indent}{_INDENT_}'''")
 
-    def generate_ctypes(self):
+    def generate_funcs(self):
         """Generate a ctypes decorator for all functions."""
         for f in self.parser.funcs:
             name = f.name
@@ -2495,7 +2498,7 @@ class PythonGenerator(_Generator):
             self.insert_code(
                 os.path.join(TEMPLATEDIR, "header.py"), generate_items=True
             )
-            self.generate_ctypes()
+            self.generate_funcs()
             self.unwrapped()
             self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
             self.outclose()
@@ -2538,7 +2541,7 @@ class PythonGenerator(_Generator):
             self.insert_code(
                 os.path.join(TEMPLATEDIR, "header.py"), generate_items=True
             )
-            self.generate_ctypes()
+            self.generate_funcs()
             self.unwrapped()
             self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
             self.outclose()
