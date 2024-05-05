@@ -1959,6 +1959,8 @@ class _Generator(object):
 
     def output(self, text, nl=0, nt=1):
         """Write to current output file."""
+        assert self.file is not None, "Can't output, self.file is None."
+
         if nl:  # leading newlines
             self.file.write(_NL_ * nl)
         self.file.write(text)
@@ -2586,7 +2588,10 @@ class PythonGenerator(_Generator):
 
             # Write to the actual `path`
             self.outopen(path or "-")
-            self.insert_code(tmp_path)
+            tmp = opener(tmp_path)
+            assert self.file is not None, "Can't write to path, self.file is None."
+            self.file.write(tmp.read())
+            tmp.close()
             self.outclose()
 
             # Delete temporary file
