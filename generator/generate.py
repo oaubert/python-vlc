@@ -1855,17 +1855,17 @@ class _Generator(object):
     def generate_wrappers(self):
         raise TypeError("must be overloaded")
 
-    def insert_code(self, source, genums=False):
+    def insert_code(self, source, generate_items: bool = False):
         """Include code from source file."""
         f = opener(source)
         for t in f:
-            if genums and t.startswith(_GENERATED_ENUMS_):
+            if generate_items and t.startswith(_GENERATED_ENUMS_):
                 self.generate_enums()
-            elif genums and t.startswith(_GENERATED_STRUCTS_):
+            elif generate_items and t.startswith(_GENERATED_STRUCTS_):
                 self.generate_structs()
-            elif genums and t.startswith(_GENERATED_CALLBACKS_):
+            elif generate_items and t.startswith(_GENERATED_CALLBACKS_):
                 self.generate_callbacks()
-            elif genums and t.startswith(_GENERATED_WRAPPERS_):
+            elif generate_items and t.startswith(_GENERATED_WRAPPERS_):
                 self.generate_wrappers()
             elif t.startswith(_BUILD_DATE_):
                 v = self.parser.version or _NA_
@@ -2492,7 +2492,9 @@ class PythonGenerator(_Generator):
             # Write to temporary file
             tmp_path = os.path.join(BASEDIR, ".tmp")
             self.outopen(tmp_path)
-            self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), genums=True)
+            self.insert_code(
+                os.path.join(TEMPLATEDIR, "header.py"), generate_items=True
+            )
             self.generate_ctypes()
             self.unwrapped()
             self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
@@ -2533,7 +2535,9 @@ class PythonGenerator(_Generator):
             os.remove(tmp_path)
         else:
             self.outopen(path or "-")
-            self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), genums=True)
+            self.insert_code(
+                os.path.join(TEMPLATEDIR, "header.py"), generate_items=True
+            )
             self.generate_ctypes()
             self.unwrapped()
             self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
