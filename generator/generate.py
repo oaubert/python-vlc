@@ -80,21 +80,9 @@ def opener(name, mode="r"):
 
 
 # Functions not wrapped/not referenced
-_blacklist = {
-    # Deprecated functions
-    "libvlc_audio_output_set_device_type": "",
-    "libvlc_audio_output_get_device_type": "",
-    "libvlc_set_exit_handler": "",
-    "libvlc_printerr": "",
-    # Waiting for some structure wrapping
-    "libvlc_dialog_set_callbacks": "",
-    # Its signature is a mess
-    "libvlc_video_direct3d_set_resize_cb": "",
-    "libvlc_video_output_set_resize_cb": "",
-    # It depends on the previous one
-    "libvlc_video_direct3d_set_callbacks": "",
-    "libvlc_video_set_output_callbacks": "",
-}
+_blacklist = {"libvlc_set_exit_handler": ""}
+# Deprecated functions (their names)
+_deprecated_funcs = []
 
 # Set of functions that return a string that the caller is
 # expected to free.
@@ -1690,24 +1678,27 @@ declarator: (parenthesized_declarator
             ), "Expected `decl_node` to have a child of name _type_."
             return_type, _, _ = self.parse_type(decl_node)
 
-            # Ignore if in blacklist
-            if name in _blacklist:
-                _blacklist[name] = return_type
-                continue
-
-            _deprecated = False
+            deprecated = False
             in_api = False
             attributes = children_by_type(decl_node, "attribute_specifier")
             ms_declspecs = children_by_type(decl_node, "ms_declspec_modifier")
             for a in attributes + ms_declspecs:
                 a_txt = tsnode_text(a)
                 if is_deprecated_attr(a_txt):
-                    _deprecated = True
+                    deprecated = True
                 if is_public_attr(a_txt):
                     in_api = True
 
             if not in_api:
                 continue
+
+            # Ignore if in blacklist
+            if name in _blacklist:
+                _blacklist[name] = return_type
+                continue
+
+            if deprecated:
+                _deprecated_funcs.append(name)
 
             docs = self.parse_doxygen_comment(decl_node)
             if docs is None:
@@ -1968,14 +1959,18 @@ class _Generator(object):
             self.file.write(_NL_ * nt)
 
     def unwrapped(self):
-        """Report the unwrapped and blacklisted functions."""
+        """Report the unwrapped, deprecated and blacklisted functions."""
         b = [f for f, t in _blacklist.items() if t]
         u = [f.name for f in self.parser.funcs if not f.wrapped]
         c = self.comment_line
-        for f, t in ((b, "blacklisted"), (u, "not wrapped as methods")):
+        for f, t in (
+            (b, "blacklisted"),
+            (_deprecated_funcs, "deprecated"),
+            (u, "not wrapped as methods"),
+        ):
             if f:
                 self.output("%s %d function(s) %s:" % (c, len(f), t), nl=1)
-                self.output(_NL_.join("%s  %s" % (c, f) for f in sorted(f)))
+                self.output(_NL_.join("%s    %s" % (c, f) for f in sorted(f)))
 
 
 class PythonGenerator(_Generator):
