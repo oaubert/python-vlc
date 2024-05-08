@@ -159,6 +159,35 @@ def strip_whitespaces(seq):
     return seq[start : end + 1]
 
 
+def snake_to_camel_case(name: str) -> str:
+    """Convert snake_case to camelCase.
+
+    :param name: The string for which to convert the case.
+        The assumption is that it is written in snake case.
+
+    :return: *name* written in camel case.
+    """
+    nl_underscores = 0
+    start = 0
+    while start < len(name) and name[start] == "_":
+        nl_underscores += 1
+        start += 1
+
+    nt_underscores = 0
+    end = len(name) - 1
+    while end >= 0 and name[end] == "_":
+        nt_underscores += 1
+        end -= 1
+
+    return (
+        (nl_underscores * "_")
+        + re.sub(
+            r"_(.)", lambda match: match.group(1).upper(), name[start : end + 1].lower()
+        )
+        + (nt_underscores * "_")
+    )
+
+
 def errorf(fmt, *args):
     r"""Print error to stderr.
 

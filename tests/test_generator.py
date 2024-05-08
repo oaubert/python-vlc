@@ -40,6 +40,7 @@ from generator.generate import (
     class_re,
     clean_doxygen_comment,
     def_re,
+    snake_to_camel_case,
     strip_whitespaces,
 )
 
@@ -1119,6 +1120,22 @@ played
 
         for input, expected_output in test_cases:
             self.assertEqual(clean_doxygen_comment(input), expected_output)
+
+    def test_snake_to_camel_case(self):
+        test_cases = [
+            ("", ""),
+            ("one", "one"),
+            ("one234", "one234"),
+            ("_one", "_one"),
+            ("__one", "__one"),
+            ("one_", "one_"),
+            ("one__", "one__"),
+            ("one_two_three_four", "oneTwoThreeFour"),
+            ("One_Two_Three_Four", "oneTwoThreeFour"),
+        ]
+
+        for input, expected_output in test_cases:
+            self.assertEqual(snake_to_camel_case(input), expected_output)
 
 
 if __name__ == "__main__":
