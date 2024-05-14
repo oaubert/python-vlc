@@ -80,7 +80,7 @@ def opener(name, mode="r"):
 
 
 # Functions not wrapped/not referenced
-_blacklist = {"libvlc_set_exit_handler": ""}
+_blacklist = {}
 # Deprecated functions (their names)
 _deprecated_funcs = []
 
@@ -649,7 +649,11 @@ class Func(_Source):
         Ctypes returns all output parameter values as part of
         the returned tuple.
         """
-        return [p for p in self.pars[first:] if p.flags(self.out)[0] != Flag.Out]
+        return [
+            p
+            for p in self.pars[first:]
+            if isinstance(p, Func) or p.flags(self.out)[0] != Flag.Out
+        ]
 
     def check(self):
         """Perform some consistency checks."""
@@ -831,6 +835,17 @@ class Func(_Source):
             res += _NL_ * 2
             res += _NL_.join(self.tails)
         return res
+
+    def flags(self, out=(), default=None):
+        """Returns the flags tuple (in case this Func is a function parameter)."""
+        f = Flag.In
+        if self.name in out:
+            f = Flag.Out
+
+        if default is None:
+            return (f,)  # 1-tuple
+        else:  # see ctypes 15.16.2.4 Function prototypes
+            return f, self.name, default
 
 
 class Par(object):
@@ -2178,6 +2193,24 @@ class PythonGenerator(_Generator):
         for f in self.parser.funcs:
             name = f.name
 
+            # make decorators for parameters that are function pointers
+            pfs = {}
+            for p in f.pars:
+                if isinstance(p, Func):
+                    decorator_name = snake_to_camel_case(f"{name}_{p.name}")
+                    if decorator_name[
+                        0
+                    ].islower():  # decorator_name shouldn't be empty, so no check
+                        decorator_name = (
+                            decorator_name[0].capitalize() + decorator_name[1:]
+                        )
+
+                    pfs[p.name] = decorator_name
+
+                    self.generate_func_pointer_decorator(
+                        p, replacement_name=decorator_name
+                    )
+
             # arg names, excluding output args
             args = ", ".join(f.args())
 
@@ -2187,7 +2220,12 @@ class PythonGenerator(_Generator):
                 flags += ","
 
             # arg classes
-            types = [self.class4(p.type, p.flags(f.out)[0]) for p in f.pars]
+            types = [
+                self.class4(p.type, p.flags(f.out)[0])
+                if p.name not in pfs
+                else pfs[p.name]
+                for p in f.pars
+            ]
 
             # result type
             rtype = self.class4(f.type)
@@ -2241,7 +2279,9 @@ class PythonGenerator(_Generator):
             t = [f"{cls}.{v.name} = {cls}({v.value})" for v in e.vals]
             self.output(_NL_.join(sorted(t)), nt=2)
 
-    def generate_func_pointer_decorator(self, pf: Func, indent_lvl: int = 0):
+    def generate_func_pointer_decorator(
+        self, pf: Func, indent_lvl: int = 0, replacement_name: str = ""
+    ):
         """Generates a declarator for a struct/union field that is a function pointer.
 
         :param pf: A field that is a function pointer (instance of :class:`Func`).
@@ -2249,7 +2289,7 @@ class PythonGenerator(_Generator):
             should precede each line generated.
         """
         indent = _INDENT_ * indent_lvl
-        name = self.class4(pf.name)
+        name = replacement_name if replacement_name else self.class4(pf.name)
         # return value and arg classes
         types = ", ".join(
             [self.class4(pf.type)]
@@ -2258,9 +2298,9 @@ class PythonGenerator(_Generator):
 
         docs = self.add_sphinx_cross_refs(pf.docs_in_sphinx_format())
 
-        self.output(f"{indent}{_INDENT_}{name} = ctypes.CFUNCTYPE({types})")
+        self.output(f"{indent}{name} = ctypes.CFUNCTYPE({types})")
         if docs:
-            self.output(f"{indent}{_INDENT_}{name}.__doc__ = '''{docs}'''")
+            self.output(f"{indent}{name}.__doc__ = '''{docs}'''")
         self.output("")
 
     def generate_struct(self, struct: Struct, indent_lvl: int = 0):
@@ -2288,7 +2328,7 @@ class PythonGenerator(_Generator):
                 self.generate_union(field, indent_lvl + 1)
             elif isinstance(field, Func):
                 self.name_to_classname(field)
-                self.generate_func_pointer_decorator(field, indent_lvl)
+                self.generate_func_pointer_decorator(field, indent_lvl + 1)
 
         self.output(f"{indent}{_INDENT_}pass{_NL_}")
 
@@ -2370,7 +2410,7 @@ class PythonGenerator(_Generator):
                 self.generate_union(field, indent_lvl + 1)
             elif isinstance(field, Func):
                 self.name_to_classname(field)
-                self.generate_func_pointer_decorator(field, indent_lvl)
+                self.generate_func_pointer_decorator(field, indent_lvl + 1)
 
         self.output(f"{indent}{_INDENT_}pass{_NL_}")
 
@@ -2441,7 +2481,7 @@ class PythonGenerator(_Generator):
 {_INDENT_}'''Class holding various method decorators for callback functions.'''
 """)
         for cb in self.parser.callbacks:
-            self.generate_func_pointer_decorator(cb)
+            self.generate_func_pointer_decorator(cb, 1)
 
         self.output("cb = CallbackDecorators")
 
