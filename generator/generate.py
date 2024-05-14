@@ -2303,6 +2303,34 @@ class PythonGenerator(_Generator):
             self.output(f"{indent}{name}.__doc__ = '''{docs}'''")
         self.output("")
 
+    def generate_event_union_wrapper(self, wrapper_classname: str):
+        self.output(
+            f'''class {wrapper_classname}(ctypes.Union):
+    """A wrapper around the nested union :class:`Event.U` for backard compatibility."""
+
+    _fields_ = [
+        ("meta_type", ctypes.c_uint),
+        ("new_child", ctypes.c_uint),
+        ("new_duration", ctypes.c_longlong),
+        ("new_status", ctypes.c_int),
+        ("media", ctypes.c_void_p),
+        ("new_state", ctypes.c_uint),
+        # FIXME: Media instance
+        ("new_cache", ctypes.c_float),
+        ("new_position", ctypes.c_float),
+        ("new_time", ctypes.c_longlong),
+        ("new_title", ctypes.c_int),
+        ("new_seekable", ctypes.c_longlong),
+        ("new_pausable", ctypes.c_longlong),
+        ("new_scrambled", ctypes.c_longlong),
+        ("new_count", ctypes.c_longlong),
+        # FIXME: Skipped MediaList and MediaListView...
+        ("filename", ctypes.c_char_p),
+        ("new_length", ctypes.c_longlong),
+    ]
+            '''
+        )
+
     def generate_struct(self, struct: Struct, indent_lvl: int = 0):
         """Outputs a binding for *struct*.
 
@@ -2337,6 +2365,14 @@ class PythonGenerator(_Generator):
             # Assume the overriding definition contains all code in .codes
             self.output(self.overrides.codes[cls])
         else:
+            # For backward-compatibility, we make a wrapper around
+            # the nested union in 'Event' so as to flatten/ignore
+            # the nested structs within it, as was done in
+            # the harcoded 'EventUnion' before.
+            event_union_wrapper = "EventUnion"
+            if cls == "Event":
+                self.generate_event_union_wrapper(event_union_wrapper)
+
             self.output(f"{indent}{cls}._fields_ = (")
 
             for field in struct.fields:
@@ -2363,6 +2399,9 @@ class PythonGenerator(_Generator):
                 # be applied generally.
                 if cls == "Event" and field.name == "type":
                     field_type = "EventType"
+                # Use wrapper for the nested union for backward compatibility.
+                if cls == "Event" and field.name == "u":
+                    field_type = event_union_wrapper
 
                 # FIXME: For now, ignore field if it's type is one of the wrapper classes.
                 if field_type in self.defined_classes:
