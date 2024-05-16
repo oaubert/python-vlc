@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 import ctypes
 import os
 import unittest
+from time import sleep
 
 try:
     import urllib.parse as urllib  # python3
@@ -51,6 +52,22 @@ except ImportError:
 
 SAMPLE = os.path.join(os.path.dirname(__file__), "samples/sample.mp4")
 print("Checking " + vlc.__file__)
+
+__calls_stats__ = {}
+
+
+def call_stats(f):
+    def wrapper(*args, **kwargs):
+        global __calls_stats__
+        ret = f(*args, **kwargs)
+        if f.__name__ in __calls_stats__:
+            __calls_stats__[f.__name__]["n_calls"] += 1
+            __calls_stats__[f.__name__]["last_return_value"] = ret
+        else:
+            __calls_stats__[f.__name__] = {"n_calls": 1, "last_return_value": ret}
+        return ret
+
+    return wrapper
 
 
 class TestAuxMethods(unittest.TestCase):
@@ -238,19 +255,33 @@ class TestVLCAPI(unittest.TestCase):
     if vlc.__generator_version__ >= "2":
 
         def test_dialog_cbs(self):
-            dialog_cbs = vlc.DialogCbs()
+            global __calls_stats__
+            __calls_stats__ = {}
+
+            class MyData:
+                def __init__(self, data):
+                    self.data = data
 
             @vlc.DialogCbs.PfDisplayError
+            @call_stats
             def display_error_cb(p_data, psz_title, psz_text):
-                pass
+                data = ctypes.cast(
+                    p_data, ctypes.POINTER(ctypes.py_object)
+                ).contents.value.data
+                return data
 
             @vlc.DialogCbs.PfDisplayLogin
+            @call_stats
             def display_login_cb(
                 p_data, p_id, psz_title, psz_text, psz_default_username, b_ask_store
             ):
-                pass
+                data = ctypes.cast(
+                    p_data, ctypes.POINTER(ctypes.py_object)
+                ).contents.value.data
+                return data
 
             @vlc.DialogCbs.PfDisplayQuestion
+            @call_stats
             def display_question_cb(
                 p_data,
                 p_id,
@@ -258,12 +289,16 @@ class TestVLCAPI(unittest.TestCase):
                 psz_text,
                 i_type,
                 psz_cancel,
-                psz_action1,
-                psz_action2,
+                psz_actypesion1,
+                psz_actypesion2,
             ):
-                pass
+                data = ctypes.cast(
+                    p_data, ctypes.POINTER(ctypes.py_object)
+                ).contents.value.data
+                return data
 
             @vlc.DialogCbs.PfDisplayProgress
+            @call_stats
             def display_progress_cb(
                 p_data,
                 p_id,
@@ -273,22 +308,56 @@ class TestVLCAPI(unittest.TestCase):
                 f_position,
                 psz_cancel,
             ):
-                pass
+                data = ctypes.cast(
+                    p_data, ctypes.POINTER(ctypes.py_object)
+                ).contents.value.data
+                return data
 
             @vlc.DialogCbs.PfCancel
+            @call_stats
             def cancel_cb(p_data, p_id):
-                pass
+                data = ctypes.cast(
+                    p_data, ctypes.POINTER(ctypes.py_object)
+                ).contents.value.data
+                return data
 
             @vlc.DialogCbs.PfUpdateProgress
+            @call_stats
             def update_progress_cb(p_data, p_id, f_position, psz_text):
-                pass
+                data = ctypes.cast(
+                    p_data, ctypes.POINTER(ctypes.py_object)
+                ).contents.value.data
+                return data
 
+            inst = vlc.Instance("--vout dummy --aout dummy")
+            dialog_cbs = vlc.DialogCbs()
             dialog_cbs.pf_display_error = display_error_cb
             dialog_cbs.pf_display_login = display_login_cb
             dialog_cbs.pf_display_question = display_question_cb
             dialog_cbs.pf_display_progress = display_progress_cb
             dialog_cbs.pf_cancel = cancel_cb
             dialog_cbs.pf_update_progress = update_progress_cb
+            dialog_cbs_ptr = ctypes.pointer(dialog_cbs)
+            data_str = "some data"
+            data = MyData(data_str)
+            data_obj = ctypes.py_object(data)
+            data_ptr = ctypes.byref(data_obj)
+            vlc.libvlc_dialog_set_callbacks(inst, dialog_cbs_ptr, data_ptr)
+
+            # Check that display_error_cb gets called when an invalid MRL is played.
+            # Other callbacks are hard to trigger progammatically, so we only test the error one.
+            m = inst.media_new_path("invalid_path_that_will_trigger_error_dialog")
+            mp = vlc.MediaPlayer(inst)
+            mp.set_media(m)
+            mp.play()
+            # need some time for the player to launch and the error dialog to get triggered
+            sleep(0.2)
+            mp.release()
+            m.release()
+            inst.release()
+
+            assert __calls_stats__["display_error_cb"]["n_calls"] == 1
+            assert __calls_stats__["display_error_cb"]["last_return_value"] == data_str
 
 
 if __name__ == "__main__":
