@@ -129,10 +129,12 @@ python-vlc is part of the LibVLC Discord Community server. Feel free to come say
 
 ## How to contribute
 
-There are short-terms contributions (reporting and fixing bugs,
-contributing unit tests, contributing examples). A number of libvlc
-functions are currently blacklisted (search for `_blacklist` in the
-generator code), mostly because of their signature complexity. They
-would benefit some work.
+Contributions such as:
+
+- reporting and fixing bugs,
+- contributing unit tests
+- contributing examples
+
+are welcomed!
 
 [^1]: To be exact, it produces a CST: Concrete Syntax Tree.
