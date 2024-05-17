@@ -438,7 +438,7 @@ class Enum(_Source):
                 in_block = True
             elif in_block:
                 if lines[i]:
-                    lines[i] = "\t" + lines[i]
+                    lines[i] = _INDENT_ + lines[i]
                 else:
                     in_block = False
                 res.append(line)
@@ -528,7 +528,7 @@ class Struct(_Source):
                 in_block = True
             elif in_block:
                 if lines[i]:
-                    lines[i] = "\t" + lines[i]
+                    lines[i] = _INDENT_ + lines[i]
                 else:
                     in_block = False
                 res.append(line)
@@ -736,7 +736,27 @@ class Func(_Source):
         while i < len(lines):
             line = lines[i]
 
-            if ":param" in line:
+            if line.startswith("- "):
+                indent = _INDENT_ * 2
+                if block is None:
+                    indent = ""
+                    block = heads
+
+                # Check whether there is a blonk line right before the @code line.
+                # If not, add one (needed for sphinx to properly display the list).
+                if i - 1 >= 0 and lines[i - 1].strip():
+                    block.append("")
+
+                while i < len(lines) and lines[i].strip():
+                    if lines[i].startswith("- "):
+                        block.append(lines[i].strip().replace("- ", indent + "* "))
+                    else:
+                        block.append(indent + _INDENT_ + lines[i].strip())
+                    i += 1
+
+                block.append("")
+                block = None
+            elif ":param" in line:
                 if _OUT_ in line:
                     line = line.replace(_PNTR_, "")
                     out.append(line.split()[1])
@@ -777,7 +797,7 @@ class Func(_Source):
                 while "@endcode" not in line:
                     # add a tab before each non-empty line within the code block
                     if line:
-                        heads.append("\t" + line)
+                        heads.append(_INDENT_ + line)
                     else:
                         heads.append(line)
                     # don't bother to check if out of bounds,
@@ -800,7 +820,7 @@ class Func(_Source):
                 block = heads
             elif block is not None:
                 if line:
-                    block.append("\t" + line)
+                    block.append(_INDENT_ + line)
                 else:
                     block.append(line)
                     block = None
