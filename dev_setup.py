@@ -16,29 +16,11 @@ assert (
 # See https://stackoverflow.com/questions/1854/how-to-identify-which-os-python-is-running-on
 on_windows = os.name == "nt"
 
-python = "python3"
-venv_bin = ".venv/Scripts" if on_windows else ".venv/bin"
-venv_python = f"{venv_bin}/python3"
-pre_commit = f"{venv_bin}/pre-commit"
-cmds = [
-    # See https://git-scm.com/book/en/v2/Git-Tools-Submodules
-    (
-        "Clone vendored C Tree-sitter grammar",
-        ["git", "submodule", "update", "--init", "--recursive"],
-    ),
-    ("Create a virtual environment in .venv", [python, "-m", "venv", ".venv"]),
-    ("Upgrade pip", [venv_python, "-m", "pip", "install", "--upgrade", "pip"]),
-    (
-        "Install dependencies",
-        [venv_python, "-m", "pip", "install", "-r", "requirements.txt"],
-    ),
-    ("Install pre-commit hooks", [pre_commit, "install"]),
-]
 
-for mess, cmd in cmds:
+def run_cmd(mess, cmd):
     print(f"{mess}...", end=" ", flush=True)
     try:
-        proc = run(cmd, stdout=PIPE, stderr=STDOUT, check=True)
+        _proc = run(cmd, stdout=PIPE, stderr=STDOUT, check=True)
     except CalledProcessError as e:
         print()
         print(f"Oops! Command '{" ".join(e.cmd)}' failed.")
@@ -47,5 +29,34 @@ for mess, cmd in cmds:
         print(e.output.decode(), end="", flush=True)
         sys.exit(e.returncode)
     print("Done.", flush=True)
+
+
+python = "python3"
+venv_bin = ".venv/Scripts" if on_windows else ".venv/bin"
+venv_python = f"{venv_bin}/python3"
+pre_commit = f"{venv_bin}/pre-commit"
+
+# Clone Tree-sitter grammar which is a Git submodule of the project
+# See https://git-scm.com/book/en/v2/Git-Tools-Submodules
+run_cmd(
+    "Clone vendored C Tree-sitter grammar",
+    ["git", "submodule", "update", "--init", "--recursive"],
+)
+
+# Create a virtual environment if it doesn't exist
+if not (PROJECT_ROOT / ".venv").is_dir():
+    run_cmd("Create a virtual environment in .venv", [python, "-m", "venv", ".venv"])
+
+# Upgrade venv's pip
+run_cmd("Upgrade pip", [venv_python, "-m", "pip", "install", "--upgrade", "pip"])
+
+# Install dev dependencies
+run_cmd(
+    "Install dependencies",
+    [venv_python, "-m", "pip", "install", "-r", "requirements.txt"],
+)
+
+# Install pre-commit hooks
+run_cmd("Install pre-commit hooks", [pre_commit, "install"])
 
 print("Setup successfull!")
