@@ -3,8 +3,9 @@
 """Script to get going after having cloned the repository."""
 
 import os
+import sys
 from pathlib import Path
-from subprocess import run
+from subprocess import PIPE, STDOUT, CalledProcessError, run
 
 PROJECT_ROOT = Path(__file__).parent
 cwd = Path.cwd()
@@ -36,7 +37,15 @@ cmds = [
 
 for mess, cmd in cmds:
     print(f"{mess}...", end=" ", flush=True)
-    proc = run(cmd, capture_output=True, check=True)
+    try:
+        proc = run(cmd, stdout=PIPE, stderr=STDOUT, check=True)
+    except CalledProcessError as e:
+        print()
+        print(f"Oops! Command '{" ".join(e.cmd)}' failed.")
+        print(f"Got return code {e.returncode}.")
+        print("Here is the command output:")
+        print(e.output.decode(), end="", flush=True)
+        sys.exit(e.returncode)
     print("Done.", flush=True)
 
 print("Setup successfull!")
