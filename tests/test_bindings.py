@@ -443,6 +443,25 @@ class TestVLCAPI(unittest.TestCase):
             assert __calls_stats__["display_error_cb"]["n_calls"] == 1
             assert __calls_stats__["display_error_cb"]["last_return_value"] == data_str
 
+        def test_exit_handler(self):
+            global __calls_stats__
+            __calls_stats__ = {}
+
+            inst = vlc.Instance("")
+
+            @vlc.LibvlcSetExitHandlerCb
+            @call_stats
+            def exit(opaque):
+                return ctypes.cast(opaque, ctypes.c_char_p).value
+
+            data = b"some data"
+            vlc.libvlc_set_exit_handler(inst, exit, data)
+
+            inst.release()
+
+            assert __calls_stats__["exit"]["n_calls"] == 1
+            assert __calls_stats__["exit"]["last_return_value"] == data
+
 
 if __name__ == "__main__":
     logging.basicConfig()
