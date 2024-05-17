@@ -18,7 +18,7 @@ release = "3.0.16"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-sys.path.insert(0, os.path.abspath("../generated/3.0/"))
+sys.path.insert(0, os.path.abspath("../generated/dev/"))
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon']
 
