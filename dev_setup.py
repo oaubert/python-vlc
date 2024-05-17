@@ -23,7 +23,8 @@ def run_cmd(mess, cmd):
         _proc = run(cmd, stdout=PIPE, stderr=STDOUT, check=True)
     except CalledProcessError as e:
         print()
-        print(f"Oops! Command '{" ".join(e.cmd)}' failed.")
+        cmd = " ".join(e.cmd)
+        print(f"Oops! Command '{cmd}' failed.")
         print(f"Got return code {e.returncode}.")
         print("Here is the command output:")
         print(e.output.decode(), end="", flush=True)
