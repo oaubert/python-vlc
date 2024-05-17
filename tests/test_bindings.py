@@ -50,7 +50,8 @@ except ImportError:
     import generated.vlc as vlc
 
 
-SAMPLE = os.path.join(os.path.dirname(__file__), "samples/sample.mp4")
+SONG = os.path.join(os.path.dirname(__file__), "samples/song.mp3")
+VIDEO = os.path.join(os.path.dirname(__file__), "samples/video.mp4")
 print("Checking " + vlc.__file__)
 
 __calls_stats__ = {}
@@ -192,8 +193,8 @@ class TestVLCAPI(unittest.TestCase):
         self.assertEqual(eq.get_amp_at_index(1), val)
 
     def test_tracks_get(self):
-        self.assertTrue(os.path.exists(SAMPLE))
-        m = vlc.Media(SAMPLE)
+        self.assertTrue(os.path.exists(VIDEO))
+        m = vlc.Media(VIDEO)
         m.parse()
         # Audiotrack is the second one
         audiotrack = list(m.tracks_get())[1]
@@ -204,8 +205,8 @@ class TestVLCAPI(unittest.TestCase):
         self.assertEqual(m.get_duration(), 5568)
 
     def test_meta_get(self):
-        self.assertTrue(os.path.exists(SAMPLE))
-        m = vlc.Media(SAMPLE)
+        self.assertTrue(os.path.exists(VIDEO))
+        m = vlc.Media(VIDEO)
         m.parse()
         self.assertEqual(m.get_meta(vlc.Meta.Title), "Title")
         self.assertEqual(m.get_meta(vlc.Meta.Artist), "Artist")
@@ -248,9 +249,92 @@ class TestVLCAPI(unittest.TestCase):
         instance = vlc.Instance("--vout dummy --aout dummy")
         instance.log_set(log_handler, None)
         player = instance.media_player_new()
-        media = instance.media_new(SAMPLE)
+        media = instance.media_new(VIDEO)
         player.set_media(media)
         player.play()
+
+    def test_event_cbs(self):
+        n_event_playing = 0
+        n_event_paused = 0
+        n_event_stopped = 0
+
+        inst = vlc.Instance("--vout dummy --aout dummy")
+        m = inst.media_new(SONG)
+        player = inst.media_player_new()
+        player.set_media(m)
+
+        # No need for decorator when using EventManager.event_attach,
+        # because it is handwritten and accepts a Python function directly.
+        def register_event(event, data):
+            nonlocal n_event_playing
+            nonlocal n_event_paused
+            nonlocal n_event_stopped
+
+            match str(event.type):
+                case "EventType.MediaPlayerPlaying":
+                    n_event_playing += 1
+                case "EventType.MediaPlayerPaused":
+                    n_event_paused += 1
+                case "EventType.MediaPlayerStopped":
+                    n_event_stopped += 1
+                case _:
+                    raise Exception(f"Unexpected event: got {event.type}")
+
+        # Using event_attach method
+        em = player.event_manager()
+        em.event_attach(vlc.EventType.MediaPlayerPlaying, register_event, "some data")
+        em.event_attach(vlc.EventType.MediaPlayerPaused, register_event, "some data")
+        em.event_attach(vlc.EventType.MediaPlayerStopped, register_event, "some data")
+
+        @vlc.CallbackDecorators.Callback
+        def register_event_cb(p_event, p_data):
+            nonlocal n_event_playing
+            nonlocal n_event_paused
+            nonlocal n_event_stopped
+
+            event = ctypes.cast(p_event, ctypes.POINTER(vlc.Event)).contents
+            _data = ctypes.cast(p_data, ctypes.c_char_p).value
+
+            match str(event.type):
+                case "EventType.MediaPlayerPlaying":
+                    n_event_playing += 1
+                case "EventType.MediaPlayerPaused":
+                    n_event_paused += 1
+                case "EventType.MediaPlayerStopped":
+                    n_event_stopped += 1
+                case _:
+                    raise Exception(f"Unexpected event: got {event.type}")
+
+        # Using the libvlc_event_attach function
+        em = player.event_manager()
+        data = b"some data"
+        vlc.libvlc_event_attach(
+            em, vlc.EventType.MediaPlayerPlaying, register_event_cb, data
+        )
+        vlc.libvlc_event_attach(
+            em, vlc.EventType.MediaPlayerPaused, register_event_cb, data
+        )
+        vlc.libvlc_event_attach(
+            em, vlc.EventType.MediaPlayerStopped, register_event_cb, data
+        )
+
+        n = 3
+        for _ in range(n):
+            player.play()
+            while player.get_state() != vlc.State.Playing:
+                continue
+            player.pause()
+            while player.get_state() != vlc.State.Paused:
+                continue
+            player.stop()
+
+        assert n_event_playing == 2 * n
+        assert n_event_paused == 2 * n
+        assert n_event_stopped == 2 * n
+
+        player.release()
+        m.release()
+        inst.release()
 
     if vlc.__generator_version__ >= "2":
 
