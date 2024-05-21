@@ -232,6 +232,8 @@ def find_libc():
         if libc_path is None:
             raise NotImplementedError('Cannot find a proper standard C library')
         return ctypes.CDLL(libc_path)
+    else:
+        raise NotImplementedError('Cannot find a proper standard C library (Unsupported platform)')
 
 class VLCException(Exception):
     """Exception raised by libvlc methods.
