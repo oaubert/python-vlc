@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 import ctypes
 import os
 import unittest
+import io
+import re
 
 try:
     import urllib.parse as urllib # python3
@@ -203,33 +205,39 @@ class TestVLCAPI(unittest.TestCase):
         self.assertEqual(m.get_meta(vlc.Meta.Date), '2013')
         self.assertEqual(m.get_meta(vlc.Meta.Genre), 'Sample')
 
-    def notest_log_get_context(self):
-        """Semi-working test for log_get_context.
-
-        It crashes with a Segmentation fault after displaying some
-        messages. This should be fixed + a better test should be
-        devised so that we do not clutter the terminal.
-        """
-        libc = ctypes.cdll.LoadLibrary("libc.{}".format("so.6" if os.uname()[0] == 'Linux' else "dylib"))
-        @vlc.CallbackDecorators.LogCb
-        def log_handler(instance, log_level, ctx, fmt, va_list):
-            bufferString = ctypes.create_string_buffer(4096)
-            libc.vsprintf(bufferString, fmt, ctypes.cast(va_list, ctypes.c_void_p))
-            msg = bufferString.value.decode('utf-8')
-            module, _file, _line = vlc.libvlc_log_get_context(ctx)
-            module = module.decode('utf-8')
-            try:
-                logger.warn(u"log_level={log_level}, module={module}, msg={msg}".format(log_level=log_level, module=module, msg=msg))
-            except Exception as e:
-                logger.exception(e)
-                import pdb; pdb.set_trace()
-
-        instance = vlc.Instance('--vout dummy --aout dummy')
-        instance.log_set(log_handler, None)
+    def test_set_logger(self):
+        vlc_logger = logging.Logger("VLC")
+        vlc_logger.setLevel(logging.DEBUG)
+        # push logs in memory
+        in_mem = io.StringIO()
+        handler = logging.StreamHandler(in_mem)
+        formatter = logging.Formatter('%(asctime)s;;;%(name)s;;;%(levelname)s;;;%(vlc_module)s;;;%(file)s;;;%(line)d;;;%(message)s')
+        handler.setFormatter(formatter)
+        vlc_logger.addHandler(handler)
+        # start in quiet mode: we cannot control how to logs are produced
+        # before setting the logger
+        instance = vlc.Instance('--vout dummy --aout dummy --quiet')
+        instance.set_logger(vlc_logger)
         player = instance.media_player_new()
         media = instance.media_new(SAMPLE)
         player.set_media(media)
         player.play()
+        player.stop()
+        handler.flush()
+        # check logs
+        # there can be a lot of log message to check
+        # just try to find a message we are sure to get
+        # Example:
+        # 2024-05-03 18:44:31,054;;;VLC;;;DEBUG;;;main;;;<src>;;;<line>;;;creating demux: access='file' demux='any' location='<path>' file='<path>'  
+        pattern = r"(?P<asctime>.*);;;VLC;;;DEBUG;;;main;;;(?P<src>.*);;;(?P<line>.*);;;creating demux: access='file' demux='any' location='(?P<path1>.*)' file='(?P<path2>.*)'"
+        found = False
+        for line in in_mem.getvalue().splitlines():
+            #print(line)
+            m = re.match(pattern, line)
+            if m is not None:
+                found = True
+                break
+        self.assertEqual(found, True, "Cannot find a proper log message for demux creation")
 
 
 if generate is not None:

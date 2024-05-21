@@ -7,6 +7,7 @@ class Instance:
       - a list of strings as first parameters
       - the parameters given as the constructor parameters (must be strings)
     """
+
     def __new__(cls, *args):
         if len(args) == 1:
             # Only 1 arg. It is either a C pointer, or an arg string,
@@ -141,6 +142,57 @@ class Instance:
 
         """
         return module_description_list(libvlc_video_filter_list_get(self))
+
+    def set_logger(self, logger, max_log_message_size=4096):
+        """Links a logging.Logger object to the libVLC Instance
+
+        Along with the log level and message, each libVLC log will also include
+        The following extra info:
+        - vlc_module: the name of the VLC module (str).
+        - file: the VLC source filename (str).
+        - line: the VLC source file line number (int).
+        These variables can be used in the logger formatter.
+
+        @param logger: a logging.Logger object
+        @param max_log_message_size: defines the maximum size that will be
+               copied from VLC log messages. If you experience truncated log
+               messages, raise this number (default 4096).
+        """
+        # libVLC provides the log message through a printf format + va_list.
+        # Unfortunately, there is no simple way to use a
+        # printf format + va_list in Python outside of the use of a C format
+        # function.
+        # As there is no guarantee to have access to a C `vasprintf`, we use
+        # `vsnprintf` with a log message max size.
+        libc = find_libc()
+        self._vsnprintf = libc.vsnprintf
+        self._max_log_message_size = max_log_message_size
+        self._logger = logger
+        # The log_handler is meant to be the "real" callback for libvlc_log_set().
+        @CallbackDecorators.LogCb
+        def log_handler(instance, log_level, ctx, fmt, va_list):
+            bufferString = ctypes.create_string_buffer(self._max_log_message_size)
+            self._vsnprintf(bufferString, self._max_log_message_size, fmt,
+                             ctypes.cast(va_list, ctypes.c_void_p))
+            msg = bufferString.value.decode('utf-8')
+            module, file, line = libvlc_log_get_context(ctx)
+            module = module.decode('utf-8')
+            file = file.decode('utf-8')
+            self._logger.log(loglevel_to_logging(LogLevel(log_level)),
+                             msg, extra={"vlc_module": module, "file": file, "line": line})
+        # We need to keep a reference to the log_handler function that persists
+        # after the end of the set_logger.
+        # If we do not do that, there is a (high) chance the python garbage
+        # collector will destroy the callback function and produce segfault in
+        # libVLC.
+        # To avoid that, link the log_handler lifetime to the Instance's one.
+        self._log_handler = log_handler
+        self.log_set(self._log_handler, None)
+
+    def get_logger(self):
+        """Return the logger attached to the libVLC Instance (None by default)
+        """
+        return getattr(self, '_logger', None)
 
 class Media:
     """Create a new Media instance.
