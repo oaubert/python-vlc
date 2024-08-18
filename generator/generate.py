@@ -37,7 +37,7 @@ This module and the generated Python bindings have been formatted
 and verified using ruff, see https://github.com/astral-sh/ruff.
 
 The generated Python bindings have been tested with
-32- and 64-bit Python 2.6, 2.7 and 3.6 on Linux, Windows XP SP3, MacOS
+32- and 64-bit Python 3.11 on Linux, Windows XP SP3, MacOS
 X 10.4.11 (Intel) and MacOS X 10.11.3 using the public API include
 files from VLC 1.1.4.1, 1.1.5, 2.1.0, 2.2.2, 3.0.3.
 
@@ -56,6 +56,7 @@ __version__ = "2.0"
 _debug = False
 
 import enum
+import logging
 import operator
 import os
 import re
@@ -68,6 +69,8 @@ from typing import NamedTuple
 
 from tree_sitter import Language, Node
 from tree_sitter import Parser as TSParser
+
+logger = logging.getLogger("generate")
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATEDIR = os.path.join(BASEDIR, "templates")
@@ -2995,10 +2998,13 @@ Parse VLC include files and generate bindings code for Python or Java."""
         help="Prepare a package for the given python module.",
     )
 
+    logging.basicConfig()
+
     opts, args = opt.parse_args()
 
     if "--debug" in sys.argv:
         _debug = True  # show source
+        logging.basicConfig(level=logging.DEBUG)
 
     if opts.package:
         prepare_package(opts.package)
