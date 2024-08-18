@@ -34,10 +34,7 @@ import os
 import unittest
 from time import sleep
 
-try:
-    import urllib.parse as urllib  # python3
-except ImportError:
-    import urllib  # python2
+import urllib.parse as urllib  # python3
 
 try:
     from pathlib import Path

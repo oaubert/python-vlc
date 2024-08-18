@@ -59,56 +59,23 @@ build_date = ""  # build time stamp and __version__, see generate.py
 # esp. on windows.
 DEFAULT_ENCODING = "utf-8"
 
-if sys.version_info[0] > 2:
-    str = str
-    unicode = str
-    bytes = bytes
-    basestring = (str, bytes)
-    PYTHON3 = True
+def str_to_bytes(s):
+    """Translate string or bytes to bytes."""
+    if isinstance(s, str):
+        return bytes(s, DEFAULT_ENCODING)
+    else:
+        return s
 
-    def str_to_bytes(s):
-        """Translate string or bytes to bytes."""
-        if isinstance(s, str):
-            return bytes(s, DEFAULT_ENCODING)
-        else:
-            return s
+def bytes_to_str(b):
+    """Translate bytes to string."""
+    if isinstance(b, bytes):
+        return b.decode(DEFAULT_ENCODING)
+    else:
+        return b
 
-    def bytes_to_str(b):
-        """Translate bytes to string."""
-        if isinstance(b, bytes):
-            return b.decode(DEFAULT_ENCODING)
-        else:
-            return b
-
-    def len_args(func):
-        """Return number of positional arguments."""
-        return len(_inspect.signature(func).parameters)
-
-else:
-    str = str
-    unicode = unicode
-    bytes = str
-    basestring = basestring
-    PYTHON3 = False
-
-    def str_to_bytes(s):
-        """Translate string or bytes to bytes."""
-        if isinstance(s, unicode):
-            return s.encode(DEFAULT_ENCODING)
-        else:
-            return s
-
-    def bytes_to_str(b):
-        """Translate bytes to unicode string."""
-        if isinstance(b, str):
-            return unicode(b, DEFAULT_ENCODING)
-        else:
-            return b
-
-    def len_args(func):
-        """Return number of positional arguments."""
-        return len(_inspect.getargspec(func).args)
-
+def len_args(func):
+    """Return number of positional arguments."""
+    return len(_inspect.signature(func).parameters)
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.
@@ -138,10 +105,7 @@ def find_lib():
         if p is None:
             try:  # some registry settings
                 # leaner than win32api, win32con
-                if PYTHON3:
-                    import winreg as w
-                else:
-                    import _winreg as w
+                import winreg as w
                 for r in w.HKEY_LOCAL_MACHINE, w.HKEY_CURRENT_USER:
                     try:
                         r = w.OpenKey(r, "Software\\VideoLAN\\VLC")
@@ -417,36 +381,22 @@ class FILE(ctypes.Structure):
 
 FILE_ptr = ctypes.POINTER(FILE)
 
-if PYTHON3:
-    PyFile_FromFd = ctypes.pythonapi.PyFile_FromFd
-    PyFile_FromFd.restype = ctypes.py_object
-    PyFile_FromFd.argtypes = [
-        ctypes.c_int,
-        ctypes.c_char_p,
-        ctypes.c_char_p,
-        ctypes.c_int,
-        ctypes.c_char_p,
-        ctypes.c_char_p,
-        ctypes.c_char_p,
-        ctypes.c_int,
-    ]
+PyFile_FromFd = ctypes.pythonapi.PyFile_FromFd
+PyFile_FromFd.restype = ctypes.py_object
+PyFile_FromFd.argtypes = [
+    ctypes.c_int,
+    ctypes.c_char_p,
+    ctypes.c_char_p,
+    ctypes.c_int,
+    ctypes.c_char_p,
+    ctypes.c_char_p,
+    ctypes.c_char_p,
+    ctypes.c_int,
+]
 
-    PyFile_AsFd = ctypes.pythonapi.PyObject_AsFileDescriptor
-    PyFile_AsFd.restype = ctypes.c_int
-    PyFile_AsFd.argtypes = [ctypes.py_object]
-else:
-    PyFile_FromFile = ctypes.pythonapi.PyFile_FromFile
-    PyFile_FromFile.restype = ctypes.py_object
-    PyFile_FromFile.argtypes = [
-        FILE_ptr,
-        ctypes.c_char_p,
-        ctypes.c_char_p,
-        ctypes.CFUNCTYPE(ctypes.c_int, FILE_ptr),
-    ]
-
-    PyFile_AsFile = ctypes.pythonapi.PyFile_AsFile
-    PyFile_AsFile.restype = FILE_ptr
-    PyFile_AsFile.argtypes = [ctypes.py_object]
+PyFile_AsFd = ctypes.pythonapi.PyObject_AsFileDescriptor
+PyFile_AsFd.restype = ctypes.c_int
+PyFile_AsFd.argtypes = [ctypes.py_object]
 
 
 def module_description_list(head):

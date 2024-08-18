@@ -13,7 +13,7 @@ class Instance:
             i = args[0]
             if isinstance(i, _Ints):
                 return _Constructor(cls, i)
-            elif isinstance(i, basestring):
+            elif isinstance(i, str):
                 args = i.strip().split()
             elif isinstance(i, _Seqs):
                 args = list(i)
@@ -32,8 +32,7 @@ class Instance:
             # if the user did not specify it itself.
             os.environ.setdefault("VLC_PLUGIN_PATH", plugin_path)
 
-        if PYTHON3:
-            args = [str_to_bytes(a) for a in args]
+        args = [str_to_bytes(a) for a in args]
         return libvlc_new(len(args), args)
 
     def media_player_new(self, uri=None):
@@ -248,7 +247,7 @@ class MediaList:
         :return: 0 on success, -1 if the media list is read-only.
         """
         mrl = try_fspath(mrl)
-        if isinstance(mrl, basestring):
+        if isinstance(mrl, str):
             mrl = (self.get_instance() or get_default_instance()).media_new(mrl)
         return libvlc_media_list_add_media(self, mrl)
 
