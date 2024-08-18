@@ -1,0 +1,16 @@
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get install -y vlc pulseaudio libvlc-dev
+          pulseaudio --start
+          python3 dev_setup.py
+          . .venv/bin/activate
+          make test_generator
+          make test_bindings

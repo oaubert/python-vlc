@@ -7,16 +7,19 @@ See https://github.com/oaubert/python-vlc/issues/2
 This currently should exhibit the reported issue.
 """
 
-import sys
-import vlc
-import time
 import gc
+import sys
+import time
+
+import vlc
 
 i = vlc.Instance()
 p = vlc.MediaPlayer()
 
+
 def poschanged(foo):
     print("poschanged")
+
 
 for n in range(10):
     p.stop()
@@ -24,8 +27,8 @@ for n in range(10):
     em = p.event_manager()
     em.event_attach(vlc.EventType.MediaPlayerPositionChanged, poschanged)
     p.play()
-    time.sleep(.5)
+    time.sleep(0.5)
     p.pause()
     gc.collect()
     p.pause()
-    time.sleep(.5)
+    time.sleep(0.5)

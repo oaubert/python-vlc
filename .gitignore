@@ -38,3 +38,16 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Virtual environment
+.venv
+venv
+
+# pyenv version
+.python-version
+
+# Preprocessed libvlc header files
+*.preprocessed*
+
+# Documentation
+docs/_build/

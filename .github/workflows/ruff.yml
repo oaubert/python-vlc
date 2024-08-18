@@ -1,0 +1,22 @@
+name: Ruff
+
+on: [push, pull_request]
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chartboost/ruff-action@v1
+        with:
+          args: "check --config ruff.toml"
+          src: "./generator/generate.py ./tests ./dev_setup.py"
+
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chartboost/ruff-action@v1
+        with:
+          args: "format --check --config ruff.toml"
+          src: "./generator/generate.py ./tests ./dev_setup.py ./generator/templates"
