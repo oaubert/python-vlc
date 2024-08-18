@@ -48,22 +48,18 @@ dist: $(VERSIONED_NAME)
 	$(GENERATE) -p $<
 
 deb: dist
-	cd $(VERSIONED_PATH) ; python setup.py --command-packages=stdeb.command sdist_dsc --with-python2=true --with-python3=true --copyright-file=COPYING bdist_deb
+	cd $(VERSIONED_PATH) ; python3 setup.py --command-packages=stdeb.command sdist_dsc --with-python2=true --with-python3=true --copyright-file=COPYING bdist_deb
 
 $(MODULE_NAME): generator/generate.py generator/templates/header.py generator/templates/footer.py generator/templates/override.py $(DEV_INCLUDES)
-	-mkdir -p $(DEV_PATH)
+	mkdir -p $(DEV_PATH)
 	$(GENERATE) $(DEV_INCLUDES) -o $@
 
 $(VERSIONED_NAME): generator/generate.py generator/templates/header.py generator/templates/footer.py generator/templates/override.py $(INSTALLED_INCLUDES)
-	-mkdir -p $(VERSIONED_PATH)
+	mkdir -p $(VERSIONED_PATH)
 	$(GENERATE) $(INSTALLED_INCLUDES) -o $@
 
 doc: $(VERSIONED_NAME)
 	-pydoctor --project-name=python-vlc --project-url=https://github.com/oaubert/python-vlc/ --make-html --verbose --html-output=doc $<
-
-test_bindings2: $(MODULE_NAME)
-	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python tests/test_bindings.py
-	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python tests/test_bindings.py
 
 test_bindings: $(MODULE_NAME)
 	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python3 tests/test_bindings.py
@@ -73,11 +69,7 @@ test_generator: $(MODULE_NAME)
 	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python3 tests/test_generator.py
 	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test_generator.py
 
-test2: test_bindings2
-
 test: test_bindings test_generator
-
-tests: test test2
 
 sdist: $(VERSIONED_NAME)
 	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist
