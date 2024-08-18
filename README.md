@@ -1,6 +1,6 @@
 # Python ctypes-based bindings for libvlc
 
-![](https://img.shields.io/github/actions/workflow/status/yanns1/python-vlc/tests.yml?event=push&label=tests)
+![](https://img.shields.io/github/actions/workflow/status/oaubert/python-vlc/tests.yml?event=push&label=tests)
 
 This file documents the bindings generator, not the bindings
 themselves. For the bindings documentation, see the README.module
@@ -32,13 +32,14 @@ install libvlc-dev).
 Once you have cloned the project, you can run
 
 ```
-python3 dev_setup.py
+python3 dev_setup.sh
 ```
 
-from the root.
+from the root directory (or the python version if on a platform without shell)
+
 This script will install everything that is needed (submodules,
-virtual environment, packages, etc.) for you to generate the bindings.
-Then, activate the virtual environment:
+virtual environment, treesitter, packages, etc.) for you to generate
+the bindings.  Then, activate the virtual environment:
 
 - On Linux with Bash:
   ```
