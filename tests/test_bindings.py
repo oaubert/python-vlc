@@ -25,16 +25,12 @@
 
 """Unittest module for testing the VLC bindings generated."""
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import ctypes
+import logging
 import os
 import unittest
-from time import sleep
-
 import urllib.parse as urllib  # python3
+from time import sleep
 
 try:
     from pathlib import Path
@@ -46,6 +42,7 @@ try:
 except ImportError:
     import generated.vlc as vlc
 
+logger = logging.getLogger(__name__)
 
 SONG = os.path.join(os.path.dirname(__file__), "samples/song.mp3")
 VIDEO = os.path.join(os.path.dirname(__file__), "samples/video.mp4")
