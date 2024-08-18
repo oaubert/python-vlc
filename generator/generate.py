@@ -971,6 +971,7 @@ class Parser(object):
         self.code_file = code_file
         self.version_file = version_file
 
+        # Compile the tree-sitter c module
         Language.build_library(
             "build/c.so",
             ["vendor/tree-sitter-c"],
@@ -1236,9 +1237,12 @@ declarator: (parenthesized_declarator
         )
         for typedef_node, func_decl_node in func_captures:
             func_id_capture = func_id_query.captures(typedef_node)
+            if len(func_id_capture) < 1:
+                logger.warning(f"Cannot analyse callback signature in following line - ignoring:\n{typedef_node.text}")
+                continue
             assert (
                 len(func_id_capture) >= 1
-            ), "Expected the query to capture at least one node."
+            ), f"Expected the query to capture at least one node in line:\n{typedef_node.text}"
             # Assumes the first capture is the id of the function we are
             # interested in, that is the one closest to the root of
             # `typedef_node`.
