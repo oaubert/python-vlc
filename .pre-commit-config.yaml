@@ -12,6 +12,8 @@ repos:
         (?x)^(
           generator/generate\.py|
           tests/.*\.py|
+          generated/3.0/vlc\.py|
+          generated/dev/vlc\.py|
           dev_setup\.py
         )$
       minimum_pre_commit_version: "2.9.2"
