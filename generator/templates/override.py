@@ -76,10 +76,13 @@ class Instance:
         mrl = try_fspath(mrl)
         if ":" in mrl and mrl.index(":") > 1:
             # Assume it is a URL
-            m = libvlc_media_new_location(self, str_to_bytes(mrl))
+            if __version__ >= "4":
+                m = libvlc_media_new_location(str_to_bytes(mrl))
+            else:
+                m = libvlc_media_new_location(self, str_to_bytes(mrl))
         else:
             # Else it should be a local path.
-            m = libvlc_media_new_path(self, str_to_bytes(os.path.normpath(mrl)))
+            m = self.media_new_path(str_to_bytes(os.path.normpath(mrl)))
         for o in options:
             libvlc_media_add_option(m, str_to_bytes(o))
         m._instance = self
@@ -93,7 +96,10 @@ class Instance:
         :return: the newly created media or None on error.
         """
         path = try_fspath(path)
-        return libvlc_media_new_path(self, str_to_bytes(path))
+        if __version__ >= "4":
+            return libvlc_media_new_path(str_to_bytes(path))
+        else:
+            return libvlc_media_new_path(self, str_to_bytes(path))
 
     def media_list_new(self, mrls=None):
         """Create a new :class:`MediaList` instance.
