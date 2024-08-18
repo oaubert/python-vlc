@@ -57,7 +57,7 @@ run_cmd(
     [venv_python, "-m", "pip", "install", "-r", "requirements.txt"],
 )
 
-# Install pre-commit hooks
-run_cmd("Install pre-commit hooks", [pre_commit, "install"])
+# Propose to install pre-commit hooks
+print("If you want to enable pre-commit hooks (ruff checks), run the command\npre-commit install")
 
 print("Setup successfull!")
