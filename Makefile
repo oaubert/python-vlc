@@ -61,11 +61,11 @@ $(VERSIONED_NAME): generator/generate.py generator/templates/header.py generator
 doc: $(VERSIONED_NAME)
 	-pydoctor --project-name=python-vlc --project-url=https://github.com/oaubert/python-vlc/ --make-html --verbose --html-output=doc $<
 
-test_bindings: $(MODULE_NAME)
+test_bindings: installed
 	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python3 tests/test_bindings.py
 	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test_bindings.py
 
-test_generator: $(MODULE_NAME)
+test_generator: installed
 	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python3 tests/test_generator.py
 	PYTHONPATH=$(DEV_PATH):$(PROJECT_ROOT) python3 tests/test_generator.py
 
