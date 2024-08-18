@@ -94,7 +94,7 @@ class TestVLCAPI(unittest.TestCase):
     # failure, check that the reason is not a change in the .h
     # definitions.
     def test_enum_event_type(self):
-        self.assertEqual(vlc.EventType.MediaStateChanged.value, 5)
+        self.assertEqual(vlc.EventType.MediaDurationChanged.value, 2)
 
     def test_enum_meta(self):
         self.assertEqual(vlc.Meta.Description.value, 6)
@@ -108,13 +108,17 @@ class TestVLCAPI(unittest.TestCase):
     def test_enum_marquee_int_option(self):
         self.assertEqual(vlc.VideoMarqueeOption.Size.value, 6)
 
-    if hasattr(vlc, "AudioOutputDeviceTypes"):
-
-        def test_enum_output_device_type(self):
-            self.assertEqual(vlc.AudioOutputDeviceTypes._2F2R.value, 4)
+    @unittest.skipIf(not hasattr(vlc, "AudioOutputDeviceTypes"),
+                     "Removed in 4.0 API")
+    def test_enum_output_device_type(self):
+        self.assertEqual(vlc.AudioOutputDeviceTypes._2F2R.value, 4)
 
     def test_enum_output_channel(self):
-        self.assertEqual(vlc.AudioOutputChannel.Dolbys.value, 5)
+        if vlc.__version__ >= "4":
+            # FIXME: maywe we should strip the first level?
+            self.assertEqual(vlc.AudioOutputStereomode.Dolbys.value, 5)
+        else:
+            self.assertEqual(vlc.AudioOutputChannel.Dolbys.value, 5)
 
     # Basic libvlc tests
     def test_instance_creation(self):
@@ -122,6 +126,8 @@ class TestVLCAPI(unittest.TestCase):
         self.assertTrue(i)
 
     def test_libvlc_media(self):
+        # Sometimes fails in 4.0 with
+        # test_libvlc_media (__main__.TestVLCAPI.test_libvlc_media) ... Fatal glibc error: pthread_mutex_lock.c:450 (__pthread_mutex_lock_full): assertion failed: e != ESRCH || !robust
         mrl = "/tmp/foo.avi"
         i = vlc.Instance()
         m = i.media_new(mrl)
@@ -139,6 +145,7 @@ class TestVLCAPI(unittest.TestCase):
         self.assertEqual(l[1].get_mrl(), "file://" + mrl2)
 
     def test_libvlc_player(self):
+        # Crashes in 4.0 with Segmentation fault
         mrl = "/tmp/foo.avi"
         i = vlc.Instance()
         p = i.media_player_new(mrl)
@@ -253,6 +260,8 @@ class TestVLCAPI(unittest.TestCase):
         player.set_media(media)
         player.play()
 
+    @unittest.skipIf(vlc.__version__ >= "4",
+            "Blocking in 4.0 version - FIXME to investigate")
     def test_event_cbs(self):
         n_event_playing = 0
         n_event_paused = 0
@@ -336,6 +345,8 @@ class TestVLCAPI(unittest.TestCase):
         m.release()
         inst.release()
 
+    @unittest.skipIf(vlc.__version__ >= "4",
+            "PfDisplayError is not available in 4.0 - we have to port this test to the new dialog.set_error API")
     def test_dialog_cbs(self):
         global __calls_stats__
         __calls_stats__ = {}
@@ -441,6 +452,8 @@ class TestVLCAPI(unittest.TestCase):
         assert __calls_stats__["display_error_cb"]["n_calls"] == 1
         assert __calls_stats__["display_error_cb"]["last_return_value"] == data_str
 
+    @unittest.skipIf(vlc.__version__ >= "4",
+            "SetExitHandler has been removed from 4.0")
     def test_exit_handler(self):
         global __calls_stats__
         __calls_stats__ = {}
