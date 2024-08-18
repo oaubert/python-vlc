@@ -921,7 +921,7 @@ class Val(object):
             n = t[-1]
         # Special case for debug levels and roles (with non regular name)
         n = re.sub(
-            r"^(LIBVLC_|role_|marquee_|adjust_|AudioChannel_|AudioOutputDevice_)", "", n
+            r"^(LIBVLC_|role_|marquee_|adjust_|AudioChannel_|AudioOutputDevice_|AudioStereoMode_)", "", n
         )
         if n[0].isdigit():  # can't start with a number
             n = "_" + n
