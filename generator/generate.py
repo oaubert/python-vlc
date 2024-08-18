@@ -367,6 +367,82 @@ class _Source(object):
         self.source = "%s:%s" % (file_, line)
         self.dump()
 
+    def base_sphinx_format(self, doc: str) -> list[str]:
+        # See https://devguide.python.org/documentation/markup/
+        lines = ( doc.replace(r"\see", "See")
+            .replace("@see", "See")
+            .replace(r"\sa", "")
+            .replace(r"\p ", "")
+            .replace(r"\note", ".. note::")
+             .replace("@note", ".. note::")
+            .replace(r"\warning", ".. warning::")
+            .replace("@warning", ".. warning::")
+            .replace(r"\ref ", "")
+            .replace("@ref ", "")
+            .replace(r"\version", ":version:")
+            .replace("@version", ":version:")
+            .replace(r"\brief", ".. brief::")
+            .replace("@brief", ".. brief::")
+            .replace(r"\link", "")
+            .replace(r"\endlink", "")
+            .replace("@{", "")
+            .replace("@}", "")
+            .replace(r"\ingroup", "")
+            .replace("{", "")
+            .replace("}", "")
+            .replace("<b>", "**")
+            .replace("</b>", "**")
+            .replace(r"\bug", ":bug:")
+            .replace("@bug", ":bug:")
+            .replace(r"\param", ":param")
+            .replace("@param", ":param")
+            .replace(r"\return", ":return:")
+            .replace("@return", ":return:")
+            .replace(r"\ref ", "")
+            .replace("@ref ", "")
+            .replace(r"\@protocol", "@protocol")
+            .replace(r"\@end", "@end")
+            .replace(r"\deprecated", "\n.. warning:: **Deprecated!**")
+            .replace("@deprecated", "\n.. warning:: **Deprecated!**")
+            .replace("NULL", "None")
+            .replace(
+                r"\libvlc_return_bool", ""
+            )  # special VLC doc syntax - maybe we could display something meaningful
+            .splitlines()
+        )
+        return lines
+
+    def docs_in_sphinx_format(self) -> str:
+        """Converts self.docs into sphinx format
+        """
+        in_block = False
+        res = []
+        lines = self.base_sphinx_format(self.docs)
+
+        for i, line in enumerate(lines):
+            if ".. note::" in line:
+                if i - 1 >= 0 and line:
+                    res.append("")
+                res.append(line)
+                in_block = True
+            elif ".. warning::" in lines[i]:
+                if i - 1 >= 0 and lines[i - 1]:
+                    res.append("")
+                res.append(line)
+                in_block = True
+            elif in_block:
+                if lines[i]:
+                    lines[i] = _INDENT_ + lines[i]
+                else:
+                    in_block = False
+                res.append(line)
+            else:
+                res.append(line)
+
+        if res:
+            res[-1] = endot(res[-1])
+
+        return _NL_.join(res)
 
 class Enum(_Source):
     """Enum type."""
@@ -410,48 +486,6 @@ class Enum(_Source):
 
     def dump(self):
         sys.stderr.write(str(self))
-
-    def docs_in_sphinx_format(self) -> str:
-        in_block = False
-        res = []
-        lines = (
-            self.docs.replace(r"\see", "See")
-            .replace("@see", "See")
-            .replace(r"\note", ".. note::")
-            .replace("@note", ".. note::")
-            .replace(r"\warning", ".. warning::")
-            .replace("@warning", ".. warning::")
-            .replace(r"\ref ", "")
-            .replace("@ref ", "")
-            .replace(r"\version", ":version:")
-            .replace("@version", ":version:")
-            .splitlines()
-        )
-
-        for i, line in enumerate(lines):
-            if ".. note::" in line:
-                if i - 1 >= 0 and line:
-                    res.append("")
-                res.append(line)
-                in_block = True
-            elif ".. warning::" in lines[i]:
-                if i - 1 >= 0 and lines[i - 1]:
-                    res.append("")
-                res.append(line)
-                in_block = True
-            elif in_block:
-                if lines[i]:
-                    lines[i] = _INDENT_ + lines[i]
-                else:
-                    in_block = False
-                res.append(line)
-            else:
-                res.append(line)
-
-        if res:
-            res[-1] = endot(res[-1])
-
-        return _NL_.join(res)
 
 
 class Struct(_Source):
@@ -501,48 +535,6 @@ class Struct(_Source):
         for field in self.fields:
             field.dump(indent_lvl + 1)
 
-    def docs_in_sphinx_format(self) -> str:
-        in_block = False
-        res = []
-        lines = (
-            self.docs.replace(r"\see", "See")
-            .replace("@see", "See")
-            .replace(r"\note", ".. note::")
-            .replace("@note", ".. note::")
-            .replace(r"\warning", ".. warning::")
-            .replace("@warning", ".. warning::")
-            .replace(r"\ref ", "")
-            .replace("@ref ", "")
-            .replace(r"\version", ":version:")
-            .replace("@version", ":version:")
-            .splitlines()
-        )
-
-        for i, line in enumerate(lines):
-            if ".. note::" in line:
-                if i - 1 >= 0 and line:
-                    res.append("")
-                res.append(line)
-                in_block = True
-            elif ".. warning::" in lines[i]:
-                if i - 1 >= 0 and lines[i - 1]:
-                    res.append("")
-                res.append(line)
-                in_block = True
-            elif in_block:
-                if lines[i]:
-                    lines[i] = _INDENT_ + lines[i]
-                else:
-                    in_block = False
-                res.append(line)
-            else:
-                res.append(line)
-
-        if res:
-            res[-1] = endot(res[-1])
-
-        return _NL_.join(res)
-
 
 class Union(_Source):
     """Union type."""
@@ -588,9 +580,6 @@ class Union(_Source):
         sys.stderr.write("UNION %s (%s): %s\n" % (self.name, self.type, self.source))
         for field in self.fields:
             field.dump(indent_lvl + 1)
-
-    def docs_in_sphinx_format(self) -> str:
-        return self.docs
 
 
 class Flag(object):
@@ -691,6 +680,11 @@ class Func(_Source):
         return s
 
     def docs_in_sphinx_format(self, first=0) -> str:
+        """Converts self.docs
+
+        Function documentation is a bit more complex than the generic
+        version.
+        """
         b = []
         heads = []
         out = []
@@ -699,41 +693,7 @@ class Func(_Source):
         v = []
         block = None
 
-        # See https://devguide.python.org/documentation/markup/
-        lines = (
-            self.docs.replace("@{", "")
-            .replace("@}", "")
-            .replace(r"\ingroup", "")
-            .replace("{", "")
-            .replace("}", "")
-            .replace("<b>", "**")
-            .replace("</b>", "**")
-            .replace(r"\see ", "")
-            .replace("@see ", "")
-            .replace(r"\bug", ":bug:")
-            .replace("@bug", ":bug:")
-            .replace(r"\version", ":version:")
-            .replace("@version", ":version:")
-            .replace(r"\param", ":param")
-            .replace("@param", ":param")
-            .replace(r"\return", ":return:")
-            .replace("@return", ":return:")
-            .replace(r"\ref ", "")
-            .replace("@ref ", "")
-            .replace(r"\@protocol", "@protocol")
-            .replace(r"\@end", "@end")
-            .replace(r"\note", ".. note::")
-            .replace("@note", ".. note::")
-            .replace(r"\warning", ".. warning::")
-            .replace("@warning", ".. warning::")
-            .replace(r"\deprecated", "\n.. warning:: **Deprecated!**")
-            .replace("@deprecated", "\n.. warning:: **Deprecated!**")
-            .replace("NULL", "None")
-            .replace(
-                r"\libvlc_return_bool", ""
-            )  # strange special case in libvlc_media_player_will_play
-            .splitlines()
-        )
+        lines = self.base_sphinx_format(self.docs)
 
         i = 0
         while i < len(lines):
