@@ -28,4 +28,6 @@ python3 -m pip install --upgrade pip
 echo "Installing dependencies"
 python3 -m pip install -r requirements.txt
 
+echo "If you want to enable pre-commit hooks (ruff checks), run the command pre-commit install"
+
 echo "Setup done"
