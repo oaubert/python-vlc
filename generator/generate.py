@@ -2649,26 +2649,25 @@ class PythonGenerator(_Generator):
         return Overrides(codes=codes, methods=methods, docstrs=docstrs)
 
     def save(self, path=None, format=True):
-        """Write Python bindings to a file or ``stdout``."""
-        if format:
-            # Write to temporary file
-            tmp_path = os.path.join(BASEDIR, ".tmp")
-            self.outopen(tmp_path)
-            self.insert_code(
-                os.path.join(TEMPLATEDIR, "header.py"), generate_items=True
-            )
-            self.unwrapped()
-            self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
-            self.outclose()
+        """Write Python bindings to a file or ``stdout``.
 
-            # Format the temporary file using ruff
+        and optionally format it with ruff.
+        """
+        self.outopen(path or "-")
+        self.insert_code(os.path.join(TEMPLATEDIR, "header.py"), generate_items=True)
+        self.unwrapped()
+        self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
+        self.outclose()
+
+        if path and path != "-" and path != "stdout" and format:
+            # Format the generated file using ruff
             completed_process = subprocess.run(
                 [
                     "ruff",
                     "format",
                     "--config",
                     RUFF_CFG_FILE,
-                    tmp_path,
+                    path,
                 ],
                 stdout=subprocess.DEVNULL,
             )
@@ -2681,30 +2680,11 @@ class PythonGenerator(_Generator):
                     "--exit-zero",
                     "--config",
                     RUFF_CFG_FILE,
-                    tmp_path,
+                    path,
                 ],
                 stdout=subprocess.DEVNULL,
             )
             completed_process.check_returncode()
-
-            # Write to the actual `path`
-            self.outopen(path or "-")
-            tmp = opener(tmp_path)
-            assert self.file is not None, "Can't write to path, self.file is None."
-            self.file.write(tmp.read())
-            tmp.close()
-            self.outclose()
-
-            # Delete temporary file
-            os.remove(tmp_path)
-        else:
-            self.outopen(path or "-")
-            self.insert_code(
-                os.path.join(TEMPLATEDIR, "header.py"), generate_items=True
-            )
-            self.unwrapped()
-            self.insert_code(os.path.join(TEMPLATEDIR, "footer.py"))
-            self.outclose()
 
 
 class JavaGenerator(_Generator):
@@ -2838,6 +2818,9 @@ def preprocess(vlc_h: Path) -> Path:
     preprocessed_dir = Path(PREPROCESSEDDIR)
     if not (preprocessed_dir.exists() and preprocessed_dir.is_dir()):
         preprocessed_dir.mkdir(parents=True)
+    if not (preprocessed_dir.exists() and preprocessed_dir.is_dir()):
+        logger.error("Cannot create directory for preprocessed data")
+        sys.exit(1)
 
     preprocessed_file = Path(f"{PREPROCESSEDDIR}/vlc.preprocessed")
     # call C preprocessor on vlc.h
