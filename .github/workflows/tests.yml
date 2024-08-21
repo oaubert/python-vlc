@@ -10,7 +10,7 @@ jobs:
       - run: |
           sudo apt-get install -y vlc pulseaudio libvlc-dev
           pulseaudio --start
-          python3 dev_setup.py
+          dev_setup.sh
           . .venv/bin/activate
           make test_generator
           make test_bindings
