@@ -369,12 +369,13 @@ class _Source(object):
 
     def base_sphinx_format(self, doc: str) -> list[str]:
         # See https://devguide.python.org/documentation/markup/
-        lines = ( doc.replace(r"\see", "See")
+        lines = (
+            doc.replace(r"\see", "See")
             .replace("@see", "See")
             .replace(r"\sa", "")
             .replace(r"\p ", "")
             .replace(r"\note", ".. note::")
-             .replace("@note", ".. note::")
+            .replace("@note", ".. note::")
             .replace(r"\warning", ".. warning::")
             .replace("@warning", ".. warning::")
             .replace(r"\ref ", "")
@@ -413,8 +414,7 @@ class _Source(object):
         return lines
 
     def docs_in_sphinx_format(self) -> str:
-        """Converts self.docs into sphinx format
-        """
+        """Converts self.docs into sphinx format."""
         in_block = False
         res = []
         lines = self.base_sphinx_format(self.docs)
@@ -443,6 +443,7 @@ class _Source(object):
             res[-1] = endot(res[-1])
 
         return _NL_.join(res)
+
 
 class Enum(_Source):
     """Enum type."""
@@ -921,7 +922,9 @@ class Val(object):
             n = t[-1]
         # Special case for debug levels and roles (with non regular name)
         n = re.sub(
-            r"^(LIBVLC_|role_|marquee_|adjust_|AudioChannel_|AudioOutputDevice_|AudioStereoMode_)", "", n
+            r"^(LIBVLC_|role_|marquee_|adjust_|AudioChannel_|AudioOutputDevice_|AudioStereoMode_)",
+            "",
+            n,
         )
         if n[0].isdigit():  # can't start with a number
             n = "_" + n
@@ -1238,7 +1241,14 @@ declarator: (parenthesized_declarator
         for typedef_node, func_decl_node in func_captures:
             func_id_capture = func_id_query.captures(typedef_node)
             if len(func_id_capture) < 1:
-                logger.warning(f"Cannot analyse callback signature in following line - ignoring:\n{typedef_node.text}")
+                # Known wrong matches (difficult to filter out with a TS query):
+                # cookie_read_function_t cookie_write_function_t cookie_seek_function_t cookie_close_function_t
+                # from cookie_io_functions_t.h (included by stdio.h)
+                if b" cookie_" not in typedef_node.text:
+                    # If not one of these, display a warning so that we can investigate
+                    logger.warning(
+                        f"Cannot analyse callback signature in following line - ignoring:\n{typedef_node.text}"
+                    )
                 continue
             assert (
                 len(func_id_capture) >= 1
@@ -1259,6 +1269,7 @@ declarator: (parenthesized_declarator
             # Because the code parsed is the output of vlc.h's preprocessing, some signatures
             # come from external libraries and are not part of libvlc's API.
             if not name.startswith("libvlc_"):
+                logger.warning(f"Not a callback:\n{typedef_node.text}")
                 continue
 
             type_node = typedef_node.child_by_field_name("type")
