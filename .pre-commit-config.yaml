@@ -21,7 +21,7 @@ repos:
     # Abort the commit if code wasn't formatted
     - id: format
       name: Check code is formatted
-      entry: ruff format --config ruff.toml --check
+      entry: ruff format --config ruff.toml --check --diff
       language: python
       files: |
         (?x)^(
