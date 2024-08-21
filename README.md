@@ -55,6 +55,10 @@ See https://docs.python.org/3/library/venv.html#how-venvs-work for other os-shel
 To generate the vlc.py module and its documentation, for both the
 development version and the installed VLC version, use `make`.
 
+The Makefile tries to convert files from either `../../include/vlc`
+(i.e. if the code is placed as a `bindings/pyton` in the VLC source
+tree) or `/usr/include/vlc`.
+
 For running tests, use `make test`.
 Note that you need vlc installed because some tests require the
 libvlc's dynamic library to be present on the system.
@@ -106,7 +110,7 @@ It really is the conjunction of two things:
 1. A **parser** of C header files (those of libvlc): that is the class `Parser`.
 1. A **generator** of Python bindings: that is the class `PythonGenerator`.
 
-`Parser` parses libvlc's headers and produce a kind of AST where nodes are
+`Parser` parses libvlc's headers and produces a kind of AST where nodes are
 instances of either `Struct`, `Union`, `Func`, `Par`, `Enum` or `Val`.
 The information kept is what is necessary for `PythonGenerator` to then produce
 the bindings.
@@ -136,6 +140,6 @@ Contributions such as:
 - contributing unit tests
 - contributing examples
 
-are welcomed!
+are welcome!
 
 [^1]: To be exact, it produces a CST: Concrete Syntax Tree.

@@ -59,7 +59,7 @@ $(VERSIONED_NAME): generator/generate.py generator/templates/header.py generator
 	$(GENERATE) $(INSTALLED_INCLUDES) -o $@
 
 doc: $(VERSIONED_NAME)
-	-pydoctor --project-name=python-vlc --project-url=https://github.com/oaubert/python-vlc/ --make-html --verbose --html-output=doc $<
+	sphinx-build docs doc
 
 test_bindings: installed
 	PYTHONPATH=$(VERSIONED_PATH):$(PROJECT_ROOT) python3 tests/test_bindings.py

@@ -1,20 +1,11 @@
-.. python-vlc documentation master file, created by
-   sphinx-quickstart on Thu Apr 25 00:22:02 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to python-vlc's documentation!
 ======================================
 
-.. automodule:: vlc
-   :members:
-   :undoc-members:
-   :show-inheritance:
+TODO
 
-Indices and tables
-==================
+.. toctree::
+   :caption: Documentation
 
-* :ref:`genindex`
-.. * :ref:`modindex`
-.. * :ref:`search`
-
+   Home <self>
+   api
+   search
