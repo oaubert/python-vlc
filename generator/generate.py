@@ -2865,20 +2865,13 @@ def prepare_package(output):
         sys.stderr.write("Unable to determine bindings version.")
         sys.exit(1)
 
-    # Write the versioned setup.py file
-    outdir = os.path.dirname(output)
-    with open(os.path.join(TEMPLATEDIR, "setup.py")) as f:
-        setup = f.read()
-    # Fill in the template fields
-    setup = setup.format(
-        libvlc_version=libvlc_version,
-        generator_version=__version__,
-        bindings_version=bindings_version,
-    )
-    with open(os.path.join(outdir, "setup.py"), "w") as f:
-        f.write(setup)
-
     # Copy other files for distribution
+    outdir = os.path.dirname(output)
+
+    shutil.copyfile(
+        os.path.join(TEMPLATEDIR, "pyproject.toml"),
+        os.path.join(outdir, "pyproject.toml")
+    )
     shutil.copyfile(
         os.path.join(TEMPLATEDIR, "MANIFEST.in"), os.path.join(outdir, "MANIFEST.in")
     )
@@ -2886,7 +2879,7 @@ def prepare_package(output):
     if os.path.isdir(examples):
         shutil.rmtree(examples)
     shutil.copytree(os.path.join(BASEDIR, "..", "examples"), examples)
-    for fname in ("COPYING", "README.module", "distribute_setup.py"):
+    for fname in ("COPYING", "README.module"):
         shutil.copyfile(os.path.join(BASEDIR, "..", fname), os.path.join(outdir, fname))
 
 

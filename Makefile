@@ -54,7 +54,7 @@ $(MODULE_NAME): generator/generate.py generator/templates/header.py generator/te
 	mkdir -p $(DEV_PATH)
 	$(GENERATE) $(DEV_INCLUDES) -o $@
 
-$(VERSIONED_NAME): generator/generate.py generator/templates/header.py generator/templates/footer.py generator/templates/override.py $(INSTALLED_INCLUDES)
+$(VERSIONED_NAME): generator/generate.py generator/templates/header.py generator/templates/footer.py generator/templates/override.py generator/templates/pyproject.toml $(INSTALLED_INCLUDES)
 	mkdir -p $(VERSIONED_PATH)
 	$(GENERATE) $(INSTALLED_INCLUDES) -o $@
 
@@ -72,10 +72,10 @@ test_generator: installed
 test: test_bindings test_generator
 
 sdist: $(VERSIONED_NAME)
-	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist
+	cd $(VERSIONED_PATH); python3 -m build
 
 publish: $(VERSIONED_NAME)
-	cd $(VERSIONED_PATH); python3 setup.py bdist_wheel sdist && twine upload dist/*
+	cd $(VERSIONED_PATH); python3 -m build && twine upload dist/*
 
 format:
 	ruff format ./generator/generate.py ./tests dev_setup.py ./generator/templates/
