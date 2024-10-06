@@ -25,7 +25,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301 USA
 
 """This module provides bindings for the LibVLC public API, see
-http://wiki.videolan.org/LibVLC.
+https://wiki.videolan.org/LibVLC.
 
 You can find the documentation and a README file with some examples
 at https://www.olivieraubert.net/vlc/python-ctypes/.
@@ -52,10 +52,10 @@ from ctypes.util import find_library
 
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.21200"
+__version__ = "3.0.21201"
 __libvlc_version__ = "3.0.21"
-__generator_version__ = "2.0"
-build_date = "Wed Aug 21 16:48:26 2024 3.0.21"
+__generator_version__ = "2.1"
+build_date = "Sun Oct  6 22:05:11 2024 3.0.21"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -382,7 +382,7 @@ class MediaThumbnailRequest:
 
 
 # FILE* ctypes wrapper, copied from
-# http://svn.python.org/projects/ctypes/trunk/ctypeslib/ctypeslib/contrib/pythonhdr.py
+# https://svn.python.org/projects/ctypes/trunk/ctypeslib/ctypeslib/contrib/pythonhdr.py
 class FILE(ctypes.Structure):
     pass
 
@@ -3808,7 +3808,16 @@ class RendererDiscoverer(_Ctype):
 
 # Generated enum types #
 class AudioOutputChannel(_Enum):
-    """Audio channels."""
+    """Audio channels.
+
+    Defined symbols:
+      * ``vlc.AudioOutputChannel.Error``
+      * ``vlc.AudioOutputChannel.Stereo``
+      * ``vlc.AudioOutputChannel.RStereo``
+      * ``vlc.AudioOutputChannel.Left``
+      * ``vlc.AudioOutputChannel.Right``
+      * ``vlc.AudioOutputChannel.Dolbys``
+    """
 
     _enum_names_ = {
         -1: "Error",
@@ -3829,7 +3838,19 @@ AudioOutputChannel.Stereo = AudioOutputChannel(1)
 
 
 class AudioOutputDeviceTypes(_Enum):
-    """Audio device types."""
+    """Audio device types.
+
+    Defined symbols:
+      * ``vlc.AudioOutputDeviceTypes.Error``
+      * ``vlc.AudioOutputDeviceTypes.Mono``
+      * ``vlc.AudioOutputDeviceTypes.Stereo``
+      * ``vlc.AudioOutputDeviceTypes._2F2R``
+      * ``vlc.AudioOutputDeviceTypes._3F2R``
+      * ``vlc.AudioOutputDeviceTypes._5_1``
+      * ``vlc.AudioOutputDeviceTypes._6_1``
+      * ``vlc.AudioOutputDeviceTypes._7_1``
+      * ``vlc.AudioOutputDeviceTypes.SPDIF``
+    """
 
     _enum_names_ = {
         -1: "Error",
@@ -3856,6 +3877,14 @@ AudioOutputDeviceTypes._7_1 = AudioOutputDeviceTypes(8)
 
 
 class DialogQuestionType(_Enum):
+    """
+
+    Defined symbols:
+      * ``vlc.DialogQuestionType.DIALOG_QUESTION_NORMAL``
+      * ``vlc.DialogQuestionType.DIALOG_QUESTION_WARNING``
+      * ``vlc.DialogQuestionType.DIALOG_QUESTION_CRITICAL``
+    """
+
     _enum_names_ = {
         0: "DIALOG_QUESTION_NORMAL",
         1: "DIALOG_QUESTION_WARNING",
@@ -3869,7 +3898,76 @@ DialogQuestionType.DIALOG_QUESTION_WARNING = DialogQuestionType(1)
 
 
 class EventType(_Enum):
-    """Event types."""
+    """Event types.
+
+    Defined symbols:
+      * ``vlc.EventType.MediaMetaChanged``
+      * ``vlc.EventType.MediaSubItemAdded``
+      * ``vlc.EventType.MediaDurationChanged``
+      * ``vlc.EventType.MediaParsedChanged``
+      * ``vlc.EventType.MediaFreed``
+      * ``vlc.EventType.MediaStateChanged``
+      * ``vlc.EventType.MediaSubItemTreeAdded``
+      * ``vlc.EventType.MediaPlayerMediaChanged``
+      * ``vlc.EventType.MediaPlayerNothingSpecial``
+      * ``vlc.EventType.MediaPlayerOpening``
+      * ``vlc.EventType.MediaPlayerBuffering``
+      * ``vlc.EventType.MediaPlayerPlaying``
+      * ``vlc.EventType.MediaPlayerPaused``
+      * ``vlc.EventType.MediaPlayerStopped``
+      * ``vlc.EventType.MediaPlayerForward``
+      * ``vlc.EventType.MediaPlayerBackward``
+      * ``vlc.EventType.MediaPlayerEndReached``
+      * ``vlc.EventType.MediaPlayerEncounteredError``
+      * ``vlc.EventType.MediaPlayerTimeChanged``
+      * ``vlc.EventType.MediaPlayerPositionChanged``
+      * ``vlc.EventType.MediaPlayerSeekableChanged``
+      * ``vlc.EventType.MediaPlayerPausableChanged``
+      * ``vlc.EventType.MediaPlayerTitleChanged``
+      * ``vlc.EventType.MediaPlayerSnapshotTaken``
+      * ``vlc.EventType.MediaPlayerLengthChanged``
+      * ``vlc.EventType.MediaPlayerVout``
+      * ``vlc.EventType.MediaPlayerScrambledChanged``
+      * ``vlc.EventType.MediaPlayerESAdded``
+      * ``vlc.EventType.MediaPlayerESDeleted``
+      * ``vlc.EventType.MediaPlayerESSelected``
+      * ``vlc.EventType.MediaPlayerCorked``
+      * ``vlc.EventType.MediaPlayerUncorked``
+      * ``vlc.EventType.MediaPlayerMuted``
+      * ``vlc.EventType.MediaPlayerUnmuted``
+      * ``vlc.EventType.MediaPlayerAudioVolume``
+      * ``vlc.EventType.MediaPlayerAudioDevice``
+      * ``vlc.EventType.MediaPlayerChapterChanged``
+      * ``vlc.EventType.MediaListItemAdded``
+      * ``vlc.EventType.MediaListWillAddItem``
+      * ``vlc.EventType.MediaListItemDeleted``
+      * ``vlc.EventType.MediaListWillDeleteItem``
+      * ``vlc.EventType.MediaListEndReached``
+      * ``vlc.EventType.MediaListViewItemAdded``
+      * ``vlc.EventType.MediaListViewWillAddItem``
+      * ``vlc.EventType.MediaListViewItemDeleted``
+      * ``vlc.EventType.MediaListViewWillDeleteItem``
+      * ``vlc.EventType.MediaListPlayerPlayed``
+      * ``vlc.EventType.MediaListPlayerNextItemSet``
+      * ``vlc.EventType.MediaListPlayerStopped``
+      * ``vlc.EventType.MediaDiscovererStarted`` \deprecated Useless event, it will be triggered only when calling
+    libvlc_media_discoverer_start()
+      * ``vlc.EventType.MediaDiscovererEnded`` \deprecated Useless event, it will be triggered only when calling
+    libvlc_media_discoverer_stop()
+      * ``vlc.EventType.RendererDiscovererItemAdded``
+      * ``vlc.EventType.RendererDiscovererItemDeleted``
+      * ``vlc.EventType.VlmMediaAdded``
+      * ``vlc.EventType.VlmMediaRemoved``
+      * ``vlc.EventType.VlmMediaChanged``
+      * ``vlc.EventType.VlmMediaInstanceStarted``
+      * ``vlc.EventType.VlmMediaInstanceStopped``
+      * ``vlc.EventType.VlmMediaInstanceStatusInit``
+      * ``vlc.EventType.VlmMediaInstanceStatusOpening``
+      * ``vlc.EventType.VlmMediaInstanceStatusPlaying``
+      * ``vlc.EventType.VlmMediaInstanceStatusPause``
+      * ``vlc.EventType.VlmMediaInstanceStatusEnd``
+      * ``vlc.EventType.VlmMediaInstanceStatusError``
+    """
 
     _enum_names_ = {
         0: "MediaMetaChanged",
@@ -4009,6 +4107,12 @@ class LogLevel(_Enum):
     """Logging messages level.
 
     .. note:: Future LibVLC versions may define new levels.
+
+    Defined symbols:
+      * ``vlc.LogLevel.DEBUG``
+      * ``vlc.LogLevel.NOTICE`` < Debug message
+      * ``vlc.LogLevel.WARNING`` < Important informational message
+      * ``vlc.LogLevel.ERROR`` < Warning (potential error) message
     """
 
     _enum_names_ = {
@@ -4028,6 +4132,12 @@ LogLevel.WARNING = LogLevel(3)
 class MediaDiscovererCategory(_Enum):
     """Category of a media discoverer
     See :func:`libvlc_media_discoverer_list_get`.
+
+    Defined symbols:
+      * ``vlc.MediaDiscovererCategory.devices`` devices, like portable music player
+      * ``vlc.MediaDiscovererCategory.lan`` LAN/WAN services, like Upnp, SMB, or SAP
+      * ``vlc.MediaDiscovererCategory.podcasts`` Podcasts
+      * ``vlc.MediaDiscovererCategory.localdirs`` Local directories, like Video, Music or Pictures directories
     """
 
     _enum_names_ = {
@@ -4048,6 +4158,15 @@ class MediaParseFlag(_Enum):
     """Parse flags used by :func:`libvlc_media_parse_with_options`
 
     See :func:`libvlc_media_parse_with_options`.
+
+    Defined symbols:
+      * ``vlc.MediaParseFlag.local`` Parse media if it's a local file
+      * ``vlc.MediaParseFlag.network`` Parse media even if it's a network file
+      * ``vlc.MediaParseFlag.fetch_local`` Fetch meta and covert art using local resources
+      * ``vlc.MediaParseFlag.fetch_network`` Fetch meta and covert art using network resources
+      * ``vlc.MediaParseFlag.do_interact`` Interact with the user (via libvlc_dialog_cbs) when preparsing this item
+    (and not its sub items). Set this flag in order to receive a callback
+    when the input is asking for credentials.
     """
 
     _enum_names_ = {
@@ -4072,6 +4191,12 @@ class MediaParsedStatus(_Enum):
 
     See :func:`libvlc_media_parse_with_options`
     See :func:`libvlc_media_get_parsed_status`.
+
+    Defined symbols:
+      * ``vlc.MediaParsedStatus.skipped``
+      * ``vlc.MediaParsedStatus.failed``
+      * ``vlc.MediaParsedStatus.timeout``
+      * ``vlc.MediaParsedStatus.done``
     """
 
     _enum_names_ = {
@@ -4094,6 +4219,18 @@ class MediaPlayerRole(_Enum):
     :version: LibVLC 3.0.0 and later.
 
     See :func:`libvlc_media_player_set_role`.
+
+    Defined symbols:
+      * ``vlc.MediaPlayerRole._None``
+      * ``vlc.MediaPlayerRole.Music`` < Don't use a media player role
+      * ``vlc.MediaPlayerRole.Video`` < Music (or radio) playback
+      * ``vlc.MediaPlayerRole.Communication`` < Video playback
+      * ``vlc.MediaPlayerRole.Game`` < Speech, real-time communication
+      * ``vlc.MediaPlayerRole.Notification`` < Video game
+      * ``vlc.MediaPlayerRole.Animation`` < User interaction feedback
+      * ``vlc.MediaPlayerRole.Production`` < Embedded animation (e.g. in web page)
+      * ``vlc.MediaPlayerRole.Accessibility`` < Audio editting/production
+      * ``vlc.MediaPlayerRole.Test`` < Accessibility
     """
 
     _enum_names_ = {
@@ -4123,7 +4260,12 @@ MediaPlayerRole._None = MediaPlayerRole(0)
 
 
 class MediaSlaveType(_Enum):
-    """Type of a media slave: subtitle or audio."""
+    """Type of a media slave: subtitle or audio.
+
+    Defined symbols:
+      * ``vlc.MediaSlaveType.subtitle``
+      * ``vlc.MediaSlaveType.audio``
+    """
 
     _enum_names_ = {
         0: "subtitle",
@@ -4139,6 +4281,14 @@ class MediaType(_Enum):
     """Media type
 
     See :func:`libvlc_media_get_type`.
+
+    Defined symbols:
+      * ``vlc.MediaType.unknown``
+      * ``vlc.MediaType.file``
+      * ``vlc.MediaType.directory``
+      * ``vlc.MediaType.disc``
+      * ``vlc.MediaType.stream``
+      * ``vlc.MediaType.playlist``
     """
 
     _enum_names_ = {
@@ -4160,7 +4310,36 @@ MediaType.unknown = MediaType(0)
 
 
 class Meta(_Enum):
-    """Meta data types."""
+    """Meta data types.
+
+    Defined symbols:
+      * ``vlc.Meta.Title``
+      * ``vlc.Meta.Artist``
+      * ``vlc.Meta.Genre``
+      * ``vlc.Meta.Copyright``
+      * ``vlc.Meta.Album``
+      * ``vlc.Meta.TrackNumber``
+      * ``vlc.Meta.Description``
+      * ``vlc.Meta.Rating``
+      * ``vlc.Meta.Date``
+      * ``vlc.Meta.Setting``
+      * ``vlc.Meta.URL``
+      * ``vlc.Meta.Language``
+      * ``vlc.Meta.NowPlaying``
+      * ``vlc.Meta.Publisher``
+      * ``vlc.Meta.EncodedBy``
+      * ``vlc.Meta.ArtworkURL``
+      * ``vlc.Meta.TrackID``
+      * ``vlc.Meta.TrackTotal``
+      * ``vlc.Meta.Director``
+      * ``vlc.Meta.Season``
+      * ``vlc.Meta.Episode``
+      * ``vlc.Meta.ShowName``
+      * ``vlc.Meta.Actors``
+      * ``vlc.Meta.AlbumArtist``
+      * ``vlc.Meta.DiscNumber``
+      * ``vlc.Meta.DiscTotal``
+    """
 
     _enum_names_ = {
         0: "Title",
@@ -4221,7 +4400,16 @@ Meta.URL = Meta(10)
 
 
 class NavigateMode(_Enum):
-    """Navigation mode."""
+    """Navigation mode.
+
+    Defined symbols:
+      * ``vlc.NavigateMode.activate``
+      * ``vlc.NavigateMode.up``
+      * ``vlc.NavigateMode.down``
+      * ``vlc.NavigateMode.left``
+      * ``vlc.NavigateMode.right``
+      * ``vlc.NavigateMode.popup``
+    """
 
     _enum_names_ = {
         0: "activate",
@@ -4242,7 +4430,13 @@ NavigateMode.up = NavigateMode(1)
 
 
 class PlaybackMode(_Enum):
-    """Defines playback modes for playlist."""
+    """Defines playback modes for playlist.
+
+    Defined symbols:
+      * ``vlc.PlaybackMode.default``
+      * ``vlc.PlaybackMode.loop``
+      * ``vlc.PlaybackMode.repeat``
+    """
 
     _enum_names_ = {
         0: "default",
@@ -4257,7 +4451,20 @@ PlaybackMode.repeat = PlaybackMode(2)
 
 
 class Position(_Enum):
-    """Enumeration of values used to set position (e.g. of video title)."""
+    """Enumeration of values used to set position (e.g. of video title).
+
+    Defined symbols:
+      * ``vlc.Position.disable``
+      * ``vlc.Position.center``
+      * ``vlc.Position.left``
+      * ``vlc.Position.right``
+      * ``vlc.Position.top``
+      * ``vlc.Position.top_left``
+      * ``vlc.Position.top_right``
+      * ``vlc.Position.bottom``
+      * ``vlc.Position.bottom_left``
+      * ``vlc.Position.bottom_right``
+    """
 
     _enum_names_ = {
         -1: "disable",
@@ -4293,6 +4500,16 @@ class State(_Enum):
     Expected states by web plugins are:
     IDLE/CLOSE=0, OPENING=1, PLAYING=3, PAUSED=4,
     STOPPING=5, ENDED=6, ERROR=7.
+
+    Defined symbols:
+      * ``vlc.State.NothingSpecial``
+      * ``vlc.State.Opening``
+      * ``vlc.State.Buffering``
+      * ``vlc.State.Playing``
+      * ``vlc.State.Paused``
+      * ``vlc.State.Stopped``
+      * ``vlc.State.Ended``
+      * ``vlc.State.Error``
     """
 
     _enum_names_ = {
@@ -4320,6 +4537,13 @@ State.Stopped = State(5)
 class TeletextKey(_Enum):
     """Enumeration of teletext keys than can be passed via
     :func:`libvlc_video_set_teletext`.
+
+    Defined symbols:
+      * ``vlc.TeletextKey.red``
+      * ``vlc.TeletextKey.green``
+      * ``vlc.TeletextKey.yellow``
+      * ``vlc.TeletextKey.blue``
+      * ``vlc.TeletextKey.index``
     """
 
     _enum_names_ = {
@@ -4339,6 +4563,15 @@ TeletextKey.yellow = TeletextKey(7929856)
 
 
 class TrackType(_Enum):
+    """
+
+    Defined symbols:
+      * ``vlc.TrackType.unknown``
+      * ``vlc.TrackType.audio``
+      * ``vlc.TrackType.video``
+      * ``vlc.TrackType.ext``
+    """
+
     _enum_names_ = {
         -1: "unknown",
         0: "audio",
@@ -4354,7 +4587,16 @@ TrackType.video = TrackType(1)
 
 
 class VideoAdjustOption(_Enum):
-    """option values for libvlc_video_get,set_adjust_int,float,bool."""
+    """option values for libvlc_video_get,set_adjust_int,float,bool.
+
+    Defined symbols:
+      * ``vlc.VideoAdjustOption.Enable``
+      * ``vlc.VideoAdjustOption.Contrast``
+      * ``vlc.VideoAdjustOption.Brightness``
+      * ``vlc.VideoAdjustOption.Hue``
+      * ``vlc.VideoAdjustOption.Saturation``
+      * ``vlc.VideoAdjustOption.Gamma``
+    """
 
     _enum_names_ = {
         0: "Enable",
@@ -4375,7 +4617,18 @@ VideoAdjustOption.Saturation = VideoAdjustOption(4)
 
 
 class VideoLogoOption(_Enum):
-    """option values for libvlc_video_get,set_logo_int,string."""
+    """option values for libvlc_video_get,set_logo_int,string.
+
+    Defined symbols:
+      * ``vlc.VideoLogoOption.logo_enable``
+      * ``vlc.VideoLogoOption.logo_file``
+      * ``vlc.VideoLogoOption.logo_x`` < string argument, "file,d,t;file,d,t;..."
+      * ``vlc.VideoLogoOption.logo_y``
+      * ``vlc.VideoLogoOption.logo_delay``
+      * ``vlc.VideoLogoOption.logo_repeat``
+      * ``vlc.VideoLogoOption.logo_opacity``
+      * ``vlc.VideoLogoOption.logo_position``
+    """
 
     _enum_names_ = {
         0: "logo_enable",
@@ -4400,7 +4653,20 @@ VideoLogoOption.logo_y = VideoLogoOption(3)
 
 
 class VideoMarqueeOption(_Enum):
-    """Marq options definition."""
+    """Marq options definition.
+
+    Defined symbols:
+      * ``vlc.VideoMarqueeOption.Enable``
+      * ``vlc.VideoMarqueeOption.Text``
+      * ``vlc.VideoMarqueeOption.Color`` string argument
+      * ``vlc.VideoMarqueeOption.Opacity``
+      * ``vlc.VideoMarqueeOption.Position``
+      * ``vlc.VideoMarqueeOption.Refresh``
+      * ``vlc.VideoMarqueeOption.Size``
+      * ``vlc.VideoMarqueeOption.Timeout``
+      * ``vlc.VideoMarqueeOption.X``
+      * ``vlc.VideoMarqueeOption.Y``
+    """
 
     _enum_names_ = {
         0: "Enable",
@@ -4429,6 +4695,19 @@ VideoMarqueeOption.Y = VideoMarqueeOption(9)
 
 
 class VideoOrient(_Enum):
+    """
+
+    Defined symbols:
+      * ``vlc.VideoOrient.top_left``
+      * ``vlc.VideoOrient.top_right`` < Normal. Top line represents top, left column left.
+      * ``vlc.VideoOrient.bottom_left`` < Flipped horizontally
+      * ``vlc.VideoOrient.bottom_right`` < Flipped vertically
+      * ``vlc.VideoOrient.left_top`` < Rotated 180 degrees
+      * ``vlc.VideoOrient.left_bottom`` < Transposed
+      * ``vlc.VideoOrient.right_top`` < Rotated 90 degrees clockwise (or 270 anti-clockwise)
+      * ``vlc.VideoOrient.right_bottom`` < Rotated 90 degrees anti-clockwise
+    """
+
     _enum_names_ = {
         0: "top_left",
         1: "top_right",
@@ -4452,6 +4731,14 @@ VideoOrient.top_right = VideoOrient(1)
 
 
 class VideoProjection(_Enum):
+    """
+
+    Defined symbols:
+      * ``vlc.VideoProjection.rectangular``
+      * ``vlc.VideoProjection.equirectangular``
+      * ``vlc.VideoProjection.cubemap_layout_standard`` < 360 spherical
+    """
+
     _enum_names_ = {
         0: "rectangular",
         1: "equirectangular",
@@ -12499,7 +12786,7 @@ def print_python():
         t = t, ("iOS" if sys.platform == "ios" else "macOS"), mac_ver()[0], machine()
     else:
         try:
-            import distro  # <http://GitHub.com/nir0s/distro>
+            import distro  # <https://github.com/nir0s/distro>
 
             t = t, bytes_to_str(distro.name()), bytes_to_str(distro.version())
         except ImportError:
@@ -12591,7 +12878,7 @@ if __name__ == "__main__":
         player.play()
 
         # Some marquee examples.  Marquee requires '--sub-source marq' in the
-        # Instance() call above, see <http://www.videolan.org/doc/play-howto/en/ch04.html>
+        # Instance() call above, see <https://www.videolan.org/doc/play-howto/en/ch04.html>
         player.video_set_marquee_int(VideoMarqueeOption.Enable, 1)
         player.video_set_marquee_int(VideoMarqueeOption.Size, 24)  # pixels
         # FIXME: This crashes the module - it should be investigated
