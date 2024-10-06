@@ -1,0 +1,3 @@
+Sphinx==7.3.7
+sphinx-autoapi
+sphinx_mdinclude
