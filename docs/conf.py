@@ -15,9 +15,16 @@ MODULE_DIR = '../generated/3.0/'
 project = "python-vlc"
 copyright = "2024, Olivier Aubert"
 author = "Olivier Aubert"
-# FIXME: get from the actual vlc.py module
-version = "3.0.16"
-release = "3.0.16"
+
+version = "Unknown"
+with open(f"{MODULE_DIR}/vlc.py", "r") as f:
+    for l in f.readlines():
+        if l.startswith('__version__'):
+            items = l.split('"')
+            if len(items) == 3:
+                version = items[1]
+            break
+release = version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
