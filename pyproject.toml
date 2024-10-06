@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "python-vlc-generator"
+dynamic = ["version"]
+authors = [
+    { name = "Olivier Aubert", email = "contact@olivieraubert.net" }
+]
+maintainers = [
+    { name = "Olivier Aubert", email = "contact@olivieraubert.net" }
+]
+readme = "README.md"
+license = { text = "GPL-2+" }
+description = "VLC python bindings generator."
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU General Public License v2 or later (LGPLv2+)",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: POSIX :: Other",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 2",
+  "Programming Language :: Python :: 3",
+  "Topic :: Multimedia",
+  "Topic :: Multimedia :: Sound/Audio",
+  "Topic :: Multimedia :: Video",
+  "Topic :: Software Development :: Code Generators"
+]
+keywords = [ "vlc", "video", "bindings" ]
+
+[project.urls]
+Homepage = "https://wiki.videolan.org/PythonBinding"
+
+[tool.setuptools]
+packages = ["generator"]
+
+[tool.setuptools.dynamic]
+version = {attr = "generator.generate.__version__"}
