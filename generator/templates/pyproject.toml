@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "python-vlc"
+dynamic = [ "version" ]
+authors = [
+    { name = "Olivier Aubert", email = "contact@olivieraubert.net" }
+]
+maintainers = [
+    { name = "Olivier Aubert", email = "contact@olivieraubert.net" }
+]
+readme = { file = "README.module", content-type = "text/x-rst" }
+license = { text = "LGPL-2.1+" }
+description = "VLC bindings for python."
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: POSIX :: Other",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 2",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Multimedia :: Video"
+]
+keywords = ["vlc", "video"]
+
+[project.urls]
+Homepage = "https://wiki.videolan.org/PythonBinding"
+Documentation = "https://www.olivieraubert.net/vlc/python-ctypes/doc/"
+Repository = "https://github.com/oaubert/python-vlc.git"
+"Alternate repository" = "https://git.videolan.org/?p=vlc/bindings/python.git;a=summary"
+"Bug Tracker" = "https://github.com/oaubert/python-vlc/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "vlc.__version__"}
