@@ -3,3 +3,5 @@ Sphinx==7.3.7
 tree-sitter==0.20.4
 build
 pre-commit
+sphinx-autoapi
+sphinx_mdinclude
