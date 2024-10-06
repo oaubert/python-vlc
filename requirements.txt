@@ -5,3 +5,4 @@ build
 pre-commit
 sphinx-autoapi
 sphinx_mdinclude
+sphinx_rtd_theme

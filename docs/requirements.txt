@@ -1,3 +1,4 @@
 Sphinx==7.3.7
 sphinx-autoapi
 sphinx_mdinclude
+sphinx_rtd_theme
