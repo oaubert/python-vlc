@@ -1,17 +1,11 @@
-Python ctypes-based bindings libvlc
-===================================
+Python ctypes-based bindings for libvlc
+=======================================
 
 The bindings use ctypes to directly call the libvlc dynamic lib, and
 the code is generated from the include files defining the public
 API. The same module should be compatible with various versions of
 libvlc 3.*. However, there may be incompatible changes between major
 versions.
-
-License
--------
-
-The generated module is licensed, like libvlc, under the GNU Lesser
-General Public License 2.1 or later.
 
 Installing the module
 ---------------------
@@ -23,9 +17,6 @@ You can install the module through PyPI:
 Using the module
 ----------------
 
-Documentation building needs epydoc. An online build is available at
-<http://olivieraubert.net/vlc/python-ctypes/>
-
 The module offers two ways of accessing the API - a raw access to all
 exported methods, and more convenient wrapper classes.
 
@@ -33,13 +24,13 @@ Using wrapper classes
 +++++++++++++++++++++
 
 Most major structures of the libvlc API (Instance, Media, MediaPlayer,
-  etc) are wrapped as classes, with shorter method names and some
-  adaptations to provide a more pythonic API:
+etc) are wrapped as classes, with shorter method names and some
+adaptations to provide a more pythonic API:
 
-   >>> import vlc
-   >>> p=vlc.MediaPlayer('file:///tmp/foo.avi')
-   >>> p.play()
-   >>> p.get_instance() # returns the corresponding instance
+    >>> import vlc
+    >>> player = vlc.MediaPlayer('file:///tmp/foo.avi')
+    >>> player.play()
+    >>> player.get_instance() # returns the corresponding instance
 
 In this case, a default ``vlc.Instance`` will be instanciated and
 stored in ``vlc._default_instance``. It will be used to instanciate
@@ -47,16 +38,16 @@ the various classes (``Media``, ``MediaList``, ``MediaPlayer``, etc).
 
 You also can use wrapper methods closer to the original libvlc API:
 
-   >>> import vlc
-   >>> i=vlc.Instance('--no-audio', '--fullscreen')
-   >>> p=i.media_player_new()
-   >>> p.audio_get_volume()
-   50
-   >>> m=i.media_new('file:///tmp/foo.avi')
-   >>> m.get_mrl()
-   'file:///tmp/foo.avi'
-   >>> p.set_media(m)
-   >>> p.play()
+    >>> import vlc
+    >>> instance = vlc.Instance('--no-audio', '--fullscreen')
+    >>> player = instance.media_player_new()
+    >>> player.audio_get_volume()
+    50
+    >>> media = instance.media_new('file:///tmp/foo.avi')
+    >>> media.get_mrl()
+    'file:///tmp/foo.avi'
+    >>> player.set_media(m)
+    >>> player.play()
 
 Using raw access
 ++++++++++++++++
@@ -64,14 +55,33 @@ Using raw access
 Libvlc methods are available as attributes of the vlc module (as
   vlc.libvlc_*). Use their docstring (any introspective shell like
   ipython is your friend) to explore them, or refer to the online
-  documentation at http://olivieraubert.net/vlc/python-ctypes/
+  documentation at https://olivieraubert.net/vlc/python-ctypes/
 
     >>> import vlc
     >>> vlc.libvlc_get_version()
     '3.0.0-rc2 Vetinari'
-    >>> e=vlc.VLCException()
-    >>> i=vlc.libvlc_new(0, [], e)
-    >>> i
+    >>> exc = vlc.VLCException()
+    >>> instance = vlc.libvlc_new(0, [], exc)
+    >>> instance
     <vlc.Instance object at 0x8384a4c>
-    >>> vlc.libvlc_audio_get_volume(i,e)
+    >>> vlc.libvlc_audio_get_volume(instance, exc)
     50
+
+Example code
+++++++++++++
+
+You can find [example
+files](https://github.com/oaubert/python-vlc/tree/master/examples) in
+the repository.
+
+Note that the ``vlc.py`` module can itself be invoked as an
+application using its own features, which also serves as a API usage
+example. See the [end of the
+module](https://github.com/oaubert/python-vlc/blob/master/generated/3.0/vlc.py#L12525)
+after the line ``if __name__ == "__main__":``
+
+License
+-------
+
+The generated module is licensed, like libvlc, under the GNU Lesser
+General Public License 2.1 or later.
