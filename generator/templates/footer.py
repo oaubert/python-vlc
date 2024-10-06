@@ -89,7 +89,7 @@ def print_python():
         t = t, ("iOS" if sys.platform == "ios" else "macOS"), mac_ver()[0], machine()
     else:
         try:
-            import distro  # <http://GitHub.com/nir0s/distro>
+            import distro  # <https://github.com/nir0s/distro>
 
             t = t, bytes_to_str(distro.name()), bytes_to_str(distro.version())
         except ImportError:
@@ -181,7 +181,7 @@ if __name__ == "__main__":
         player.play()
 
         # Some marquee examples.  Marquee requires '--sub-source marq' in the
-        # Instance() call above, see <http://www.videolan.org/doc/play-howto/en/ch04.html>
+        # Instance() call above, see <https://www.videolan.org/doc/play-howto/en/ch04.html>
         player.video_set_marquee_int(VideoMarqueeOption.Enable, 1)
         player.video_set_marquee_int(VideoMarqueeOption.Size, 24)  # pixels
         # FIXME: This crashes the module - it should be investigated

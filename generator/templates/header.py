@@ -25,7 +25,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301 USA
 
 """This module provides bindings for the LibVLC public API, see
-http://wiki.videolan.org/LibVLC.
+https://wiki.videolan.org/LibVLC.
 
 You can find the documentation and a README file with some examples
 at https://www.olivieraubert.net/vlc/python-ctypes/.
@@ -59,12 +59,14 @@ build_date = ""  # build time stamp and __version__, see generate.py
 # esp. on windows.
 DEFAULT_ENCODING = "utf-8"
 
+
 def str_to_bytes(s):
     """Translate string or bytes to bytes."""
     if isinstance(s, str):
         return bytes(s, DEFAULT_ENCODING)
     else:
         return s
+
 
 def bytes_to_str(b):
     """Translate bytes to string."""
@@ -73,9 +75,11 @@ def bytes_to_str(b):
     else:
         return b
 
+
 def len_args(func):
     """Return number of positional arguments."""
     return len(_inspect.signature(func).parameters)
+
 
 # Internal guard to prevent internal classes to be directly
 # instanciated.
@@ -106,6 +110,7 @@ def find_lib():
             try:  # some registry settings
                 # leaner than win32api, win32con
                 import winreg as w
+
                 for r in w.HKEY_LOCAL_MACHINE, w.HKEY_CURRENT_USER:
                     try:
                         r = w.OpenKey(r, "Software\\VideoLAN\\VLC")
@@ -374,7 +379,7 @@ class MediaThumbnailRequest:
 
 
 # FILE* ctypes wrapper, copied from
-# http://svn.python.org/projects/ctypes/trunk/ctypeslib/ctypeslib/contrib/pythonhdr.py
+# https://svn.python.org/projects/ctypes/trunk/ctypeslib/ctypeslib/contrib/pythonhdr.py
 class FILE(ctypes.Structure):
     pass
 

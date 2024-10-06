@@ -22,7 +22,7 @@ under the GNU Lesser General Public License 2.1 or later.
 
 You can get the latest version of the code generator from
 <https://github.com/oaubert/python-vlc/> or
-<http://git.videolan.org/?p=vlc/bindings/python.git>.
+<https://git.videolan.org/?p=vlc/bindings/python.git>.
 
 The code expects to be placed inside a VLC source tree, in
 vlc/bindings/python, so that it finds the development include files,
@@ -82,8 +82,8 @@ preferably inside a virtualenv. You can uninstall it later with
 python setup.py develop --uninstall
 ```
 
-Documentation building needs epydoc. An online build is available at
-<http://olivieraubert.net/vlc/python-ctypes/>
+Documentation building needs sphinx. An online build is available at
+<https://python-vlc.readthedocs.io/en/latest/>
 
 ## Packaging
 
