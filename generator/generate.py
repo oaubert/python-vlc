@@ -50,8 +50,8 @@ files from VLC 1.1.4.1, 1.1.5, 2.1.0, 2.2.2, 3.0.3.
 __all__ = ("Parser", "PythonGenerator", "JavaGenerator")
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
-# generated dist version can be correctly generated.
-__version__ = "2.0"
+# generated dist version can be correctly generated (major * 100 + minor).
+__version__ = "2.1"
 
 _debug = False
 
@@ -2266,6 +2266,16 @@ class PythonGenerator(_Generator):
         for e in self.parser.enums:
             cls = self.class4(e.name)
             docs = self.add_sphinx_cross_refs(e.docs_in_sphinx_format())
+            # Add names in generated docstring
+            # so that they are available in Sphinx-generated doc
+            symbols = _NL_.join(
+                [f"  * ``vlc.{cls}.{v.name}`` { v.docs }" for v in e.vals]
+            )
+            docs = f"""{docs}
+
+Defined symbols:
+{symbols}
+"""
             self.output(f"class {cls}(_Enum):")
             self.generate_docstring(docs)
             self.output(_INDENT_ + "_enum_names_ = {")
@@ -2870,7 +2880,7 @@ def prepare_package(output):
 
     shutil.copyfile(
         os.path.join(TEMPLATEDIR, "pyproject.toml"),
-        os.path.join(outdir, "pyproject.toml")
+        os.path.join(outdir, "pyproject.toml"),
     )
     shutil.copyfile(
         os.path.join(TEMPLATEDIR, "MANIFEST.in"), os.path.join(outdir, "MANIFEST.in")
