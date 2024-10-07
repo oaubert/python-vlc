@@ -2284,7 +2284,7 @@ class PythonGenerator(_Generator):
             # so that they are available in Sphinx-generated doc
             symbols = _NL_.join(
                 [
-                    f"  * ``vlc.{cls}.{v.name}`` { "\n".join(e.base_sphinx_format(v.docs)) }"
+                    f"""  * ``vlc.{cls}.{v.name}`` { "\n".join(e.base_sphinx_format(v.docs)) }"""
                     for v in e.vals
                 ]
             )
