@@ -1,7 +1,7 @@
 # Python ctypes-based bindings for libvlc
 
 ![](https://img.shields.io/github/actions/workflow/status/oaubert/python-vlc/tests.yml?event=push&label=tests)
-![](https://readthedocs.org/projects/python-vlc/badge/)
+[![](https://readthedocs.org/projects/python-vlc/badge/)](https://python-vlc.readthedocs.org/)
 [![Join the chat at https://discord.gg/3h3K3JF](https://img.shields.io/discord/716939396464508958?label=discord)](https://discord.gg/3h3K3JF)
 
 This file documents the bindings generator, not the bindings
