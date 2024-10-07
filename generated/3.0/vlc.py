@@ -52,10 +52,10 @@ from ctypes.util import find_library
 
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.21201"
+__version__ = "3.0.21202"
 __libvlc_version__ = "3.0.21"
-__generator_version__ = "2.1"
-build_date = "Sun Oct  6 22:05:11 2024 3.0.21"
+__generator_version__ = "2.2"
+build_date = "Mon Oct  7 14:14:00 2024 3.0.21"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -4109,10 +4109,10 @@ class LogLevel(_Enum):
     .. note:: Future LibVLC versions may define new levels.
 
     Defined symbols:
-      * ``vlc.LogLevel.DEBUG``
-      * ``vlc.LogLevel.NOTICE`` < Debug message
-      * ``vlc.LogLevel.WARNING`` < Important informational message
-      * ``vlc.LogLevel.ERROR`` < Warning (potential error) message
+      * ``vlc.LogLevel.DEBUG`` < Debug message
+      * ``vlc.LogLevel.NOTICE`` < Important informational message
+      * ``vlc.LogLevel.WARNING`` < Warning (potential error) message
+      * ``vlc.LogLevel.ERROR`` < Error message
     """
 
     _enum_names_ = {
@@ -4221,16 +4221,16 @@ class MediaPlayerRole(_Enum):
     See :func:`libvlc_media_player_set_role`.
 
     Defined symbols:
-      * ``vlc.MediaPlayerRole._None``
-      * ``vlc.MediaPlayerRole.Music`` < Don't use a media player role
-      * ``vlc.MediaPlayerRole.Video`` < Music (or radio) playback
-      * ``vlc.MediaPlayerRole.Communication`` < Video playback
-      * ``vlc.MediaPlayerRole.Game`` < Speech, real-time communication
-      * ``vlc.MediaPlayerRole.Notification`` < Video game
-      * ``vlc.MediaPlayerRole.Animation`` < User interaction feedback
-      * ``vlc.MediaPlayerRole.Production`` < Embedded animation (e.g. in web page)
-      * ``vlc.MediaPlayerRole.Accessibility`` < Audio editting/production
-      * ``vlc.MediaPlayerRole.Test`` < Accessibility
+      * ``vlc.MediaPlayerRole._None`` < Don't use a media player role
+      * ``vlc.MediaPlayerRole.Music`` < Music (or radio) playback
+      * ``vlc.MediaPlayerRole.Video`` < Video playback
+      * ``vlc.MediaPlayerRole.Communication`` < Speech, real-time communication
+      * ``vlc.MediaPlayerRole.Game`` < Video game
+      * ``vlc.MediaPlayerRole.Notification`` < User interaction feedback
+      * ``vlc.MediaPlayerRole.Animation`` < Embedded animation (e.g. in web page)
+      * ``vlc.MediaPlayerRole.Production`` < Audio editting/production
+      * ``vlc.MediaPlayerRole.Accessibility`` < Accessibility
+      * ``vlc.MediaPlayerRole.Test`` Testing
     """
 
     _enum_names_ = {
@@ -4621,7 +4621,7 @@ class VideoLogoOption(_Enum):
 
     Defined symbols:
       * ``vlc.VideoLogoOption.logo_enable``
-      * ``vlc.VideoLogoOption.logo_file``
+      * ``vlc.VideoLogoOption.logo_file`` < string argument, "file,d,t;file,d,t;..."
       * ``vlc.VideoLogoOption.logo_x`` < string argument, "file,d,t;file,d,t;..."
       * ``vlc.VideoLogoOption.logo_y``
       * ``vlc.VideoLogoOption.logo_delay``
@@ -4657,7 +4657,7 @@ class VideoMarqueeOption(_Enum):
 
     Defined symbols:
       * ``vlc.VideoMarqueeOption.Enable``
-      * ``vlc.VideoMarqueeOption.Text``
+      * ``vlc.VideoMarqueeOption.Text`` string argument
       * ``vlc.VideoMarqueeOption.Color`` string argument
       * ``vlc.VideoMarqueeOption.Opacity``
       * ``vlc.VideoMarqueeOption.Position``
@@ -4698,14 +4698,14 @@ class VideoOrient(_Enum):
     """
 
     Defined symbols:
-      * ``vlc.VideoOrient.top_left``
-      * ``vlc.VideoOrient.top_right`` < Normal. Top line represents top, left column left.
-      * ``vlc.VideoOrient.bottom_left`` < Flipped horizontally
-      * ``vlc.VideoOrient.bottom_right`` < Flipped vertically
-      * ``vlc.VideoOrient.left_top`` < Rotated 180 degrees
-      * ``vlc.VideoOrient.left_bottom`` < Transposed
-      * ``vlc.VideoOrient.right_top`` < Rotated 90 degrees clockwise (or 270 anti-clockwise)
-      * ``vlc.VideoOrient.right_bottom`` < Rotated 90 degrees anti-clockwise
+      * ``vlc.VideoOrient.top_left`` < Normal. Top line represents top, left column left.
+      * ``vlc.VideoOrient.top_right`` < Flipped horizontally
+      * ``vlc.VideoOrient.bottom_left`` < Flipped vertically
+      * ``vlc.VideoOrient.bottom_right`` < Rotated 180 degrees
+      * ``vlc.VideoOrient.left_top`` < Transposed
+      * ``vlc.VideoOrient.left_bottom`` < Rotated 90 degrees clockwise (or 270 anti-clockwise)
+      * ``vlc.VideoOrient.right_top`` < Rotated 90 degrees anti-clockwise
+      * ``vlc.VideoOrient.right_bottom`` < Anti-transposed
     """
 
     _enum_names_ = {
@@ -4735,7 +4735,7 @@ class VideoProjection(_Enum):
 
     Defined symbols:
       * ``vlc.VideoProjection.rectangular``
-      * ``vlc.VideoProjection.equirectangular``
+      * ``vlc.VideoProjection.equirectangular`` < 360 spherical
       * ``vlc.VideoProjection.cubemap_layout_standard`` < 360 spherical
     """
 

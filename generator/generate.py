@@ -51,7 +51,7 @@ __all__ = ("Parser", "PythonGenerator", "JavaGenerator")
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated (major * 100 + minor).
-__version__ = "2.1"
+__version__ = "2.2"
 
 _debug = False
 
@@ -1388,8 +1388,22 @@ declarator: (parenthesized_declarator
                 ), "Expected `child` to have a child of name _name_. `child` is not of type _enumerator_? Parsing malformed C code?"
                 vname = tsnode_text(vname)
 
-                vdocs = self.parse_doxygen_comment(child)
-                if vdocs is None:
+                vdocs = None
+                # Find the value documentation.
+                if (
+                    child.next_named_sibling is not None
+                    and child.next_named_sibling.type == "comment"
+                    and child.next_named_sibling.start_point[0] == child.end_point[0]
+                ):
+                    # There is a comment following the value on the same line
+                    vdocs = clean_doxygen_comment(tsnode_text(child.next_named_sibling))
+                elif (
+                    child.prev_sibling is not None
+                    and child.prev_sibling.type == "comment"
+                ):
+                    # The comment is placed before the value
+                    vdocs = clean_doxygen_comment(tsnode_text(child.prev_sibling))
+                else:
                     vdocs = ""
 
                 vvalue = child.child_by_field_name("value")
