@@ -51,7 +51,7 @@ __all__ = ("Parser", "PythonGenerator", "JavaGenerator")
 
 # Version number MUST have a major < 10 and a minor < 99 so that the
 # generated dist version can be correctly generated (major * 100 + minor).
-__version__ = "2.2"
+__version__ = "2.3"
 
 _debug = False
 
@@ -2283,7 +2283,10 @@ class PythonGenerator(_Generator):
             # Add names in generated docstring
             # so that they are available in Sphinx-generated doc
             symbols = _NL_.join(
-                [f"  * ``vlc.{cls}.{v.name}`` { v.docs }" for v in e.vals]
+                [
+                    f"  * ``vlc.{cls}.{v.name}`` { "\n".join(e.base_sphinx_format(v.docs)) }"
+                    for v in e.vals
+                ]
             )
             docs = f"""{docs}
 

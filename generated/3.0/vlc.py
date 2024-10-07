@@ -52,10 +52,10 @@ from ctypes.util import find_library
 
 logger = logging.getLogger(__name__)
 
-__version__ = "3.0.21202"
+__version__ = "3.0.21203"
 __libvlc_version__ = "3.0.21"
-__generator_version__ = "2.2"
-build_date = "Mon Oct  7 14:14:00 2024 3.0.21"
+__generator_version__ = "2.3"
+build_date = "Mon Oct  7 16:36:40 2024 3.0.21"
 
 # The libvlc doc states that filenames are expected to be in UTF8, do
 # not rely on sys.getfilesystemencoding() which will be confused,
@@ -3950,9 +3950,11 @@ class EventType(_Enum):
       * ``vlc.EventType.MediaListPlayerPlayed``
       * ``vlc.EventType.MediaListPlayerNextItemSet``
       * ``vlc.EventType.MediaListPlayerStopped``
-      * ``vlc.EventType.MediaDiscovererStarted`` \deprecated Useless event, it will be triggered only when calling
+      * ``vlc.EventType.MediaDiscovererStarted``
+    .. warning:: **Deprecated!** Useless event, it will be triggered only when calling
     libvlc_media_discoverer_start()
-      * ``vlc.EventType.MediaDiscovererEnded`` \deprecated Useless event, it will be triggered only when calling
+      * ``vlc.EventType.MediaDiscovererEnded``
+    .. warning:: **Deprecated!** Useless event, it will be triggered only when calling
     libvlc_media_discoverer_stop()
       * ``vlc.EventType.RendererDiscovererItemAdded``
       * ``vlc.EventType.RendererDiscovererItemDeleted``

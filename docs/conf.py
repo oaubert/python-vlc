@@ -46,6 +46,7 @@ autoapi_root = 'api'
 autoapi_member_order = 'alphabetical'
 autoapi_own_page_level = 'class'
 autoapi_python_class_content = 'both'
+autoapi_options = [ 'members', 'undoc-members', 'private-members', 'show-inheritance', 'show-module-summary' ]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
