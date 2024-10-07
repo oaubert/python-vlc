@@ -413,6 +413,10 @@ class _Source(object):
         )
         return lines
 
+    def base_sphinx_format_str(self, doc: str) -> str:
+        """Convert string in doxygen format to a string in sphinx format."""
+        return "\n".join(self.base_sphinx_format(doc))
+
     def docs_in_sphinx_format(self) -> str:
         """Converts self.docs into sphinx format."""
         in_block = False
@@ -2284,7 +2288,7 @@ class PythonGenerator(_Generator):
             # so that they are available in Sphinx-generated doc
             symbols = _NL_.join(
                 [
-                    f"""  * ``vlc.{cls}.{v.name}`` { "\n".join(e.base_sphinx_format(v.docs)) }"""
+                    f"""  * ``vlc.{cls}.{v.name}`` { e.base_sphinx_format_str(v.docs) }"""
                     for v in e.vals
                 ]
             )
