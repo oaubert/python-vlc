@@ -33,7 +33,7 @@ keywords = ["vlc", "video"]
 
 [project.urls]
 Homepage = "https://wiki.videolan.org/PythonBinding"
-Documentation = "https://www.olivieraubert.net/vlc/python-ctypes/doc/"
+Documentation = "https://python-vlc.readthedocs.io/en/latest/"
 Repository = "https://github.com/oaubert/python-vlc.git"
 "Alternate repository" = "https://git.videolan.org/?p=vlc/bindings/python.git;a=summary"
 "Bug Tracker" = "https://github.com/oaubert/python-vlc/issues"
