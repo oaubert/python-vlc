@@ -46,6 +46,7 @@ class Player(QtWidgets.QMainWindow):
 
         # Create an empty vlc media player
         self.mediaplayer = self.instance.media_player_new()
+        self.mediaplayer.audio_set_volume(50)
 
         self.create_ui()
         self.is_paused = False
