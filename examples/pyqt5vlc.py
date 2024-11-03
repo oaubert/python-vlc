@@ -46,6 +46,7 @@ class Player(QtWidgets.QMainWindow):
 
         # Create an empty vlc media player
         self.mediaplayer = self.instance.media_player_new()
+        self.mediaplayer.audio_set_volume(50)
 
         self.create_ui()
         self.is_paused = False
@@ -104,8 +105,13 @@ class Player(QtWidgets.QMainWindow):
 
         # Add actions to file menu
         open_action = QtWidgets.QAction("Load Video", self)
-        close_action = QtWidgets.QAction("Close App", self)
+        open_shortcut = QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Open)
+        open_action.setShortcut(open_shortcut)
         file_menu.addAction(open_action)
+
+        close_action = QtWidgets.QAction("Close App", self)
+        close_shortcut = QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Close)
+        close_action.setShortcut(close_shortcut)
         file_menu.addAction(close_action)
 
         open_action.triggered.connect(self.open_file)
