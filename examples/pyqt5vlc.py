@@ -105,8 +105,13 @@ class Player(QtWidgets.QMainWindow):
 
         # Add actions to file menu
         open_action = QtWidgets.QAction("Load Video", self)
-        close_action = QtWidgets.QAction("Close App", self)
+        open_shortcut = QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Open)
+        open_action.setShortcut(open_shortcut)
         file_menu.addAction(open_action)
+
+        close_action = QtWidgets.QAction("Close App", self)
+        close_shortcut = QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Close)
+        close_action.setShortcut(close_shortcut)
         file_menu.addAction(close_action)
 
         open_action.triggered.connect(self.open_file)
@@ -139,6 +144,11 @@ class Player(QtWidgets.QMainWindow):
         """
         self.mediaplayer.stop()
         self.playbutton.setText("Play")
+
+    def quit(self):
+        """Quit application
+        """
+        sys.exit()
 
     def open_file(self):
         """Open a media file in a MediaPlayer
