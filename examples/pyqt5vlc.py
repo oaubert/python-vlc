@@ -145,11 +145,6 @@ class Player(QtWidgets.QMainWindow):
         self.mediaplayer.stop()
         self.playbutton.setText("Play")
 
-    def quit(self):
-        """Quit application
-        """
-        sys.exit()
-
     def open_file(self):
         """Open a media file in a MediaPlayer
         """
