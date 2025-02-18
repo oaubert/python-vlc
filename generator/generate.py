@@ -667,10 +667,13 @@ class Func(_Source):
                 self.dump()
                 sys.stderr.write(self.docs + "\n")
 
-    def dump(self, indent_lvl=0):
+    def dump(self, indent_lvl=0, out=()):
         for _ in range(indent_lvl):
             sys.stderr.write(_INDENT_)
-        sys.stderr.write("%s (%s): %s\n" % (self.name, self.type, self.source))
+
+        t = "Out" if self.name in out else ""
+        sys.stderr.write("%s (%s): %s %s\n" % (self.name, self.type, self.source, t))
+
         for p in self.pars:
             p.dump(indent_lvl + 1, self.out)
 
