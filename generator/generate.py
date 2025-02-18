@@ -2212,6 +2212,12 @@ class PythonGenerator(_Generator):
         for f in self.parser.funcs:
             name = f.name
 
+            # NOTE: `docs_in_sphinx_format` must be called before the `flags` method
+            # of `Par` instances, because it fills the `out` member (and other members)
+            # of the `Func`. If called after, `out` will be empty, resulting in missing
+            # out parameters in the bindings.
+            docs = self.add_sphinx_cross_refs(f.docs_in_sphinx_format())
+
             # make decorators for parameters that are function pointers
             pfs = {}
             for p in f.pars:
@@ -2271,8 +2277,6 @@ class PythonGenerator(_Generator):
 
             types = ", ".join(types)
 
-            docs = self.add_sphinx_cross_refs(f.docs_in_sphinx_format())
-
             self.output(f"def {name}({args}):")
             self.generate_docstring(docs)
             self.output(
@@ -2322,13 +2326,18 @@ Defined symbols:
         """
         indent = _INDENT_ * indent_lvl
         name = replacement_name if replacement_name else self.class4(pf.name)
+
+        # NOTE: `docs_in_sphinx_format` must be called before the `flags` method
+        # of `Par` instances, because it fills the `out` member (and other members)
+        # of the `Func`. If called after, `out` will be empty, resulting in missing
+        # out parameters in the bindings.
+        docs = self.add_sphinx_cross_refs(pf.docs_in_sphinx_format())
+
         # return value and arg classes
         types = ", ".join(
             [self.class4(pf.type)]
             + [self.class4(p.type, p.flags(pf.out)[0]) for p in pf.pars]
         )
-
-        docs = self.add_sphinx_cross_refs(pf.docs_in_sphinx_format())
 
         self.output(f"{indent}{name} = ctypes.CFUNCTYPE({types})")
         if docs:
