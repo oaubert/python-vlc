@@ -700,6 +700,8 @@ class Func(_Source):
         r = []
         v = []
         block = None
+        block_is_params = False
+        last_param_name = None
 
         lines = self.base_sphinx_format(self.docs)
 
@@ -712,6 +714,7 @@ class Func(_Source):
                 if block is None:
                     indent = ""
                     block = heads
+                    block_is_params = False
 
                 # Check whether there is a blonk line right before the @code line.
                 # If not, add one (needed for sphinx to properly display the list).
@@ -726,22 +729,35 @@ class Func(_Source):
                     i += 1
 
                 block.append("")
+
                 block = None
+                block_is_params = False
             elif ":param" in line:
+                last_param_name = line.split()[1]
+
                 if _OUT_ in line:
                     line = line.replace(_PNTR_, "")
-                    out.append(line.split()[1])
+                    out.append(last_param_name)
+
                 params.append(param_re.sub(r":param \g<param_name>:", line))
+
                 block = params
+                block_is_params = True
             elif ":return:" in line:
                 r.append(line)
+
                 block = r
+                block_is_params = False
             elif ":version:" in line:
                 v.append(line)
+
                 block = v
+                block_is_params = False
             elif ":bug:" in line:
                 b.append(line)
+
                 block = b
+                block_is_params = False
             elif "@code" in line:  # we are dealing with a code block
                 # Check whether there is a blonk line right before the @code line.
                 # If not, add one (needed for sphinx to properly display the code block).
@@ -781,20 +797,30 @@ class Func(_Source):
                     heads.append(line.replace("@endcode", "").strip())
 
                 block = None
+                block_is_params = False
             elif ".. note::" in line:
                 if i - 1 >= 0 and lines[i - 1]:
                     heads.append("")
+
                 heads.append(line)
+
                 block = heads
+                block_is_params = False
             elif ".. warning::" in line:
                 heads.append(line)
+
                 block = heads
+                block_is_params = False
             elif block is not None:
+                if block_is_params and _OUT_ in line:
+                    out.append(last_param_name)
+
                 if line:
                     block.append(_INDENT_ + line)
                 else:
                     block.append(line)
                     block = None
+                    block_is_params = False
             else:
                 heads.append(line)
 
