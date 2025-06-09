@@ -18,7 +18,9 @@ Using the module
 ----------------
 
 The module offers two ways of accessing the API - a raw access to all
-exported methods, and more convenient wrapper classes.
+exported methods, and more convenient wrapper classes.  The [API
+documentation](https://python-vlc.readthedocs.io/en/latest/) is
+on Readthedocs.
 
 Using wrapper classes
 +++++++++++++++++++++
