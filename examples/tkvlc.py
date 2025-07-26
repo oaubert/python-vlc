@@ -15,8 +15,8 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
 #
 '''A simple example for VLC python bindings using tkinter.
 
@@ -24,12 +24,14 @@ Author: Patrick Fay
 Date: 23-09-2015
 '''
 
-# Tested with VLC 3.0.16, 3.0.12, 3.0.11, 3.0.10, 3.0.8 and 3.0.6 with
-# the compatible vlc.py Python-VLC binding, Python 3.11.0, 3.10.0, 3.9.0
-# and 3.7.4 and with tkinter/Tk 8.6.9 on macOS 13.0.1 (amd64 M1), 11.6.1
-# (10.16 amd64 M1), 11.0.1 (10.16 x86-64) and 10.13.6 and with VLC 3.0.18,
-# Python 3.11.0 and tkinter/Tk 8.6.9 on Windows 10, all in 64-bit only.
-__version__ = '22.12.28'  # mrJean1 at Gmail
+# Tested with VLC 3.0.21, 3.0.16, 3.0.12, 3.0.11, 3.0.10, 3.0.8 and 3.0.6
+# and the compatible vlc.py Python-VLC binding, Python 3.13.2, 3.11, 3.10,
+# 3.9 and 3.7.4 and with tkinter/Tk 8.6.9 on macOS 13.0.1 (amd64), 11.6.1
+# (10.16 amd64), 11.0.1 (10.16 x86-64) and 10.13.6 and with VLC 3.0.21 and
+# 3.0.18, Python 3.13.2 and 3.11.0 and tkinter/Tk 8.6.9 on Windows 10 and
+# 11, all in 64-bit only.
+
+__version__ = '25.03.08'  # mrJean1 at Gmail
 
 import sys
 try:  # Python 3.4+ only
@@ -41,12 +43,14 @@ except ImportError:
     sys.exit('%s requires Python 3.4 or later' % (sys.argv[0],))
     # import Tkinter as Tk; ttk = Tk
 import os
-import time
+from time import time
 import vlc
 
-_isMacOS   = sys.platform.startswith('darwin')
-_isLinux   = sys.platform.startswith('linux')
-_isWindows = sys.platform.startswith('win')
+_isOS      =  sys.platform.lower().startswith
+_isLinux   = _isOS('linux')
+_isMacOS   = _isOS('darwin')
+_isWindows = _isOS('win')
+del _isOS
 
 _ANCHORED    = 'Anchored'
 _BANNER_H    =  32 if _isMacOS else 64
@@ -56,7 +60,7 @@ _ENABLED     = ('!' + Tk.DISABLED,)
 _FULL_OFF    = 'Full Off'
 _FULL_SCREEN = 'Full Screen'
 # see _Tk_Menu.add_item and .bind_shortcut below
-# <https://www.Tcl.Tk/man/tcl8.6/TkCmd/keysyms.html>
+# <https://www.Tcl-lang.org/man/tcl8.6/TkCmd/keysyms.htm>
 _KEY_SYMBOL  = {'~': 'asciitilde',  '`': 'grave',
                 '!': 'exclam',      '@': 'at',
                 '#': 'numbersign',  '$': 'dollar',
@@ -98,6 +102,7 @@ _T_KEY       =  Tk.EventType.Key  # KeyPress
 _TICK_MS     =  100  # millisecs per time tick
 _Tk_Canvas   =  Tk.Canvas
 _Tk_Frame    =  ttk.Frame
+_Tk_Tk       =  Tk.Tk
 _Tk_Toplevel =  Tk.Toplevel
 _Tk_Version  =  Tk.TkVersion
 _UN_ANCHORED = 'Un-' + _ANCHORED
@@ -112,7 +117,9 @@ if _isMacOS:  # MCCABE 14
     # libtk = cdll.LoadLibrary(ctypes.util.find_library('tk'))
     # returns (None or) the tk library /usr/lib/libtk.dylib
     # from macOS, but we need the tkX.Y library bundled with
-    # Python 3+ or one matching the version of tkinter
+    # Python 3+ or one matching the version of tkinter.  For
+    # Python 3.11 (or earlier?) and on maxOS Intel (only?),
+    # libtk is built into the tkinter._tkinter.so binary.
 
     # Homebrew-built Python, Tcl/Tk, etc. are installed in
     # different places, usually something like (/usr/- or)
@@ -145,19 +152,23 @@ if _isMacOS:  # MCCABE 14
         for libtk in _find_lib(lib, _find(lib), *env.split(os.pathsep)):
             if libtk and lib in libtk and os.access(libtk, os.F_OK):
                 break
-        else:  # not found anywhere
+        else:  # not libtk anywhere, final attempt (Python 3.11+?)
+            libtk = Tk._tkinter.__file__
+        try:
+            lib = cdll.LoadLibrary(libtk)
+        except Exception:
             if env:  # bad env?
                 t = 'no %s in %%s=%r' % (lib, env)
             else:  # env not set, suggest
                 t = 'no %s found, use %%s to set a path' % (lib,)
             raise NameError(t % (_TKVLC_LIBTK_PATH,))
 
-        lib = cdll.LoadLibrary(libtk)
-        # _GetNSView = lib.TkMacOSXDrawableView is the
+        # _GetNSView = lib.TkMacOSXDrawableView was** the
         # proper function to call, but that is non-public
         # (in Tk source file macosx/TkMacOSXSubwindows.c)
         # Fortunately, lib.TkMacOSXGetRootControl calls
         # lib.TkMacOSXDrawableView and returns the NSView
+        # (** this changed in more recent Tk versions)
         _GetNSView = lib.TkMacOSXGetRootControl
         # C signature: void *_GetNSView(void *drawable) to get
         # the Cocoa/Obj-C NSWindow.contentView attribute, the
@@ -165,7 +176,7 @@ if _isMacOS:  # MCCABE 14
         _GetNSView.restype  =  c_void_p
         _GetNSView.argtypes = (c_void_p,)
 
-    except (NameError, OSError) as x:  # lib, image or symbol not found
+    except (AttributeError, NameError, OSError) as x:  # lib, image or symbol not found
         libtk = str(x)  # imported by examples/psgvlc.py
 
         def _GetNSView(unused):  # imported by examples/psgvlc.py
@@ -177,7 +188,7 @@ if _isMacOS:  # MCCABE 14
     # with the Shift modifier invoke the callback (command) twice,
     # once without and once with a Key (or KeyPress) event: hold the
     # former as a pseudo Key event possibly absorbed by the actual
-    # Key event about 1 millisec later.  With Python 3.8- on macOS,
+    # Key event, about 1 millisec later.  With Python 3.8- on macOS,
     # Shift accelerator keys do not work at all: do not define any
     # Shift accelerator keys in that case
     _3_9 = sys.version_info[:2] >= (3, 9)
@@ -188,76 +199,24 @@ else:  # Windows OK, untested on *nix, Xwindows
     _3_9  =  True
 
 
-def _fullscreen(panel, *full):
-    # get/set a panel full-screen or -off
-    f = panel.attributes('-fullscreen')  # or .wm_attributes
-    if full:
-        panel.attributes('-fullscreen', bool(full[0]))
-        panel.update_idletasks()
-    return f
-
-
-def _geometry(panel, g_w, *h_x_y):
-    # set a panel geometry to C{g} or C{w, h, x, y}.
-    if h_x_y:
-        t = '+'.join(map(str, h_x_y))
-        g = 'x'.join((str(g_w), t))
-    else:
-        g = g_w
-    panel.geometry(g)  # update geometry, then ...
-    g, *t = _geometry5(panel)  # ... get actual ...
-    panel._g = g  # ... as a C{str} and 4 C{int}s
-    # == panel.winfo_width(), _height(), _x(), _y()
-    panel._whxy = tuple(map(int, t))
-    return g
-
-
-def _geometry1(panel):
-    # get a panel geometry as C{str}
-    panel.update_idletasks()
-    return panel.geometry()
-
-
-def _geometry5(panel):
-    # get a panel geometry as 5-tuple of C{str}s
-    g = _geometry1(panel)  # '+-x' means absolute -x
-    z, x, y = g.split('+')
-    w, h = z.split('x')
-    return g, w, h, x, y
-
-
-def _hms(tensecs, secs=''):
-    # format a time (in 1/10-secs) as h:mm:ss.s
-    s = tensecs * 0.1
-    if s < 60:
-        t = '%3.1f%s' % (s, secs)
-    else:
-        m, s = divmod(s, 60)
-        if m < 60:
-            t = '%d:%04.1f' % (int(m), s)
-        else:
-            h, m = divmod(m, 60)
-            t = '%d:%02d:%04.1f' % (int(h), int(m), s)
-    return t
-
-
-def _underline2(c, label='', underline=-1, **cfg):
-    # update cfg with C{underline=index} or remove C{underline=.}
-    u = label.find(c) if c and label else underline
-    if u >= 0:
-        cfg.update(underline=u)
-    else:  # no underlining
-        c = ''
-    cfg.update(label=label)
-    return c, cfg
-
-
 class _Tk_Button(ttk.Button):
     '''A C{_Tk_Button} with a label, inlieu of text.
     '''
     def __init__(self, frame, **kwds):
         cfg = self._cfg(**kwds)
         ttk.Button.__init__(self, frame, **cfg)
+
+    def __getattr__(self, name):
+        # get an attr or config item by I{name}
+        try:
+            return ttk.Button.__getattr__(self, name)
+        except (AttributeError, TclError):
+            pass
+        try:
+            return self._cfg[name]
+        except KeyError:
+            pass
+        raise TclError('no config item %r' % (name,))
 
     def _cfg(self, label=None, **kwds):
         if label is None:
@@ -267,7 +226,7 @@ class _Tk_Button(ttk.Button):
             cfg.update(kwds)
         return cfg
 
-    def config(self, **kwds):
+    def config(self, **kwds):  # PYCHOK signature
         cfg = self._cfg(**kwds)
         ttk.Button.config(self, **cfg)
 
@@ -294,6 +253,25 @@ class _Tk_Item(object):
         self._cfg_d = dict(label=label, **kwds)
         self._dis_d = False
         self._under = under  # lower case
+
+        if label:
+            menu._items[label] = self
+
+    def __getattr__(self, name):
+        # get an attr or config item by I{name}
+        try:
+            return object.__getattr__(self, name)
+        except (AttributeError, TclError):
+            pass
+        try:
+            return self._cfg_d[name]
+        except KeyError:
+            pass
+        try:
+            return self.menu.entrycget(self.idx, name)
+        except TclError:
+            pass
+        raise TclError('no config item %r' % (name,))
 
     def config(self, **kwds):
         '''Reconfigure this menu item.
@@ -322,9 +300,10 @@ class _Tk_Menu(Tk.Menu):
        C{Control-key} shotcuts on X-/Windows using a *single*
        character shortcut.
 
-       Other modifiers like Shift- and Option- passed thru,
+       Other modifiers like Shift- and Option- passed through
        unmodified.
     '''
+    # _items = None  # see ._Item
     _shortcuts_entries = None  # {}, see .bind_shortcuts_to
     _shortcuts_widgets = ()
 
@@ -334,13 +313,23 @@ class _Tk_Menu(Tk.Menu):
         # or use root.option_add('*tearOff', False)  Off?
         # as per <https://TkDocs.com/tutorial/menus.html>
         Tk.Menu.__init__(self, master, tearoff=False, **kwds)
+        self._items = {}  # filled by _Tk_Item.__init__
+
+    def __getattr__(self, name):
+        try:
+            Tk.Menu.__getattr__(self, name)
+        except (AttributeError, TclError):
+            return self.item(name)
+
+    def __getitem__(self, label):
+        return self.item(label)
 
     def add_item(self, label='', command=None, key='', **kwds):
         '''C{Tk.menu.add_command} extended with shortcut key
            accelerator, underline and binding and returning
            a C{_Tk_Item} instance instead of an C{item} index.
 
-           If needed use modifiers like Shift- and Alt_ or Option-
+           If needed use modifiers like Shift- and Alt- or Option-
            before the *single* shortcut key character.  Do NOT
            include the Command- or Control- modifier, instead use
            the platform-specific Cmd_, like Cmd_ + key.  Also,
@@ -368,8 +357,8 @@ class _Tk_Menu(Tk.Menu):
         # <Command-..>, <Ctrl-..>, <Option_..> and <Shift-..>
         # with a shortcut key name or character (replaced
         # with its _KEY_SYMBOL if non-alphanumeric)
-        # <https://www.Tcl.Tk/man/tcl8.6/TkCmd/bind.htm#M6>
-        # <https://www.Tcl.Tk/man/tcl8.6/TkCmd/keysyms.html>
+        # <https://www.Tcl-lang.org/man/tcl8.6/TkCmd/bind.htm#M6>
+        # <https://www.Tcl-lang.org/man/tcl8.6/TkCmd/keysyms.html>
         if key and callable(command) and self._shortcuts_widgets:
             for w in self._shortcuts_widgets:
                 w.bind(key, command)
@@ -407,7 +396,7 @@ class _Tk_Menu(Tk.Menu):
                 for w in self._shortcuts_widgets:
                     w.bind(key, command)
 
-    def _Item(self, add_, key, label, **kwds):
+    def _Item(self, add_, key, label, **kwds):  # MCCABE 14
         # Add and bind a menu item or sub~menu with an
         # optional accelerator key (not <..> enclosed)
         # or underline letter (preceded by underscore),
@@ -428,10 +417,8 @@ class _Tk_Menu(Tk.Menu):
                         m.remove(k)
                 # adjust accelerator key for specials like KP_1,
                 # PageDown and PageUp (on macOS, see function
-                # ParseAccelerator in <https://GitHub.com/tcltk/tk/
-                # blob/main/macosx/tkMacOSXMenu.c> and definition
-                # of specialAccelerators in <https://GitHub.com/
-                # tcltk/tk/blob/main/macosx/tkMacOSXMenu.c>)
+                # ParseAccelerator and specialAccelerators in
+                # <https://GitHub.com/tcltk/tk/blob/main/macosx/tkMacOSXMenu.c>)
                 a = _MAC_ACCEL.get(c, c) if _isMacOS else c
                 if a.upper().startswith('KP_'):
                     a = a[3:]
@@ -474,9 +461,56 @@ class _Tk_Menu(Tk.Menu):
         self.bind_shortcut(key, **cfg)  # ... bind
         return _Tk_Item(self, key=key, under=c, **cfg)
 
+    def item(self, label):
+        '''Get a I{labeled} menu item .
+        '''
+        try:
+            return self._items[label]
+        except KeyError:
+            for n, r in self._items.items():
+                # find Open... for Open
+                if n.startswith(label):
+                    return r
+        raise TclError('no item labeled %r' % (label,))
+
+    def items(self):
+        '''Get the I{labeled} menu items as 2-tuple C(label, item)}.
+        '''
+        return self._items.items()
+
+    def labels(self):
+        '''Get the menu item I{labels}.
+        '''
+        return self._items.keys()
+
+
+class _Tk_Root(_Tk_Tk):
+    '''The root class.
+    '''
+    def __getattr__(self, name):
+        # get an attr item by I{name}
+        try:
+            return _Tk_Tk.__getattr__(self, name)
+        except (AttributeError, TclError):
+            pass
+        try:
+            return _Tk_Tk.attributes(self, '-' + name)
+        except (AttributeError, TclError):
+            pass
+
+#   def __init__(self, *args, **kwds):
+#       _Tk_Tk.__init__(self, *args, **kwds)
+#       # <https://TkDocs.com/tutorial/menus.html>
+#       if not _isMacOS:  # Before you Start
+#           self.option_add('*tearoff', False)
+
+    def _Windowing(self):
+        # get the underlying UI/Windowing
+        return self.tk.call('tk', 'windowingsystem')  # property ._windowingsystem
+
 
 class _Tk_Slider(Tk.Scale):
-    '''Scale with some add'l attributres
+    '''Scale with some additional attributres
     '''
     _var = None
 
@@ -493,6 +527,21 @@ class _Tk_Slider(Tk.Scale):
         Tk.Scale.__init__(self, frame, **cfg)
         self._var = v
 
+    def __getattr__(self, name):
+        # get an attr or config item by I{name}
+        try:
+            return Tk.Scale.__getattr__(self, name)
+        except (AttributeError, TclError):
+            pass
+        try:
+            return self.cget(name)
+        except TclError:
+            pass
+        raise TclError('no config item %r' % (name,))
+
+#   def get(self):
+#       return self._var.get()  # Tk.Scale.get(self)
+
     def set(self, value):
         # doesn't move the slider
         self._var.set(value)
@@ -508,6 +557,7 @@ class Player(_Tk_Frame):
     _isFull    = ''  # or geometry
     _length    =  0  # length time ticks
     _lengthstr = ''  # length h:m:s
+    _limit     =  None
     _muted     =  False
     _opacity   =  90 if _isMacOS else 100  # percent
     _opaque    =  False
@@ -518,30 +568,39 @@ class Player(_Tk_Frame):
     _sliding   =  False
     _snapshots =  0
     _stopped   =  None
+    _time0     =  0.0
     _title     = 'tkVLCplayer'
+    _toggling  =  False  # fullscreen
+    _tweaking  =  False  # aspect ratio
     _volume    =  50  # percent
 
-    def __init__(self, parent, title='', video='', debug=False):  # PYCHOK called!
+    def __init__(self, parent, title='', video='', debug=False, limit=None):  # PYCHOK called!
         _Tk_Frame.__init__(self, parent)
 
-        self.debug  = bool(debug)
+        self._time0 = time()
         self.parent = parent  # == root
         self.video  = os.path.expanduser(video)
         if title:
             self._title = str(title)
-        parent.title(self._title)
-#       parent.iconname(self._title)
 
-        # set up tickers to avoid None error
-        def _pass():
+        def _pass(*args, **kwds):  # PYCHOK unused
             pass
 
+        if not debug:
+            self._debug = _pass
+        elif limit:
+            self._limit =  int(limit)
+
+        # set up tickers to avoid None error
         self._tick_a = self.after(1, _pass)
         self._tick_c = self.after(2, _pass)
         self._tick_r = self.after(3, _pass)
         self._tick_s = self.after(4, _pass)  # .after_idle
         self._tick_t = self.after(5, _pass)
         self._tick_z = self.after(6, _pass)
+
+        parent.title(self._title)
+#       parent.iconname(self._title)
 
         # panels to play videos and hold buttons, sliders,
         # created *before* the File menu to be able to bind
@@ -575,13 +634,14 @@ class Player(_Tk_Frame):
         m.add_separator()
         m.add_item('Snapshot', self.OnSnapshot, key=Cmd_ + 'T')
         m.add_separator()
-        self.fullItem = m.add_item(_FULL_SCREEN, self.OnFull, key=Cmd_ + 'F')
+        self.fullItem = m.add_item(_FULL_SCREEN, self.OnToggle, key=Cmd_ + 'F')
         m.add_separator()
         m.add_item('Close', self.OnClose, key=Cmd_ + 'W')
         mb.add_cascade(menu=m, label='Video')
-#       self.videoMenu = m
+        if _isMacOS:  # see if __name__ == '__main__':
+            self.videoMenu = m
 
-        m = _Tk_Menu(mb)  # Video menu, shortcuts to both panels
+        m = _Tk_Menu(mb)  # Buttons menu, shortcuts to both panels
         m.bind_shortcuts_to(v, b)
         self.anchorItem = m.add_item(_UN_ANCHORED, self.OnAnchor, key=Cmd_ + 'A')
         m.add_separator()
@@ -590,7 +650,7 @@ class Player(_Tk_Frame):
         mb.add_cascade(menu=m, label=_BUTTONS)
 #       self.buttonsMenu = m
 
-        if _isMacOS and self.debug:  # Special macOS "windows" menu
+        if _isMacOS and debug:  # Special macOS "windows" menu
             # <https://TkDocs.com/tutorial/menus.html> "Providing a Window Menu"
             # XXX Which (virtual) events are generated other than Configure?
             m = _Tk_Menu(mb, name='window')  # must be name='window'
@@ -626,38 +686,35 @@ class Player(_Tk_Frame):
     def _anchorPanels(self, video=False):
         # Put the buttons panel under the video
         # or the video panel above the buttons
-        if self._anchored and not self._isFull:
-            self._debug(self._anchorPanels)
+        if self._anchored:  # and not self._isFull:
             v = self.videoPanel
-            if _isMacOS and _fullscreen(v):
-                # macOS green button full-screen?
-                _fullscreen(v, False)
-                self.OnFull()
-            else:
+            v.update_idletasks()
+            if _normalized(v):
                 b = self.buttonsPanel
-                v.update_idletasks()
                 b.update_idletasks()
-                h = v.winfo_height()
-                d = h + _BANNER_H  # vertical delta
-                if video:  # move/adjust video panel
-                    w = b.winfo_width()  # same as ...
-                    x = b.winfo_x()      # ... buttons
-                    y = b.winfo_y() - d  # ... and above
-                    g = v
-                else:  # move/adjust buttons panel
-                    h = b.winfo_height()  # unchanged
-                    if h > self._BUTTON_H and _fullscreen(b):
-                        # macOS green button full-screen?
-                        _fullscreen(b, False)
-                        h = self._BUTTON_H
-                    w = v.winfo_width()  # unchanged
-                    x = v.winfo_x()  # same as the video
-                    y = v.winfo_y() + d  # below the video
-                    g = b
-#               _g = g._g
-                _geometry(g, max(w, _MIN_W), h, x, y)
-                if video:  # and g._g != _g:
-                    self._set_aspect_ratio(True)
+                if not _minimized(b):
+                    self._debug(self._anchorPanels, video=video)
+                    h = v.winfo_height()
+                    d = h + _BANNER_H  # vertical delta
+                    if video:  # move/adjust video panel
+                        w = b.winfo_width()  # same as ...
+                        x = b.winfo_x()      # ... buttons
+                        y = b.winfo_y() - d  # ... and above
+                        g = v
+                    else:  # move/adjust buttons panel
+                        h = b.winfo_height()  # unchanged
+                        if h > self._BUTTON_H:  # and _fullscreen(b):
+                            # macOS green button full-screen?
+                            _fullscreen(b, False)
+                            h = self._BUTTON_H
+                        w = v.winfo_width()  # unchanged
+                        x = v.winfo_x()  # same as the video
+                        y = v.winfo_y() + d  # below the video
+                        g = b
+#                   _g = g._geometry
+                    _geometry(g, max(w, _MIN_W), h, x, y)
+                    if video:  # and g._geometry != _g:
+                        self._set_aspect_ratio(True)
 
     def _bind_events(self, panel):
         # set up handlers for several events
@@ -669,24 +726,25 @@ class Player(_Tk_Frame):
             p_ = p.protocol
         if _isWindows:  # OK for macOS
             p_('WM_DELETE_WINDOW', self.OnClose)
-#       Event Types <https://www.Tcl.Tk/man/tcl8.6/TkCmd/bind.html#M7>
-        p.bind('<Configure>',       self.OnConfigure)  # window resize, position, etc.
+#       Event Types <https://www.Tcl-lang.org/man/tcl8.6/TkCmd/bind.html#M7>
+        p.bind('<Configure>',      self.OnConfigure)  # window resize, position, etc.
         # needed on macOS to catch window close events
-        p.bind('<Destroy>',         self.OnClose)      # window half-dead
-#       p.bind('<Activate>',        self.OnActive)     # window activated
-#       p.bind('<Deactivate>',      self.OffActive)    # window deactivated
-        p.bind('<FocusIn>',         self.OnFocus)      # getting keyboard focus
-#       p.bind('<FocusOut>',        self.OffFocus)     # losing keyboard focus
-#       p.bind('<Return>',          self.OnReturn)     # highlighted button
+        p.bind('<Destroy>',        self.OnClose)      # window half-dead
+#       p.bind('<Activate>',       self.OnActive)     # window activated
+#       p.bind('<Deactivate>',     self.OffActive)    # window deactivated
+        p.bind('<Escape>',         self.OnEscape)     # fullscreen off/exit
+        p.bind('<FocusIn>',        self.OnFocus)      # getting keyboard focus
+#       p.bind('<FocusOut>',       self.OffFocus)     # losing keyboard focus
+#       p.bind('<Return>',         self.OnReturn)     # highlighted button
         if _isMacOS:
             p.bind('<Command-.>', self.OnClose)
-#           p.bind('<Command-,.'. self.OnPreferences)
+#           p.bind('<Command-,>', self.OnPreferences)
 #           p.bind('<KP_Enter>',  self.OnReturn)  # highlighted button
         # attrs holding the most recently set _geometry ...
-        assert not hasattr(panel, '_g')
-        panel._g = ''  # ... as a sC{str} and ...
-        assert not hasattr(panel, '_whxy')
-        panel._whxy = ()  # ... 4-tuple of C{ints}s
+#       assert not hasattr(panel, '_g')
+        panel._geometry = ''  # ... as a sC{str} and ...
+#       assert not hasattr(panel, '_whxy')
+        panel._w_h_x_y = ()  # ... 4-tuple of C{ints}s
 
     def _ButtonsPanel(self):
         # create panel with buttons and sliders
@@ -732,46 +790,54 @@ class Player(_Tk_Frame):
 
     def _debug(self, where, *event, **kwds):
         # Print where an event is are handled.
-        if self.debug:
-            self._debugs += 1
-            d = dict(anchored=self._anchored,
-                       isFull=bool(self._isFull),
-                      opacity=self._opacity,
-                       opaque=self._opaque,
-                      stopped=self._stopped,
-                       volume=self._volume)
-            p = self.player
-            if p and p.get_media():
-                d.update(playing=p.is_playing(),
-                            rate=p.get_rate(),
-                           scale=p.video_get_scale(),
-                           scaleX=self._scaleX)
-            try:  # final OnClose may throw TclError
-                d.update(Buttons=_geometry1(self.buttonsPanel))
-                d.update(  Video=_geometry1(self.videoPanel))
-                if event:  # an event
-                    event = event[0]
-                    d.update(event=event)
-                    w = str(event.widget)
-#                   d.update(widget=type(event.widget))  # may fail
-                    d.update(Widget={'.':        'Video',
-                                     '.buttons': _BUTTONS}.get(w, w))
-            except (AttributeError, TclError):
-                pass
-            d.update(kwds)
-            d = ', '.join('%s=%s' % t for t in sorted(d.items()))
-            print('%4s: %s %s' % (self._debugs, where.__name__, d))
+        d = dict(anchored=self._anchored,
+                   isFull=bool(self._isFull),
+                  opacity=self._opacity,
+                   opaque=self._opaque,
+                  stopped=self._stopped,
+                     time=self._timestr(4),
+                 toggling=self._toggling,
+                 tweaking=self._tweaking,
+                   volume=self._volume)
+        p = self.player
+        if p and p.get_media():
+            d.update(playing=p.is_playing(),
+                        rate=p.get_rate(),
+                       scale=p.video_get_scale(),
+                       scaleX=self._scaleX)
+        try:  # final OnClose may throw TclError
+            d.update(Buttons=_geometry1state(self.buttonsPanel))
+            d.update(  Video=_geometry1state(self.videoPanel))
+            if event:  # an event
+                event = event[0]
+                d.update(event=event, serial=event.serial)  # time=event.time)
+                d.update(Widget=str(event.widget))  # may fail
+        except (AttributeError, TclError):
+            pass
+        d.update(kwds)
+        t = ', '.join('%s=%s' % t for t in sorted(d.items()))
+        self._debugs = n = self._debugs + 1
+        print('%5s: %s %s' % (n, where.__name__, t))
+        if self._limit and n > self._limit:  # stop runawayp
+            print('%5s: %s %s' % (n, '-limit', self._limit))
+            self._quitAll()
+            sys.exit(9)
 
     def _frontmost(self):
-        # Move panels to the front ...  temporarily.
+        # Move panels to the front ... temporarily.
         for p in (self.videoPanel, self.buttonsPanel):
-            p.attributes('-topmost', True)
-            p.update_idletasks()
-            p.attributes('-topmost', False)
-            try:  # no Toplevel.force_focus
-                p.force_focus()
-            except AttributeError:
-                pass
+            if _normalized(p):
+                p.attributes('-topmost', True)
+                p.update_idletasks()
+                p.attributes('-topmost', False)
+                try:  # no Toplevel.force_focus
+                    p.force_focus()
+                except (AttributeError, TypeError):
+                    pass
+        self._fullSync(_fullscreen(self.videoPanel))
+
+    def _fullSync(self, full):  # sync the .fullItem label
+        self.fullItem.config(label=_FULL_OFF if full else _FULL_SCREEN)
 
     def OnAnchor(self, *unused):
         '''Toggle anchoring of the panels.
@@ -792,16 +858,7 @@ class Player(_Tk_Frame):
         '''Closes the window(s) and quit.
         '''
         self._debug(self.OnClose, *event)
-        # print('_quit: bye')
-        self.after_cancel(self._tick_a)
-        self.after_cancel(self._tick_c)
-        self.after_cancel(self._tick_r)
-        self.after_cancel(self._tick_s)
-        self.after_cancel(self._tick_t)
-        self.after_cancel(self._tick_z)
-        v = self.videoPanel
-        v.update_idletasks()
-        self.quit()  # stops .mainloop
+        self._quitAll()
 
     def OnConfigure(self, event):
         '''Some widget configuration changed.
@@ -809,18 +866,40 @@ class Player(_Tk_Frame):
         w, T = event.widget, event.type  # int
         if T == _T_CONFIGURE and w.winfo_toplevel() is w:
             # i.e. w is videoFrame/Panel or buttonsPanel
-            if w is self.videoPanel:
-                a = self._set_aspect_ratio  # force=True
+            if w is self.videoPanel and not self._tweaking:
+                m, a = self._set_aspect_ratio, True
+                if _isMacOS and not self._toggling:  # green window button?
+                    f = _fullscreen(w)
+                    if event.y:  # .y only for 2nd screen
+                        if f:
+                            m, a = self.OnEscape, event
+                    elif not f:  # event.y == 0
+                        m, a = self.OnFull, event
+                    self._fullSync(f)
             elif w is self.buttonsPanel and self._anchored:
-                a = self._anchorPanels  # video=True
+                m, a = self._anchorPanels, True
             else:
-                a = None
+                m = a = None
             # prevent endless, recursive onConfigure events due to changing
             # the buttons- and videoPanel geometry, especially on Windows
-            if a and w._whxy != (event.width, event.height, event.x, event.y):
+            if m and (a is event or w._w_h_x_y !=
+                     (event.width, event.height, event.x, event.y)):
                 self.after_cancel(self._tick_c)
                 self._debug(self.OnConfigure, event)
-                self._tick_c = self.after(250, a, True)
+                self._tick_c = self.after(500, m, a)
+
+    def OnEscape(self, *event):
+        '''Force fullscreen off.
+        '''
+        self._debug(self.OnEscape, event)
+        v = self.videoPanel
+        if self._isFull:
+            _geometry(v, self._isFull)
+        _fullscreen(v, False)
+        _fullscreen(self.buttonsPanel, False)
+        self._anchorPanels()
+        self._fullSync(False)
+        self._isFull = ''  # i.e. False
 
     def OnFaster(self, *event):
         '''Speed the video up by 25%.
@@ -829,33 +908,22 @@ class Player(_Tk_Frame):
         self._debug(self.OnFaster)
 
     def OnFocus(self, *unused):
-        '''Got the keyboard focus.
+        '''Got the keyboard/mouse focus.
         '''
         self._debug(self.OnFocus)
         self._frontmost()
 #       self._set_aspect_ratio()
 #       self._wiggle()
 
-    def OnFull(self, *unused):
-        '''Toggle full/off screen.
+    def OnFull(self, *event):
+        '''Force fullscreen on.
         '''
-        self._debug(self.OnFull)
-        # <https://www.Tcl.Tk/man/tcl8.6/TkCmd/wm.htm#M10>
-        # self.after_cancel(self._tick_t)
-        v = self.videoPanel
-        if not _fullscreen(v):
-            self._isFull = _geometry1(v)
-            _fullscreen(v, True)  # or .wm_attributes
-            v.bind('<Escape>', self.OnFull)
-            f = _FULL_OFF
-        else:
-            _fullscreen(v, False)
-            v.unbind('<Escape>')
-            _geometry(v, self._isFull)
-            self._isFull = ''
-            self._anchorPanels()
-            f = _FULL_SCREEN
-        self.fullItem.config(label=f)
+        self._debug(self.OnFull, event)
+        v =  self.videoPanel
+        g = _geometry1(v)
+        _fullscreen(v, True)
+        self._fullSync(True)
+        self._isFull = g
 
     def OnMute(self, *unused):
         '''Mute/Unmute audio.
@@ -872,14 +940,14 @@ class Player(_Tk_Frame):
         self.muteButton.config(label=u)  # width=len(u), underline=i
         self.OnPercent()  # re-label the slider
 
-    def OnNormal(self, *unused):
-        '''Normal speed and 1X zoom.
+    def OnNormal(self, *event):
+        '''Normal speed, 1X zoom.
         '''
         self._frontmost()
         self._set_rate(0.0)
         self._set_zoom(0.0)
 #       self._wiggle()
-        self._set_aspect_ratio(True)
+        self._set_aspect_ratio(force=True)
         self._debug(self.OnNormal)
 
     def OnOpacity(self, *unused):
@@ -966,6 +1034,7 @@ class Player(_Tk_Frame):
             self._snapshots += 1
             S = 'Snapshot%s' % (self._snapshots,)
             s = '%s-%s.PNG' % (self._title, S)  # PNG only
+            self._debug(self.OnSnapshot, **{S: s})
             if p.video_take_snapshot(0, s, 0, 0):
                 self._showError('take ' + S)
 
@@ -1007,6 +1076,24 @@ class Player(_Tk_Frame):
             self._set_buttons_title(t)
             self._debug(self.OnTime, tensecs=t)
 
+    def OnToggle(self, *unused):
+        '''Toggle fullscreen off/on.
+        '''
+        if self.player:
+            v = self.videoPanel
+            self._debug(self.OnToggle)
+            # <https://www.Tcl-lang.org/man/tcl8.6/TkCmd/wm.htm#M10>
+            self._toggling = True
+            if _fullscreen(v):
+                self.OnEscape()
+            else:  # if not self._isFull:
+                self.OnFull()
+
+            def _togglend():
+                self._toggling = False
+
+            _ = self.after_idle(_togglend)
+
     def OnZoomIn(self, *event):
         '''Zoom in by 25%.
         '''
@@ -1036,9 +1123,12 @@ class Player(_Tk_Frame):
     def _play(self, video):
         # helper for OnOpen and OnPlay
         if os.path.isfile(video):  # Creation
-            m = self.Instance.media_new(str(video))  # unicode
             p = self.player
-            p.set_media(m)
+            m = p.set_mrl(str(video))  # unicode
+            try:
+                m.parse_with_options(vlc.MediaParseFlag.local, -1)
+            except AttributeError:
+                pass
             t = '%s - %s' % (self._title, os.path.basename(video))
             self.videoPanel.title(t)
 #           self.buttonsPanel.title(t)
@@ -1060,6 +1150,18 @@ class Player(_Tk_Frame):
                 p.set_xwindow(h)  # fails on Windows
             self.OnPlay(None)
 
+    def _quitAll(self):
+        # print('_quit: bye')
+        self.after_cancel(self._tick_a)
+        self.after_cancel(self._tick_c)
+        self.after_cancel(self._tick_r)
+        self.after_cancel(self._tick_s)
+        self.after_cancel(self._tick_t)
+        self.after_cancel(self._tick_z)
+        self.videoPanel.update_idletasks()
+        self.buttonsPanel.update_idletasks()
+        self.quit()  # stops .mainloop
+
     def _reset(self):
         # stop playing, clear panel
         p = self.player
@@ -1073,28 +1175,31 @@ class Player(_Tk_Frame):
 
     def _set_aspect_ratio(self, force=False):
         # set the video panel aspect ratio and re-anchor
-        p = self.player
-        if p and not self._isFull:
-            v = self.videoPanel
-            g, w, h, x, y = _geometry5(v)
-            if force or g != v._g:  # update
-                self.after_cancel(self._tick_a)
-                a, b = p.video_get_size(0)  # often (0, 0)
-                if b > 0 and a > 0:
+        self._tweaking = False
+        v, p = self.videoPanel, self.player
+        if p and _normalized(v):
+            a, b = p.video_get_size(0)  # often (0, 0)
+            if b > 0 and a > 0:
+                g, w, h, x, y = _geometry5(v)
+                if force or g != v._geometry:  # update
+                    self.after_cancel(self._tick_a)
+                    t = w, h
                     # adjust the video panel ...
                     if a > b:  # ... landscape height
-                        h = round(float(w) * b / a)
+                        h = int(float(w) * b / a)
                     else:  # ... or portrait width
-                        w = round(float(h) * a / a)
-                    _g = _geometry(v, w, h, x, y)
-                    self._debug(self._set_aspect_ratio, a=a, b=b)
-                    if self._anchored and (force or _g != g):
-                        self._anchorPanels()
-                # redo periodically since (1) player.video_get_size()
-                # only returns non-zero width and height after playing
-                # for a while and (2) avoid too frequent updates during
-                # manual resizing of the video panel
-                self._tick_a = self.after(500, self._set_aspect_ratio)
+                        w = int(float(h) * a / b)
+                    if (w, h) != t:
+                        self._tweaking = True
+                        _g = _geometry(v, w, h, x, y)
+                        self._debug(self._set_aspect_ratio, a=a, b=b)
+                        if self._anchored and (force or _g != g):
+                            self._anchorPanels()
+                    # redo periodically since (1) player.video_get_size()
+                    # only returns non-zero width and height after playing
+                    # for a while and (2) avoid too frequent updates during
+                    # manual resizing of the video panel
+                    self._tick_a = self.after(500, self._set_aspect_ratio)
 
     def _set_buttons_title(self, *tensecs):
         # set the buttons panel title
@@ -1162,9 +1267,10 @@ class Player(_Tk_Frame):
             self._volume = v = volume[0]
         else:
             v = self._volume
-        m = ' (Muted)' if self._muted else ''
         V = '%s %s%%' % (_VOLUME, v)
-        self._set_percent(v, label=V + m)
+        if self._muted:
+            V += ' (Muted)'
+        self._set_percent(v, label=V)
         p = self.player
         if p and p.is_playing() and not self._stopped:
             # .audio_set_volume returns 0 on success, -1 otherwise,
@@ -1199,6 +1305,9 @@ class Player(_Tk_Frame):
         showerror(self._title, t)
         # sys.exit(t)
 
+    def _timestr(self, n):
+        return '%.*f' % (n, (time() - self._time0))
+
     def _VideoPanel(self):
         # create panel to play video
         v = _Tk_Frame(self.parent)
@@ -1214,22 +1323,131 @@ class Player(_Tk_Frame):
 
     def _wiggle(self, d=4):
         # wiggle the video to fill the window on macOS
-        if not self._isFull:
-            v = self.videoPanel
+        v = self.videoPanel
+        if _normalized(v):
             g, w, h, x, y = _geometry5(v)
             w = int(w) + d
             # x = int(x) - d
             # h = int(h) + d
             if _geometry(v, w, h, x, y) != g:
                 self.after_idle(_geometry, v, g)
-        if d > 1:  # repeat a few times
-            self.after(100, self._wiggle, d - 1)
+            if d > 1:  # repeat a few times, 100 ms apart
+                self.after(100, self._wiggle, d - 1)
 
 
-def print_version(name=''):  # imported by psgvlc.py
+def _fullscreen(panel, *full):  # != _maximized!
+    # get/set a panel fullscreen or normal
+    f = bool(panel.attributes('-fullscreen'))  # or (_isMacOS and panel.winfo_y() == 0)  # only y
+    if full and full[0] != f:
+        panel.attributes('-fullscreen', full[0])
+        panel.update_idletasks()
+    return f
+
+
+def _geometry(panel, g_w, *h_x_y):
+    # set a panel geometry to C{g} or C{w, h, x, y}.
+    if h_x_y:
+        g = '+'.join(map(str, h_x_y))
+        g = 'x'.join((str(g_w), g))
+    else:
+        g = g_w
+    panel.geometry(g)  # update geometry, then ...
+    g = _geometry5(panel)  # ... get actual as ...
+    panel._geometry = g[0]  # ... C{str} and 4 C{int}s
+    # == panel.winfo_width(), _height(), _x(), _y()
+    panel._w_h_x_y = tuple(map(int, g[1:]))
+    return g
+
+
+def _geometry1(panel):
+    # get a panel geometry as C{str} "wxh+x+y"
+    panel.update_idletasks()
+    return panel.geometry()
+
+
+def _geometry1state(panel):
+    # get a panel geometry and state as C{str}
+    g = _geometry1(panel)
+    s = 'fullscreen' if _fullscreen(panel) else \
+         panel.state()  # iconic, normal, zoomed
+    return g + '-' + s
+
+
+def _geometry5(panel):
+    # get a panel geometry as 5-tuple of C{str}s
+    g = _geometry1(panel)  # '+-x' means absolute -x
+    z, x, y = g.split('+')
+    w, h = z.split('x')
+    return g, w, h, x, y
+
+
+def _hms(tensecs, secs=''):
+    # format a time (in 1/10-secs) as h:mm:ss.s
+    s = tensecs * 0.1
+    if s < 60:
+        t = '%3.1f%s' % (s, secs)
+    else:
+        m, s = divmod(s, 60)
+        if m < 60:
+            t = '%d:%04.1f' % (int(m), s)
+        else:
+            h, m = divmod(m, 60)
+            t = '%d:%02d:%04.1f' % (int(h), int(m), s)
+    return t
+
+
+# def _maximized(panel, *maxi):  # != _fullscreen!
+#     # get/set a panel zoomed or normal
+#     m = panel.state() == 'zoomed'
+#     if maxi and maxi[0] != m:
+#         panel.state('zoomed' if maxi[0] else 'normal')
+#         panel.update_idletasks()
+#     return m
+
+
+def _minimized(panel, *mini):
+    # get/set a panel to minimized or normal
+    m = panel.state() == 'iconic'
+    if mini and mini[0] != m:
+        panel.state('iconic' if mini[0] else 'normal')
+        panel.update_idletasks()
+    return m
+
+
+def _normalized(panel, *norm):
+    # get/set a panel to normal or minimized
+    n = panel.state() == 'normal'
+    if norm and norm[0] != n:
+        panel.state('normal' if norm[0] else 'iconic')
+        panel.update_idletasks()
+    return n
+
+
+def _underline2(c, label='', underline=-1, **cfg):
+    # update cfg with C{underline=index} or remove C{underline=.}
+    u = label.find(c) if c and label else underline
+    if u >= 0:
+        cfg.update(underline=u)
+    else:  # no underlining
+        c = ''
+    cfg.update(label=label)
+    return c, cfg
+
+
+def print_version(name=''):  # imported by examples/psgvlc.py
     # show all versions, this module, tkinter, libtk, vlc.py, libvlc, etc.
 
     # sample output on macOS:
+
+    # % python3 ./tkvlc.py -v
+    # tkvlc.py: 25.03.03
+    # tkinter: 8.6
+    # libTk: /Library/Frameworks/Python.framework/Versions/3.13/lib/libtk8.6.dylib
+    # is_Tk: aqua, isAquaTk, isCocoaTk
+    # vlc.py: 3.0.21203 (Mon Jan 20 13:40:16 2025 3.0.21)
+    # libVLC: 3.0.21 Vetinari (0x3001500)
+    # plugins: /Applications/VLC.app/Contents/MacOS/plugins
+    # Python: 3.13.2 (64bit) macOS 14.7.3 arm64
 
     # % python3 ./tkvlc.py -v
     # tkvlc.py: 22.12.28
@@ -1253,9 +1471,8 @@ def print_version(name=''):  # imported by psgvlc.py
     # plugins: C:\Program Files\VideoLAN\VLC
     # Python: 3.11.0 (64bit) Windows 10
 
-    # see <https://TkDocs.com/tutorial/menus.html> or private property
-    r = Tk.Tk()
-    t = r.tk.call('tk', 'windowingsystem'),  # r._windowingsystem
+    r = _Tk_Root()
+    t = (r._Windowing(),)
     r.destroy()
     if _isMacOS:
         try:
@@ -1271,7 +1488,6 @@ def print_version(name=''):  # imported by psgvlc.py
     n = os.path.basename(name or __file__)
     for t in ((n, __version__), (Tk.__name__, _Tk_Version), ('libTk', libtk), ('is_Tk', t)):
         print('%s: %s' % t)
-
     try:
         vlc.print_version()
         vlc.print_python()
@@ -1282,21 +1498,27 @@ def print_version(name=''):  # imported by psgvlc.py
             pass
 
 
-if __name__ == '__main__':  # MCCABE 13
+__all__ = Player.__name__, print_version.__name__
+
+if __name__ == '__main__':  # MCCABE 14
 
     _argv0 = sys.argv[0]
     _debug = False
+    _limit = None
     _video = ''
 
-    while len(sys.argv) > 1:
-        arg = sys.argv.pop(1)
+    args = sys.argv[1:]
+    while args:
+        arg = args.pop(0)
         if arg in ('-v', '--version'):
             print_version()
             sys.exit(0)
         elif '-debug'.startswith(arg) and len(arg) > 3:
             _debug = True
+        elif '-limit'.startswith(arg) and len(arg) > 2 and args and args[0].isdigit():
+            _limit = int(args.pop(0))
         elif arg.startswith('-'):
-            print('usage: %s  [-v | --version]  [-debug]  [<video_file_name>]' % (_argv0,))
+            print('usage: %s  [-v | --version]  [-debug  [-limit <int>]]  [<video_file_name>]' % (_argv0,))
             sys.exit(1)
         elif arg:  # video file
             _video = os.path.expanduser(arg)
@@ -1304,9 +1526,21 @@ if __name__ == '__main__':  # MCCABE 13
                 print('%s error, no such file: %r' % (_argv0, arg))
                 sys.exit(1)
 
-    root = Tk.Tk()  # create a Tk.App()
-    player = Player(root, video=_video, debug=_debug)
-    if _isWindows:  # see function _test() at the bottom of ...
+    root = _Tk_Root()  # create a Tk.App()
+    player = Player(root, video=_video, debug=_debug, limit=_limit)
+    if _isMacOS:  # <https://TkDocs.com/tutorial/menus.html>
+
+        def _popup(ev):  # Contextual Menus
+            player.videoMenu.post(ev.x_root, ev.y_root)
+
+        if root._Windowing() == 'aqua':
+            root.bind('<Control-1>', _popup)
+            root.bind('<2>', _popup)
+        else:
+            root.bind('<3>', _popup)
+        root.mainloop()  # forever
+
+    elif _isWindows:  # see function _test() at the bottom of ...
         # <https://GitHub.com/python/cpython/blob/3.11/Lib/tkinter/__init__.py>
         root.iconify()
         root.update()
