@@ -2203,7 +2203,7 @@ class Media(_Ctype):
     def get_stats(self, p_stats):
         '''Get the current statistics about the media.
         @param p_stats:: structure that contain the statistics about the media (this structure must be allocated by the caller).
-        @return: true if the statistics are available, false otherwise \libvlc_return_bool.
+        @return: true if the statistics are available, false otherwise \\libvlc_return_bool.
         '''
         return libvlc_media_get_stats(self, p_stats)
 
@@ -2261,7 +2261,7 @@ class Media(_Ctype):
     def is_parsed(self):
         '''Get Parsed status for media descriptor object.
         See libvlc_MediaParsedChanged.
-        @return: true if media object has been parsed otherwise it returns false \libvlc_return_bool.
+        @return: true if media object has been parsed otherwise it returns false \\libvlc_return_bool.
         '''
         return libvlc_media_is_parsed(self)
 
@@ -2288,7 +2288,7 @@ class Media(_Ctype):
         Note, you need to call L{parse}() or play the media at least once
         before calling this function.
         Not doing this will result in an empty array.
-        \deprecated Use L{tracks_get} instead.
+        \\deprecated Use L{tracks_get} instead.
         @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) [OUT].
         @return: the number of Elementary Streams.
         '''
@@ -2340,7 +2340,7 @@ class MediaDiscoverer(_Ctype):
     
     def is_running(self):
         '''Query if media service discover object is running.
-        @return: true if running, false if not \libvlc_return_bool.
+        @return: true if running, false if not \\libvlc_return_bool.
         '''
         return libvlc_media_discoverer_is_running(self)
 
@@ -2506,7 +2506,7 @@ class MediaList(_Ctype):
     
     def is_readonly(self):
         '''This indicates if this media list is read-only from a user point of view.
-        @return: 1 on readonly, 0 on readwrite \libvlc_return_bool.
+        @return: 1 on readonly, 0 on readwrite \\libvlc_return_bool.
         '''
         return libvlc_media_list_is_readonly(self)
 
@@ -2611,7 +2611,7 @@ class MediaListPlayer(_Ctype):
     
     def is_playing(self):
         '''Is media list playing?
-        @return: true for playing and false for not playing \libvlc_return_bool.
+        @return: true for playing and false for not playing \\libvlc_return_bool.
         '''
         return libvlc_media_list_player_is_playing(self)
 
@@ -2869,7 +2869,7 @@ class MediaPlayer(_Ctype):
     
     def is_playing(self):
         '''is_playing.
-        @return: 1 if the media player is playing, 0 otherwise \libvlc_return_bool.
+        @return: 1 if the media player is playing, 0 otherwise \\libvlc_return_bool.
         '''
         return libvlc_media_player_is_playing(self)
 
@@ -2945,10 +2945,10 @@ class MediaPlayer(_Ctype):
         The drawable is an NSObject that follow the VLCOpenGLVideoViewEmbedding
         protocol:
         @begincode
-        \@protocol VLCOpenGLVideoViewEmbedding <NSObject>
+        \\@protocol VLCOpenGLVideoViewEmbedding <NSObject>
         - (void)addVoutSubview:(NSView *)view;
         - (void)removeVoutSubview:(NSView *)view;
-        \@end
+        \\@end
         @endcode
         Or it can be an NSView object.
         If you want to use it along with Qt4 see the QMacCocoaViewContainer. Then
@@ -3130,7 +3130,7 @@ class MediaPlayer(_Ctype):
     
     def will_play(self):
         '''Is the player able to play.
-        @return: boolean \libvlc_return_bool.
+        @return: boolean \\libvlc_return_bool.
         '''
         return libvlc_media_player_will_play(self)
 
@@ -3216,21 +3216,21 @@ class MediaPlayer(_Ctype):
     
     def is_seekable(self):
         '''Is this media player seekable?
-        @return: true if the media player can seek \libvlc_return_bool.
+        @return: true if the media player can seek \\libvlc_return_bool.
         '''
         return libvlc_media_player_is_seekable(self)
 
     
     def can_pause(self):
         '''Can this media player be paused?
-        @return: true if the media player can pause \libvlc_return_bool.
+        @return: true if the media player can pause \\libvlc_return_bool.
         '''
         return libvlc_media_player_can_pause(self)
 
     
     def program_scrambled(self):
         '''Check if the current program is scrambled.
-        @return: true if the current program is scrambled \libvlc_return_bool.
+        @return: true if the current program is scrambled \\libvlc_return_bool.
         @version: LibVLC 2.2.0 or later.
         '''
         return libvlc_media_player_program_scrambled(self)
@@ -3282,7 +3282,7 @@ class MediaPlayer(_Ctype):
     
     def get_fullscreen(self):
         '''Get current fullscreen status.
-        @return: the fullscreen status (boolean) \libvlc_return_bool.
+        @return: the fullscreen status (boolean) \\libvlc_return_bool.
         '''
         return libvlc_get_fullscreen(self)
 
@@ -4188,7 +4188,7 @@ def libvlc_media_discoverer_event_manager(p_mdis):
 def libvlc_media_discoverer_is_running(p_mdis):
     '''Query if media service discover object is running.
     @param p_mdis: media service discover object.
-    @return: true if running, false if not \libvlc_return_bool.
+    @return: true if running, false if not \\libvlc_return_bool.
     '''
     f = _Cfunctions.get('libvlc_media_discoverer_is_running', None) or \
         _Cfunction('libvlc_media_discoverer_is_running', ((1,),), None,
@@ -4758,7 +4758,7 @@ def libvlc_media_get_stats(p_md, p_stats):
     '''Get the current statistics about the media.
     @param p_md:: media descriptor object.
     @param p_stats:: structure that contain the statistics about the media (this structure must be allocated by the caller).
-    @return: true if the statistics are available, false otherwise \libvlc_return_bool.
+    @return: true if the statistics are available, false otherwise \\libvlc_return_bool.
     '''
     f = _Cfunctions.get('libvlc_media_get_stats', None) or \
         _Cfunction('libvlc_media_get_stats', ((1,), (1,),), None,
@@ -4834,7 +4834,7 @@ def libvlc_media_is_parsed(p_md):
     '''Get Parsed status for media descriptor object.
     See libvlc_MediaParsedChanged.
     @param p_md: media descriptor object.
-    @return: true if media object has been parsed otherwise it returns false \libvlc_return_bool.
+    @return: true if media object has been parsed otherwise it returns false \\libvlc_return_bool.
     '''
     f = _Cfunctions.get('libvlc_media_is_parsed', None) or \
         _Cfunction('libvlc_media_is_parsed', ((1,),), None,
@@ -4869,7 +4869,7 @@ def libvlc_media_get_tracks_info(p_md):
     Note, you need to call L{libvlc_media_parse}() or play the media at least once
     before calling this function.
     Not doing this will result in an empty array.
-    \deprecated Use L{libvlc_media_tracks_get} instead.
+    \\deprecated Use L{libvlc_media_tracks_get} instead.
     @param p_md: media descriptor object.
     @param tracks: address to store an allocated array of Elementary Streams descriptions (must be freed by the caller) [OUT].
     @return: the number of Elementary Streams.
@@ -5033,7 +5033,7 @@ def libvlc_media_list_index_of_item(p_ml, p_md):
 def libvlc_media_list_is_readonly(p_ml):
     '''This indicates if this media list is read-only from a user point of view.
     @param p_ml: media list instance.
-    @return: 1 on readonly, 0 on readwrite \libvlc_return_bool.
+    @return: 1 on readonly, 0 on readwrite \\libvlc_return_bool.
     '''
     f = _Cfunctions.get('libvlc_media_list_is_readonly', None) or \
         _Cfunction('libvlc_media_list_is_readonly', ((1,),), None,
@@ -5161,7 +5161,7 @@ def libvlc_media_player_event_manager(p_mi):
 def libvlc_media_player_is_playing(p_mi):
     '''is_playing.
     @param p_mi: the Media Player.
-    @return: 1 if the media player is playing, 0 otherwise \libvlc_return_bool.
+    @return: 1 if the media player is playing, 0 otherwise \\libvlc_return_bool.
     '''
     f = _Cfunctions.get('libvlc_media_player_is_playing', None) or \
         _Cfunction('libvlc_media_player_is_playing', ((1,),), None,
@@ -5260,10 +5260,10 @@ def libvlc_media_player_set_nsobject(p_mi, drawable):
     The drawable is an NSObject that follow the VLCOpenGLVideoViewEmbedding
     protocol:
     @begincode
-    \@protocol VLCOpenGLVideoViewEmbedding <NSObject>
+    \\@protocol VLCOpenGLVideoViewEmbedding <NSObject>
     - (void)addVoutSubview:(NSView *)view;
     - (void)removeVoutSubview:(NSView *)view;
-    \@end
+    \\@end
     @endcode
     Or it can be an NSView object.
     If you want to use it along with Qt4 see the QMacCocoaViewContainer. Then
@@ -5515,7 +5515,7 @@ def libvlc_media_player_get_chapter_count(p_mi):
 def libvlc_media_player_will_play(p_mi):
     '''Is the player able to play.
     @param p_mi: the Media Player.
-    @return: boolean \libvlc_return_bool.
+    @return: boolean \\libvlc_return_bool.
     '''
     f = _Cfunctions.get('libvlc_media_player_will_play', None) or \
         _Cfunction('libvlc_media_player_will_play', ((1,),), None,
@@ -5637,7 +5637,7 @@ def libvlc_media_player_has_vout(p_mi):
 def libvlc_media_player_is_seekable(p_mi):
     '''Is this media player seekable?
     @param p_mi: the media player.
-    @return: true if the media player can seek \libvlc_return_bool.
+    @return: true if the media player can seek \\libvlc_return_bool.
     '''
     f = _Cfunctions.get('libvlc_media_player_is_seekable', None) or \
         _Cfunction('libvlc_media_player_is_seekable', ((1,),), None,
@@ -5647,7 +5647,7 @@ def libvlc_media_player_is_seekable(p_mi):
 def libvlc_media_player_can_pause(p_mi):
     '''Can this media player be paused?
     @param p_mi: the media player.
-    @return: true if the media player can pause \libvlc_return_bool.
+    @return: true if the media player can pause \\libvlc_return_bool.
     '''
     f = _Cfunctions.get('libvlc_media_player_can_pause', None) or \
         _Cfunction('libvlc_media_player_can_pause', ((1,),), None,
@@ -5657,7 +5657,7 @@ def libvlc_media_player_can_pause(p_mi):
 def libvlc_media_player_program_scrambled(p_mi):
     '''Check if the current program is scrambled.
     @param p_mi: the media player.
-    @return: true if the current program is scrambled \libvlc_return_bool.
+    @return: true if the current program is scrambled \\libvlc_return_bool.
     @version: LibVLC 2.2.0 or later.
     '''
     f = _Cfunctions.get('libvlc_media_player_program_scrambled', None) or \
@@ -5707,7 +5707,7 @@ def libvlc_track_description_list_release(p_track_description):
     return f(p_track_description)
 
 def libvlc_track_description_release(p_track_description):
-    '''\deprecated Use L{libvlc_track_description_list_release} instead.
+    '''\\deprecated Use L{libvlc_track_description_list_release} instead.
     '''
     f = _Cfunctions.get('libvlc_track_description_release', None) or \
         _Cfunction('libvlc_track_description_release', ((1,),), None,
@@ -5744,7 +5744,7 @@ def libvlc_set_fullscreen(p_mi, b_fullscreen):
 def libvlc_get_fullscreen(p_mi):
     '''Get current fullscreen status.
     @param p_mi: the media player.
-    @return: the fullscreen status (boolean) \libvlc_return_bool.
+    @return: the fullscreen status (boolean) \\libvlc_return_bool.
     '''
     f = _Cfunctions.get('libvlc_get_fullscreen', None) or \
         _Cfunction('libvlc_get_fullscreen', ((1,),), None,
@@ -5795,7 +5795,7 @@ def libvlc_video_get_size(p_mi, num):
 
 def libvlc_video_get_height(p_mi):
     '''Get current video height.
-    \deprecated Use L{libvlc_video_get_size}() instead.
+    \\deprecated Use L{libvlc_video_get_size}() instead.
     @param p_mi: the media player.
     @return: the video pixel height or 0 if not applicable.
     '''
@@ -5806,7 +5806,7 @@ def libvlc_video_get_height(p_mi):
 
 def libvlc_video_get_width(p_mi):
     '''Get current video width.
-    \deprecated Use L{libvlc_video_get_size}() instead.
+    \\deprecated Use L{libvlc_video_get_size}() instead.
     @param p_mi: the media player.
     @return: the video pixel width or 0 if not applicable.
     '''
@@ -6764,7 +6764,7 @@ def libvlc_media_list_player_pause(p_mlp):
 def libvlc_media_list_player_is_playing(p_mlp):
     '''Is media list playing?
     @param p_mlp: media list player instance.
-    @return: true for playing and false for not playing \libvlc_return_bool.
+    @return: true for playing and false for not playing \\libvlc_return_bool.
     '''
     f = _Cfunctions.get('libvlc_media_list_player_is_playing', None) or \
         _Cfunction('libvlc_media_list_player_is_playing', ((1,),), None,
