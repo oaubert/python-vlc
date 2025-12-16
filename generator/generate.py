@@ -2103,6 +2103,7 @@ class PythonGenerator(_Generator):
         "libvlc_media_track_info_t**": "ctypes.POINTER(ctypes.c_void_p)",
         "libvlc_rectangle_t*": "ctypes.POINTER(Rectangle)",
         "libvlc_time_t": "ctypes.c_longlong",
+        "libvlc_time_t*": "ctypes.POINTER(ctypes.c_longlong)",
         "libvlc_track_description_t*": "ctypes.POINTER(TrackDescription)",
         "libvlc_title_description_t**": "ctypes.POINTER(TitleDescription)",
         "libvlc_title_description_t***": "ctypes.POINTER(ctypes.POINTER(TitleDescription))",
