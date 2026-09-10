@@ -6,3 +6,4 @@ pre-commit
 sphinx-autoapi
 sphinx_mdinclude
 sphinx_rtd_theme
+astroid==3.3.8
