@@ -8,7 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          sudo apt-get install -y vlc pulseaudio libvlc-dev
+          sudo apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends vlc pulseaudio libvlc-dev
           pulseaudio --start
           bash ./dev_setup.sh
           . .venv/bin/activate
